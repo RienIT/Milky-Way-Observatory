@@ -1,0 +1,6 @@
+{
+  "name": "Singularity — Vũ Trụ Ký Ức 3D (Second Brain)",
+  "description": "Hệ thống lưu trữ bộ nhớ thứ hai (Second Brain) không gian 3D lấy cảm hứng từ hố đen vũ trụ, tích hợp tóm tắt AI tự động và mạng lưới chòm sao tri thức.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

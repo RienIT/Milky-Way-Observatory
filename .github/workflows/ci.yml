@@ -1,0 +1,92 @@
+name: CI — Lint, Test & Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance-check:
+    name: Legal & Governance Files Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify MIT license & copyright documentation
+        run: |
+          for file in LICENSE COPYRIGHT.md NOTICE AUTHORS.md SECURITY.md CODE_OF_CONDUCT.md CONTRIBUTING.md README.md; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing required repository governance file: $file"
+              exit 1
+            fi
+          done
+          grep -q "DanGuangLT" LICENSE
+          grep -q "LienThuan04" LICENSE
+          echo "All legal, MIT license, and digital copyright files verified."
+
+  quality-and-build:
+    name: Lint, Typecheck, Unit Tests & Next.js Build (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache npm dependencies & Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            .next/cache
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-next-${{ hashFiles('package.json', 'package-lock.json', 'bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node-version }}-next-
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Generate Next.js route types & run TypeScript check
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
+      - name: Run astrophysics & physics unit tests
+        run: npx --yes tsx --test lib/memory-logic.test.ts
+
+      - name: Build Next.js production bundle
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: npm run build

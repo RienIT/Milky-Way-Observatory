@@ -1,0 +1,31 @@
+Milky Way 1:1 Observatory — NASA & Gaia DR3 Galactic Atlas
+Copyright (c) 2026 DanGuangLT <phatmcpack@gmail.com> and LienThuan04 <lienthuan2004@gmail.com>
+
+This product includes software developed jointly by DanGuangLT and LienThuan04,
+created with AI-assisted software engineering workflows and released under the MIT License.
+
+================================================================================
+THIRD-PARTY OPEN SOURCE SOFTWARE NOTICES
+================================================================================
+
+This project depends on open-source packages whose respective licenses apply:
+
+- Next.js (https://nextjs.org) — MIT License — Copyright (c) Vercel, Inc.
+- React & React DOM (https://react.dev) — MIT License — Copyright (c) Meta Platforms, Inc.
+- Three.js (https://threejs.org) — MIT License — Copyright (c) Three.js Authors
+- Tailwind CSS (https://tailwindcss.com) — MIT License — Copyright (c) Tailwind Labs, Inc.
+- Lucide React (https://lucide.dev) — ISC License — Copyright (c) Lucide Contributors
+- Motion (https://motion.dev) — MIT License — Copyright (c) Motion Division
+- TypeScript (https://www.typescriptlang.org) — Apache-2.0 License — Copyright (c) Microsoft Corp.
+- clsx & tailwind-merge — MIT License
+
+================================================================================
+SCIENTIFIC REFERENCE & PUBLIC DOMAIN DATA NOTICES
+================================================================================
+
+- Planetary ephemeris parameters and Milky Way morphological parameters are
+  derived from publicly published NASA / JPL-Caltech scientific datasets.
+- Galactic coordinate reference concepts are based on ESA Gaia Data Release 3
+  (Gaia DR3) scientific publications.
+- General-relativistic black hole shadow and Schwarzschild null-geodesic
+  lensing equations follow standard published astrophysics literature.

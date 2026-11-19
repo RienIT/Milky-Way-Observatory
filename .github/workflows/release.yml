@@ -1,0 +1,111 @@
+name: CD — Automated Build & GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag (e.g. v1.2.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Verify, Package & Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Run full quality gate (Lint, Typecheck, Unit Tests)
+        run: |
+          npm run lint
+          npx next typegen
+          npx tsc --noEmit
+          npx --yes tsx --test lib/memory-logic.test.ts
+
+      - name: Build Next.js production bundle
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: npm run build
+
+      - name: Package release artifact with MIT & Digital Copyright bundle
+        id: package
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ -n "${INPUT_TAG}" ]; then
+            TAG="${INPUT_TAG}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+          mkdir -p release-dist
+          tar -czf "release-dist/milky-way-observatory-${TAG}.tar.gz" \
+            .next \
+            public \
+            package.json \
+            next.config.ts \
+            LICENSE \
+            COPYRIGHT.md \
+            NOTICE \
+            AUTHORS.md \
+            README.md \
+            CHANGELOG.md
+
+          (cd release-dist && sha256sum "milky-way-observatory-${TAG}.tar.gz" > SHA256SUMS.txt)
+          cat release-dist/SHA256SUMS.txt
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: milky-way-observatory-${{ steps.package.outputs.tag }}
+          path: release-dist/*
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.package.outputs.tag }}
+          IS_PRERELEASE: ${{ inputs.prerelease || false }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${IS_PRERELEASE}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "${RELEASE_TAG}" \
+            release-dist/milky-way-observatory-${RELEASE_TAG}.tar.gz \
+            release-dist/SHA256SUMS.txt \
+            --title "Milky Way 1:1 Observatory ${RELEASE_TAG}" \
+            --generate-notes \
+            ${PRERELEASE_FLAG}

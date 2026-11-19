@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "DanGuangLT"
+      - "LienThuan04"
+    assignees:
+      - "DanGuangLT"
+      - "LienThuan04"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "automated"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "DanGuangLT"
+      - "LienThuan04"
+    commit-message:
+      prefix: "ci(deps)"
+    labels:
+      - "ci"
+      - "dependencies"
