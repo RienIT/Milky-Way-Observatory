@@ -1,6 +1,6 @@
-# Security Policy / Chính Sách Bảo Mật
+# Security Policy
 
-## Supported Versions / Phiên Bản Được Hỗ Trợ
+## Supported Versions
 
 | Version | Supported |
 | :--- | :--- |
@@ -8,7 +8,7 @@
 | Tagged releases `v1.x` | :white_check_mark: Yes |
 | Older snapshots | :x: No |
 
-## Reporting a Vulnerability / Báo Cáo Lỗ Hổng Bảo Mật
+## Reporting a Vulnerability
 
 If you discover a security vulnerability in **Milky Way 1:1 Observatory** (such as API key exposure, XSS, unsafe dependency, or server-side route issue), **please do NOT open a public GitHub issue**.
 
@@ -17,13 +17,13 @@ Instead, report it confidentially to the repository maintainers:
 - **DanGuangLT:** `phatmcpack@gmail.com`
 - **LienThuan04:** `lienthuan2004@gmail.com`
 
-### What to Include / Thông Tin Cần Cung Cấp
+### What to Include
 1. A clear description of the vulnerability and potential impact.
 2. Step-by-step reproduction instructions or a minimal proof of concept.
 3. Affected file paths, routes (e.g. `/api/*`), or dependency versions.
 4. Any suggested remediation if known.
 
-### Response Timeline / Thời Gian Phản Hồi
+### Response Timeline
 - **Acknowledgment:** Within 48 hours of receipt.
 - **Triage & Assessment:** Within 5 business days.
 - **Remediation & Disclosure:** Coordinated patch release and credit in `CHANGELOG.md` (unless you prefer anonymity).

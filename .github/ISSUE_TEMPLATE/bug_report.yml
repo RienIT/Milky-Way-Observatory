@@ -1,4 +1,4 @@
-name: Bug Report / Báo Lỗi
+name: Bug Report
 description: Report a rendering, physics, UI, or build issue in Milky Way 1:1 Observatory
 title: "[Bug]: "
 labels: ["bug", "triage"]
@@ -6,32 +6,32 @@ body:
   - type: markdown
     attributes:
       value: |
-        Cảm ơn bạn đã báo lỗi cho dự án của **DanGuangLT** & **LienThuan04**. Vui lòng cung cấp thông tin chi tiết bên dưới.
+        Thank you for reporting an issue to **DanGuangLT** & **LienThuan04**. Please provide detailed reproduction steps below.
 
   - type: textarea
     id: description
     attributes:
-      label: Describe the bug / Mô tả lỗi
-      description: Clear description of what went wrong.
-      placeholder: Ví dụ: Khi xoay góc nhìn quanh Sagittarius A*...
+      label: Describe the bug
+      description: Clear and concise description of what went wrong.
+      placeholder: Example: While orbiting around Sagittarius A*...
     validations:
       required: true
 
   - type: textarea
     id: repro
     attributes:
-      label: Steps to reproduce / Các bước tái hiện
+      label: Steps to reproduce
       placeholder: |
-        1. Mở chế độ True 1:1
-        2. Chọn thiên thể...
-        3. Xoay camera...
+        1. Switch to True 1:1 mode
+        2. Select celestial body...
+        3. Rotate camera...
     validations:
       required: true
 
   - type: input
     id: environment
     attributes:
-      label: Browser & GPU / Trình duyệt & Cấu hình máy
+      label: Browser & Hardware Environment
       placeholder: Chrome 131, Windows 11, RTX 3060 / Intel Iris Xe
     validations:
       required: false
@@ -39,7 +39,7 @@ body:
   - type: textarea
     id: logs
     attributes:
-      label: Console Errors or Screenshots / Lỗi Console hoặc Ảnh chụp màn hình
+      label: Console Errors or Screenshots
       render: shell
     validations:
       required: false

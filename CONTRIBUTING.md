@@ -1,17 +1,17 @@
-# Contributing Guide / Hướng Dẫn Đóng Góp
+# Contributing Guide
 
 Thank you for contributing to **Milky Way 1:1 Observatory — NASA & Gaia DR3 Galactic Atlas**!  
 This project is maintained by **DanGuangLT** (`phatmcpack@gmail.com`) and **LienThuan04** (`lienthuan2004@gmail.com`) under the [MIT License](./LICENSE).
 
 ---
 
-## 1. Code of Conduct / Quy Tắc Ứng Xử
+## 1. Code of Conduct
 
 By participating in this project, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ---
 
-## 2. Local Development Setup / Thiết Lập Môi Trường Phát Triển
+## 2. Local Development Setup
 
 ### Prerequisites
 - **Node.js** `>= 20.x` (LTS recommended)
@@ -29,7 +29,7 @@ Open `http://localhost:3000`. Note that the full Milky Way 3D simulation works o
 
 ---
 
-## 3. Quality Checks Before Opening a PR / Kiểm Tra Trước Khi Tạo PR
+## 3. Quality Checks Before Opening a PR
 
 Every Pull Request is automatically validated by GitHub Actions (`.github/workflows/ci.yml`). Please run all checks locally before pushing:
 
@@ -49,7 +49,7 @@ npm run build
 
 ---
 
-## 4. Branching & Commit Conventions / Quy Ước Nhánh & Commit
+## 4. Branching & Commit Conventions
 
 - Create a feature or fix branch from `main`:
   - `feat/<short-topic>` (e.g. `feat/kuiper-belt-labels`)

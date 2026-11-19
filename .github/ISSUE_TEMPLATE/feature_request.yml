@@ -1,4 +1,4 @@
-name: Feature Request / Đề Xuất Tính Năng
+name: Feature Request
 description: Suggest a new astronomical dataset, shader upgrade, or observatory feature
 title: "[Feature]: "
 labels: ["enhancement"]
@@ -6,28 +6,28 @@ body:
   - type: markdown
     attributes:
       value: |
-        Đề xuất tính năng mới cho **Milky Way 1:1 Observatory** (MIT License — DanGuangLT & LienThuan04).
+        Propose a new feature for **Milky Way 1:1 Observatory** (MIT License — DanGuangLT & LienThuan04).
 
   - type: textarea
     id: summary
     attributes:
-      label: Feature Summary / Tóm tắt tính năng
-      placeholder: Mô tả ngắn gọn tính năng bạn muốn thêm...
+      label: Feature Summary
+      placeholder: Briefly describe the feature you would like to add...
     validations:
       required: true
 
   - type: textarea
     id: motivation
     attributes:
-      label: Scientific or UX Motivation / Lý do khoa học hoặc trải nghiệm người dùng
-      placeholder: Tại sao tính năng này hữu ích hoặc sát với dữ liệu NASA / ESA Gaia DR3?
+      label: Scientific or UX Motivation
+      placeholder: Why is this feature useful or how does it improve NASA / ESA Gaia DR3 accuracy?
     validations:
       required: true
 
   - type: textarea
     id: references
     attributes:
-      label: NASA / ESA / Paper References / Tài liệu tham khảo (nếu có)
-      placeholder: Liên kết đến bài báo thiên văn học hoặc dữ liệu công khai...
+      label: NASA / ESA / Paper References (optional)
+      placeholder: Links to astrophysics papers or public datasets...
     validations:
       required: false
