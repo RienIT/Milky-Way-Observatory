@@ -63,7 +63,7 @@ jobs:
           path: |
             ~/.npm
             .next/cache
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-next-${{ hashFiles('package.json', 'package-lock.json', 'bun.lock') }}
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-next-${{ hashFiles('package.json', 'package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-${{ matrix.node-version }}-next-
 
@@ -78,13 +78,11 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-      - name: Generate Next.js route types & run TypeScript check
-        run: |
-          npx next typegen
-          npx tsc --noEmit
+      - name: Run TypeScript typecheck
+        run: npm run typecheck
 
-      - name: Run astrophysics & physics unit tests
-        run: npx --yes tsx --test lib/memory-logic.test.ts
+      - name: Run unit tests
+        run: npm test
 
       - name: Build Next.js production bundle
         env:

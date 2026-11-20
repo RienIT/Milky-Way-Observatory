@@ -275,10 +275,43 @@ test('NASA Milky Way model generates deterministic barred spiral arms, Solar Sys
   const sunR = Math.hypot(sx, sy, sz);
   assert.ok(sunR >= 44 && sunR <= 45.5, `Expected Sun radius ~44.5 units (26,700 ly), got ${sunR}`);
 
-  const stars = generateMilkyWayStarfield(1200);
-  assert.equal(stars.count, 1200);
-  assert.equal(stars.positions.length, 1200 * 3);
-  assert.ok(Number.isFinite(stars.positions[0]) && Number.isFinite(stars.positions[3599]));
+  const stars = generateMilkyWayStarfield(12000);
+  assert.equal(stars.count, 12000);
+  assert.equal(stars.positions.length, 12000 * 3);
+  assert.ok(Number.isFinite(stars.positions[0]) && Number.isFinite(stars.positions[35999]));
+
+  // Regression guard: central galactic bar must have ZERO rectangular box-clamped edges
+  const barCount = Math.floor(12000 * 0.14);
+  const cosB = Math.cos(MILKY_WAY_NASA_DATA.barAngleRad);
+  const sinB = Math.sin(MILKY_WAY_NASA_DATA.barAngleRad);
+  let clampedEdgeCount = 0;
+  for (let i = 0; i < barCount; i++) {
+    const lx = stars.positions[i * 3];
+    const lz = stars.positions[i * 3 + 2];
+    const bx = lx * cosB + lz * sinB;
+    const bz = -lx * sinB + lz * cosB;
+    if (
+      Math.abs(Math.abs(bx) - 30.0) < 0.05 ||
+      Math.abs(Math.abs(bz) - 13.5) < 0.05
+    ) {
+      clampedEdgeCount++;
+    }
+  }
+  assert.ok(
+    clampedEdgeCount < barCount * 0.015,
+    `Expected organic elliptical galactic bar with zero rectangular clamped walls, got ${clampedEdgeCount}/${barCount}`
+  );
+
+  // Regression guard: Orion Spur starShare stays balanced (<= 6%) and passes smoothly through the Solar System
+  const orionSpur = MILKY_WAY_SPIRAL_ARMS.find((a) => a.id === 'orion-spur');
+  assert.ok(orionSpur && orionSpur.starShare <= 0.06, 'Orion Spur must not over-concentrate stars into a bright streak');
+  const orionThetaAtSun =
+    orionSpur.startAngleRad +
+    orionSpur.windFactor * Math.log(MILKY_WAY_NASA_DATA.sunOrbitRadiusUnits / orionSpur.startRadius);
+  assert.ok(
+    Math.abs(orionThetaAtSun - MILKY_WAY_NASA_DATA.sunOrbitAngleRad) < 0.05,
+    `Expected Orion Spur to pass cleanly through Sun angle ${MILKY_WAY_NASA_DATA.sunOrbitAngleRad}, got ${orionThetaAtSun}`
+  );
 
   const nebulae = generateMilkyWayNebulae(120);
   assert.equal(nebulae.count, 120);

@@ -820,15 +820,15 @@ export function createRealisticPlanetMaterial(
           // Physical stellar limb darkening (Eddington approximation)
           float limbDarkening = 0.42 + 0.58 * pow(viewDot, 0.55);
 
-          vec3 coreWhite = mix(uAtmoColor, vec3(1.0, 0.99, 0.95), 0.68);
-          vec3 midPlasma = uAtmoColor * 1.15;
-          vec3 darkCell  = uAtmoColor * 0.42;
+          vec3 coreWhite = mix(uAtmoColor, vec3(1.0, 0.99, 0.94), 0.78);
+          vec3 midPlasma = uAtmoColor * 1.48;
+          vec3 darkCell  = uAtmoColor * 0.62;
 
-          vec3 starCol = mix(darkCell, midPlasma, smoothstep(0.22, 0.68, granules));
-          starCol = mix(starCol, coreWhite, smoothstep(0.58, 0.92, granules) * 0.82);
-          starCol *= (1.0 - sunspot * 0.52);
-          starCol *= (limbDarkening * 1.15 + fresnel * 0.42);
-          starCol += uAtmoColor * (0.26 + uHighlight * 0.25);
+          vec3 starCol = mix(darkCell, midPlasma, smoothstep(0.18, 0.66, granules));
+          starCol = mix(starCol, coreWhite, smoothstep(0.50, 0.90, granules) * 0.92);
+          starCol *= (1.0 - sunspot * 0.42);
+          starCol *= (limbDarkening * 1.42 + fresnel * 0.58);
+          starCol += mix(uAtmoColor, vec3(1.0, 0.96, 0.84), 0.45) * (0.48 + uHighlight * 0.28);
 
           gl_FragColor = vec4(starCol, uOpacity);
           return;
@@ -1294,3 +1294,655 @@ export function createRockyBeltMaterial(): THREE.ShaderMaterial {
     `,
   });
 }
+
+/**
+ * High-Fidelity Earth Surface Material (Phase 2):
+ * - Multi-octave continental elevation, bathymetry, deserts, mountains, polar ice caps
+ * - Live solar direction (uSunDir) driving crisp twilight terminator & ocean specular glint
+ * - Glowing urban city lights strictly on night-side coastal/temperate landmasses
+ * - Integrated Rayleigh blue atmospheric scattering toward the limb
+ */
+export function createEarthHighResMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
+      uTime: { value: 0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vViewDir;
+
+      void main() {
+        vObjPos = normalize(position);
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        vViewDir = normalize(cameraPosition - wp.xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform vec3 uSunDir;
+      uniform float uTime;
+
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vViewDir;
+
+      float hash31(vec3 p) {
+        p = fract(p * 0.1031);
+        p += dot(p, p.yzx + 33.33);
+        return fract((p.x + p.y) * p.z);
+      }
+
+      float noise3(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
+              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+
+      float fbm(vec3 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+          v += a * noise3(p);
+          p = p * 2.07 + vec3(11.3, -7.1, 5.7);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        vec3 p = normalize(vObjPos);
+        vec3 N = normalize(vWorldNormal);
+        vec3 V = normalize(vViewDir);
+        vec3 L = normalize(uSunDir);
+
+        float lat = abs(p.y);
+        // Warp domain for organic continental coastlines (Eurasia/Americas/Africa-like distribution)
+        vec3 warp = vec3(
+          fbm(p * 2.2 + vec3(1.7, 0.3, -2.1)),
+          fbm(p * 2.2 + vec3(-3.2, 4.1, 1.4)),
+          fbm(p * 2.2 + vec3(2.9, -1.8, 3.6))
+        );
+        float continentField = fbm(p * 2.45 + (warp - 0.5) * 0.92);
+        float ridgeDetail = fbm(p * 11.0 + warp * 1.4);
+        float elevation = continentField + (ridgeDetail - 0.5) * 0.16;
+
+        float seaLevel = 0.505;
+        float landMask = smoothstep(seaLevel - 0.008, seaLevel + 0.014, elevation);
+        float coastalShelf = smoothstep(seaLevel - 0.08, seaLevel, elevation) * (1.0 - landMask);
+
+        // Ocean colors (deep abyssal indigo -> turquoise continental shelf)
+        vec3 oceanDeep = vec3(0.018, 0.068, 0.165);
+        vec3 oceanMid = vec3(0.032, 0.145, 0.295);
+        vec3 oceanShelf = vec3(0.065, 0.265, 0.385);
+        float oceanDepth = clamp((seaLevel - elevation) * 6.5, 0.0, 1.0);
+        vec3 oceanCol = mix(oceanMid, oceanDeep, oceanDepth);
+        oceanCol = mix(oceanCol, oceanShelf, coastalShelf * 0.65);
+
+        // Land biomes: tropical forest, temperate green, arid subtropical desert, alpine rock, polar ice
+        float moisture = fbm(p * 4.1 + vec3(5.2, -2.4, 8.1));
+        float aridity = smoothstep(0.12, 0.36, lat) * (1.0 - smoothstep(0.45, 0.68, lat)) * smoothstep(0.42, 0.66, 1.0 - moisture);
+        float mountain = smoothstep(0.64, 0.78, elevation);
+        float iceCap = smoothstep(0.76, 0.89, lat + (ridgeDetail - 0.5) * 0.09);
+
+        vec3 forestCol = vec3(0.085, 0.235, 0.098);
+        vec3 plainsCol = vec3(0.195, 0.305, 0.135);
+        vec3 desertCol = vec3(0.585, 0.475, 0.325);
+        vec3 mountainCol = vec3(0.365, 0.335, 0.305);
+        vec3 snowCol = vec3(0.92, 0.95, 0.98);
+
+        vec3 landCol = mix(forestCol, plainsCol, smoothstep(0.35, 0.68, moisture));
+        landCol = mix(landCol, desertCol, aridity * 0.85);
+        landCol = mix(landCol, mountainCol, mountain * 0.78);
+        landCol = mix(landCol, snowCol, smoothstep(0.74, 0.84, elevation) * 0.85);
+
+        vec3 surfaceAlbedo = mix(oceanCol, landCol, landMask);
+        surfaceAlbedo = mix(surfaceAlbedo, snowCol, iceCap * 0.94);
+
+        // Solar illumination + twilight terminator scattering
+        float ndl = dot(N, L);
+        float dayFactor = smoothstep(-0.08, 0.18, ndl);
+        float diffuse = max(0.0, ndl);
+        // Subtle twilight orange-amber band right along the terminator
+        float terminatorBand = exp(-pow((ndl + 0.015) * 11.0, 2.0));
+        vec3 twilightTint = vec3(0.62, 0.25, 0.09) * terminatorBand * 0.24;
+
+        // Crisp solar specular glint on liquid ocean (not land or ice)
+        vec3 H = normalize(L + V);
+        float specPow = pow(max(0.0, dot(N, H)), 46.0);
+        float waterMask = (1.0 - landMask) * (1.0 - iceCap);
+        vec3 specular = vec3(0.95, 0.92, 0.84) * specPow * waterMask * 0.55 * dayFactor;
+
+        // City night lights strictly on night-side temperate & coastal continents!
+        float nightMask = smoothstep(0.04, -0.14, ndl);
+        float habitableLat = (1.0 - smoothstep(0.52, 0.74, lat)) * (1.0 - iceCap) * (1.0 - mountain * 0.7);
+        float coastBias = smoothstep(0.0, 0.18, elevation - seaLevel) * (1.0 - smoothstep(0.14, 0.32, elevation - seaLevel));
+        float cityClusters = noise3(p * 34.0) * noise3(p * 78.0 + vec3(4.2, -1.7, 9.3));
+        float citySparks = smoothstep(0.36, 0.62, cityClusters + coastBias * 0.28) * landMask * habitableLat;
+        vec3 cityLights = vec3(1.0, 0.74, 0.34) * citySparks * nightMask * 1.45;
+
+        // Rayleigh blue atmospheric scattering along limb
+        float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.2);
+        vec3 rayleighDay = vec3(0.24, 0.56, 1.0) * fresnel * (0.25 + 0.75 * dayFactor) * 0.72;
+        vec3 rayleighNight = vec3(0.06, 0.14, 0.30) * fresnel * nightMask * 0.22;
+
+        // Earthshine ambient floor on dark side so silhouette stays readable against stars
+        vec3 nightAmbient = surfaceAlbedo * 0.032;
+        vec3 litColor = surfaceAlbedo * (diffuse * 1.18) + twilightTint + specular + nightAmbient * (1.0 - dayFactor);
+        vec3 finalColor = litColor + cityLights + rayleighDay + rayleighNight;
+
+        gl_FragColor = vec4(finalColor, 1.0);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Animated Earth Cloud Layer Material (Phase 2):
+ * Semi-transparent trade-wind & cyclone cloud cover with live terminator shading.
+ */
+export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
+      uTime: { value: 0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+
+      void main() {
+        vObjPos = normalize(position);
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform vec3 uSunDir;
+      uniform float uTime;
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+
+      float hash31(vec3 p) {
+        p = fract(p * 0.1031);
+        p += dot(p, p.yzx + 33.33);
+        return fract((p.x + p.y) * p.z);
+      }
+
+      float noise3(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
+              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+
+      float fbm(vec3 p) {
+        float v = 0.0;
+        float a = 0.55;
+        for (int i = 0; i < 5; i++) {
+          v += a * noise3(p);
+          p = p * 2.12 + vec3(4.1, -6.3, 2.9);
+          a *= 0.48;
+        }
+        return v;
+      }
+
+      void main() {
+        float drift = uTime * 0.008;
+        float c = cos(drift);
+        float s = sin(drift);
+        vec3 p = vec3(
+          vObjPos.x * c - vObjPos.z * s,
+          vObjPos.y,
+          vObjPos.x * s + vObjPos.z * c
+        );
+        // Stretch slightly along latitude bands for trade-wind streaks
+        vec3 windCoord = vec3(p.x * 3.4, p.y * 5.2, p.z * 3.4);
+        float swirl = fbm(windCoord + vec3(0.0, 1.2, 0.0));
+        float clouds = fbm(windCoord * 1.45 + vec3(swirl * 1.15));
+        float alpha = smoothstep(0.51, 0.77, clouds) * 0.78;
+        if (alpha < 0.01) discard;
+
+        vec3 N = normalize(vWorldNormal);
+        float ndl = dot(N, normalize(uSunDir));
+        float dayLit = smoothstep(-0.12, 0.22, ndl);
+        float twilight = exp(-pow((ndl + 0.02) * 10.0, 2.0));
+        vec3 col = mix(vec3(0.05, 0.06, 0.09), vec3(0.95, 0.97, 1.0), dayLit);
+        col += vec3(0.65, 0.28, 0.12) * twilight * 0.35;
+
+        gl_FragColor = vec4(col, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Parametric Milky Way Continuous Spiral Disk + Dust Lanes Shader (Phase 3, illustrative: true).
+ * Calibrated to Reid et al. (2019) 4 logarithmic spiral arms + Orion Spur + Wegg+2015 27° bar.
+ * Double-sided so top-down, bottom-up, and oblique views remain 100% organic with zero rectangular edges.
+ */
+export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uOpacity: { value: 1.0 },
+      uTime: { value: 0.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec2 vDiskPos;
+      void main() {
+        // Plane lies in XZ in kpc units (-18..+18 kpc)
+        vDiskPos = position.xz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform float uOpacity;
+      uniform float uTime;
+      varying vec2 vDiskPos;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      float noise2(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash21(i);
+        float b = hash21(i + vec2(1.0, 0.0));
+        float c = hash21(i + vec2(0.0, 1.0));
+        float d = hash21(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm2(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+          v += a * noise2(p);
+          p = p * 2.08 + vec2(7.3, -4.1);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        // vDiskPos is in kpc: radius ~0..18 kpc
+        float r = length(vDiskPos);
+        if (r > 18.0 || uOpacity <= 0.001) discard;
+
+        float angle = atan(vDiskPos.y, vDiskPos.x);
+
+        // Wegg et al. (2015) smooth organic ellipsoidal Galactic Bar tilted 27 deg
+        float barAngle = 0.471239; // 27 deg
+        float cb = cos(barAngle);
+        float sb = sin(barAngle);
+        vec2 bPos = vec2(
+          vDiskPos.x * cb + vDiskPos.y * sb,
+          -vDiskPos.x * sb + vDiskPos.y * cb
+        );
+        float barDist = length(vec2(bPos.x / 4.8, bPos.y / 1.85));
+        float barGlow = exp(-barDist * barDist * 1.45) * 0.72;
+        float bulgeGlow = exp(-(r * r) / 5.2) * 1.05;
+
+        // 4 logarithmic spiral arms (Reid+2019 pitch ~12.5 deg -> k = 1/tan(12.5 deg) ≈ 4.51)
+        float logR = log(max(1.2, r));
+        float pitchK = 4.45;
+        float spiralAccum = 0.0;
+        float dustAccum = 0.0;
+        for (int i = 0; i < 4; i++) {
+          float armOffset = float(i) * 1.5707963;
+          float phase = angle - pitchK * logR + armOffset;
+          float s = 0.5 + 0.5 * cos(phase);
+          float armWeight = (i == 0 || i == 2) ? 1.0 : 0.74;
+          spiralAccum += pow(s, 5.0) * armWeight;
+          // Dark absorbing dust lane along the inner trailing edge of each arm
+          float dustPhase = phase + 0.24;
+          dustAccum += pow(0.5 + 0.5 * cos(dustPhase), 9.0) * armWeight;
+        }
+
+        // Subtle Orion-Cygnus local spur near Solar Circle (r ≈ 8.2 kpc)
+        float orionMask = exp(-pow((r - 8.2) / 1.4, 2.0)) * smoothstep(0.2, 0.9, cos(angle - 3.05));
+        spiralAccum += orionMask * 0.35;
+
+        // Radial exponential thin disk + smooth outer fade
+        float radialEnv = smoothstep(1.8, 4.4, r) * exp(-max(0.0, r - 3.5) / 6.2) * smoothstep(17.8, 13.0, r);
+        float clumping = 0.65 + 0.75 * fbm2(vDiskPos * 0.42 + vec2(3.1, -1.7));
+        float fineDust = fbm2(vDiskPos * 1.15 - vec2(1.4, 5.2));
+
+        // Attenuate luminosity inside dark interstellar dust lanes
+        float dustAbsorption = clamp(1.0 - dustAccum * radialEnv * fineDust * 0.52, 0.35, 1.0);
+
+        vec3 coreColor = vec3(1.0, 0.84, 0.62);
+        vec3 armBlueWhite = vec3(0.56, 0.74, 1.0);
+        vec3 h2Pink = vec3(0.95, 0.42, 0.56);
+
+        float armIntensity = spiralAccum * radialEnv * clumping * 0.48;
+        float h2Knots = smoothstep(0.66, 0.88, fineDust) * armIntensity * 0.45;
+
+        vec3 color =
+          coreColor * (bulgeGlow + barGlow) +
+          armBlueWhite * armIntensity * dustAbsorption +
+          h2Pink * h2Knots;
+
+        float alpha = clamp((bulgeGlow * 0.55 + barGlow * 0.45 + armIntensity * 0.68) * uOpacity, 0.0, 0.92);
+        gl_FragColor = vec4(color * uOpacity, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Procedural Extragalactic Galaxy / Cluster Disk Shader (Phase 3, morphologyIllustrative: true).
+ * Supports spiral, barred-spiral, elliptical, irregular, dwarf-sph, and cluster morphologies.
+ */
+export function createGalaxySpriteMaterial(
+  morphology: 'barred-spiral' | 'spiral' | 'elliptical' | 'irregular' | 'dwarf-sph' | 'cluster',
+  tintHex: string,
+  inclinationDeg: number,
+  positionAngleDeg: number
+): THREE.ShaderMaterial {
+  const morphCode =
+    morphology === 'spiral' || morphology === 'barred-spiral'
+      ? 1.0
+      : morphology === 'irregular'
+        ? 2.0
+        : morphology === 'cluster'
+          ? 3.0
+          : 0.0;
+
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTint: { value: new THREE.Color(tintHex) },
+      uMorph: { value: morphCode },
+      uTiltScale: { value: Math.max(0.24, Math.cos((inclinationDeg * Math.PI) / 180)) },
+      uPosAngle: { value: (positionAngleDeg * Math.PI) / 180 },
+      uOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec2 vUv;
+      void main() {
+        vUv = uv * 2.0 - 1.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform vec3 uTint;
+      uniform float uMorph;
+      uniform float uTiltScale;
+      uniform float uPosAngle;
+      uniform float uOpacity;
+      varying vec2 vUv;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(234.34, 435.345));
+        p += dot(p, p + 34.23);
+        return fract(p.x * p.y);
+      }
+
+      float noise2(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
+          mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x),
+          f.y
+        );
+      }
+
+      void main() {
+        if (uOpacity <= 0.005) discard;
+        float ca = cos(uPosAngle);
+        float sa = sin(uPosAngle);
+        vec2 p = vec2(vUv.x * ca - vUv.y * sa, vUv.x * sa + vUv.y * ca);
+        vec2 diskP = vec2(p.x, p.y / uTiltScale);
+        float r = length(diskP);
+        if (r > 1.0) discard;
+
+        float intensity = 0.0;
+        vec3 col = uTint;
+
+        if (uMorph > 2.5) {
+          // Galaxy Cluster: central cD bright galaxy + scattered member galaxy halos
+          float core = exp(-dot(vUv, vUv) * 8.0) * 1.35;
+          float halo = exp(-dot(vUv, vUv) * 2.2) * 0.52;
+          float members = 0.0;
+          for (int i = 0; i < 7; i++) {
+            float fi = float(i);
+            vec2 off = vec2(sin(fi * 2.31 + 0.5), cos(fi * 3.17 - 0.8)) * (0.22 + 0.08 * fi);
+            float d2 = dot(vUv - off, vUv - off);
+            members += exp(-d2 * 110.0) * 0.95;
+          }
+          intensity = core + halo + members;
+          col = mix(uTint, vec3(1.0, 0.94, 0.82), clamp(core * 0.75, 0.0, 1.0));
+        } else if (uMorph > 1.5) {
+          // Irregular (LMC / SMC / M82)
+          float n = noise2(diskP * 5.0 + vec2(2.3, -1.1)) * 0.65 + noise2(diskP * 10.0) * 0.35;
+          float env = exp(-r * r * 3.4);
+          intensity = env * (0.65 + 1.25 * n);
+          col = mix(uTint, vec3(1.0, 0.96, 0.90), exp(-r * r * 7.0) * 0.55);
+        } else if (uMorph > 0.5) {
+          // Spiral galaxy (M31 Andromeda, M33, M81, M51, M104)
+          float ang = atan(diskP.y, diskP.x);
+          float spiral = 0.5 + 0.5 * cos(2.0 * ang - 6.8 * log(max(0.06, r)));
+          float arm = pow(spiral, 2.6) * smoothstep(0.05, 0.24, r) * exp(-r * 2.3);
+          float bulge = exp(-r * r * 14.0) * 1.45;
+          float diskGlow = exp(-r * 2.8) * 0.45;
+          float clumpy = 0.78 + 0.48 * noise2(diskP * 7.5);
+          intensity = bulge + (arm * 1.25 + diskGlow) * clumpy;
+          vec3 coreWarm = vec3(1.0, 0.91, 0.75);
+          vec3 armBlue = mix(uTint, vec3(0.68, 0.84, 1.0), 0.58);
+          col = mix(armBlue, coreWarm, clamp(bulge * 0.75, 0.0, 1.0));
+        } else {
+          // Elliptical / Dwarf Spheroidal (de Vaucouleurs profile)
+          intensity = exp(-pow(r * 3.1, 0.82)) * 1.35;
+        }
+
+        float edgeFade = smoothstep(1.0, 0.64, r);
+        float alpha = clamp(intensity * edgeFade * uOpacity, 0.0, 0.98);
+        gl_FragColor = vec4(col * intensity * edgeFade * uOpacity, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Multi-Scale Galactic Core & Accretion Beacon Shader for Sagittarius A* LOD.
+ * - At galactic range (uCloseFactor = 0): warm, non-clipped golden galactic nucleus glow.
+ * - Across intermediate parsec/light-year approach (uCloseFactor -> 1): reveals a crisp
+ *   tilted golden accretion ring + dark central core hint so zooming from 34 kpc -> 1.6 kpc ->
+ *   184 pc -> 1 pc -> 100 AU -> 1.66 AU is completely continuous with zero dead zone.
+ */
+export function createSgrACoreGlowBillboardMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uOpacity: { value: 1.0 },
+      uCloseFactor: { value: 0.0 },
+      uTime: { value: 0.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec2 vUv;
+      void main() {
+        vUv = uv * 2.0 - 1.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uOpacity;
+      uniform float uCloseFactor;
+      uniform float uTime;
+      varying vec2 vUv;
+
+      void main() {
+        float r = length(vUv);
+        if (r > 1.0 || uOpacity <= 0.005) discard;
+
+        // Controlled non-clipping galactic bulge/nucleus glow
+        float softCore = exp(-r * r * 16.0) * 0.62;
+        float softHalo = exp(-r * 3.8) * 0.30;
+
+        // Tilted accretion disk & photon-ring preview emerging smoothly across 500 pc -> 50 AU
+        float tiltAng = -0.32;
+        float c = cos(tiltAng);
+        float s = sin(tiltAng);
+        vec2 rotUv = vec2(vUv.x * c - vUv.y * s, vUv.x * s + vUv.y * c);
+        float diskR = length(vec2(rotUv.x, rotUv.y * 3.0));
+        float swirl = 0.86 + 0.14 * sin(atan(rotUv.y, rotUv.x) * 3.0 + uTime * 1.1);
+        float diskRing = exp(-pow((diskR - 0.32) * 6.8, 2.0)) * swirl;
+        float photonRing = exp(-pow((r - 0.145) * 24.0, 2.0)) * 0.72;
+        float shadowCut = smoothstep(0.085, 0.155, r);
+
+        float farIntensity = softCore + softHalo;
+        float nearIntensity = (diskRing * 0.64 + photonRing * 0.68 + exp(-r * 4.2) * 0.20) * shadowCut;
+        float intensity = mix(farIntensity, nearIntensity, uCloseFactor);
+
+        vec3 amberOuter = vec3(0.86, 0.56, 0.26);
+        vec3 goldInner = vec3(0.96, 0.84, 0.62);
+        vec3 photonChampagne = vec3(1.0, 0.94, 0.82);
+
+        vec3 col = mix(amberOuter, goldInner, clamp(softCore + diskRing * 0.85, 0.0, 1.0));
+        col = mix(col, photonChampagne, clamp(photonRing * uCloseFactor * 0.7, 0.0, 1.0));
+
+        float edgeFade = smoothstep(1.0, 0.58, r);
+        float alpha = clamp(intensity * edgeFade * uOpacity, 0.0, 0.88);
+        gl_FragColor = vec4(col * intensity * edgeFade * uOpacity, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Radiant Volumetric Solar Corona & Starlight Halo Billboard for the Sun.
+ * Ensures the Sun glows intensely from close-up solar orbits out across the entire Solar System.
+ */
+export function createSolarCoronaBillboardMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec2 vUv;
+      void main() {
+        vUv = uv * 2.0 - 1.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uTime;
+      uniform float uOpacity;
+      varying vec2 vUv;
+
+      void main() {
+        float r = length(vUv);
+        if (r > 1.0 || uOpacity <= 0.005) discard;
+
+        float angle = atan(vUv.y, vUv.x);
+        // Subtle animated solar corona streamers
+        float rays =
+          0.86 +
+          0.14 * sin(angle * 7.0 + uTime * 0.35) * sin(angle * 13.0 - uTime * 0.22);
+
+        float hotCore = exp(-r * r * 26.0) * 1.65;
+        float innerCorona = exp(-r * 5.2) * 1.15 * rays;
+        float outerGlow = exp(-r * 2.3) * 0.38;
+        float edgeFade = smoothstep(1.0, 0.58, r);
+
+        vec3 whiteHot = vec3(1.0, 0.98, 0.90);
+        vec3 solarGold = vec3(1.0, 0.76, 0.28);
+        vec3 deepAmber = vec3(1.0, 0.44, 0.12);
+
+        vec3 col =
+          whiteHot * hotCore +
+          solarGold * innerCorona +
+          deepAmber * outerGlow;
+
+        float alpha = clamp((hotCore + innerCorona + outerGlow) * edgeFade * uOpacity, 0.0, 1.0);
+        gl_FragColor = vec4(col * edgeFade * uOpacity, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+

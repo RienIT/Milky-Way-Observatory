@@ -1,4 +1,4 @@
-Milky Way 1:1 Observatory — NASA & Gaia DR3 Galactic Atlas
+Milky Way Observatory — Multi-Scale Universe Viewer
 Copyright (c) 2026 DanGuangLT <phatmcpack@gmail.com> and LienThuan04 <lienthuan2004@gmail.com>
 
 This product includes software developed jointly by DanGuangLT and LienThuan04,
@@ -13,6 +13,7 @@ This project depends on open-source packages whose respective licenses apply:
 - Next.js (https://nextjs.org) — MIT License — Copyright (c) Vercel, Inc.
 - React & React DOM (https://react.dev) — MIT License — Copyright (c) Meta Platforms, Inc.
 - Three.js (https://threejs.org) — MIT License — Copyright (c) Three.js Authors
+- astronomy-engine (https://github.com/cosinekitty/astronomy) — MIT License — Copyright (c) Don Cross
 - Tailwind CSS (https://tailwindcss.com) — MIT License — Copyright (c) Tailwind Labs, Inc.
 - Lucide React (https://lucide.dev) — ISC License — Copyright (c) Lucide Contributors
 - Motion (https://motion.dev) — MIT License — Copyright (c) Motion Division
@@ -20,12 +21,26 @@ This project depends on open-source packages whose respective licenses apply:
 - clsx & tailwind-merge — MIT License
 
 ================================================================================
-SCIENTIFIC REFERENCE & PUBLIC DOMAIN DATA NOTICES
+SCIENTIFIC REFERENCE & PUBLIC DOMAIN DATASET ATTRIBUTIONS
 ================================================================================
 
-- Planetary ephemeris parameters and Milky Way morphological parameters are
-  derived from publicly published NASA / JPL-Caltech scientific datasets.
-- Galactic coordinate reference concepts are based on ESA Gaia Data Release 3
-  (Gaia DR3) scientific publications.
-- General-relativistic black hole shadow and Schwarzschild null-geodesic
-  lensing equations follow standard published astrophysics literature.
+- Fundamental Physical & Astronomical Constants:
+  - CODATA 2018 Recommended Values of the Fundamental Physical Constants (NIST)
+  - IAU 2012 Resolution B2 (Astronomical Unit definition) & IAU 2015 Resolution B3 (Nominal Solar/Earth constants)
+  - Hipparcos & Tycho Catalogues (ESA SP-1200, 1997) J2000 Equatorial-to-Galactic transformation matrix
+
+- Solar System Ephemerides & Physical Parameters:
+  - NASA / JPL-Caltech Planetary Fact Sheets & Solar System Dynamics (SSD, 2024)
+  - VSOP87 / ELP2000 planetary & lunar analytical solutions via astronomy-engine
+
+- Galactic Center & Milky Way Structure:
+  - GRAVITY Collaboration (2019, A&A 625, L10; 2022, A&A 657, L12): Sun–Sgr A* distance (R0 = 8.178 kpc) and Sgr A* mass (4.297e6 M_sun)
+  - Event Horizon Telescope (EHT) Collaboration (2022, ApJL 930, L12): Sagittarius A* shadow constraints
+  - Bennett & Bovy (2019, MNRAS 482, 1417): Solar height above the Galactic midplane (z0 = 20.8 pc)
+  - Reid et al. (2019, ApJ 885, 131): Trigonometric parallaxes of high-mass star-forming regions & Milky Way spiral arm pitch angles
+  - Wegg, Gerhard & Portail (2015, MNRAS 450, 4050): Milky Way Galactic Bar orientation (~27 deg)
+
+- Nearby Stars & Extragalactic Catalogs:
+  - ESA Gaia Data Release 3 (Gaia DR3, 2022), ESA Hipparcos (1997), and HYG Database v3.8 (CC BY-SA 4.0) for nearby measured star coordinates, parallaxes, magnitudes, and B-V color indices
+  - McConnachie, A. W. (2012, AJ 144, 4, updated catalog): Observed properties of dwarf galaxies in and around the Local Group
+  - NASA/IPAC Extragalactic Database (NED) & 2MASS Redshift Survey (2MRS, Huchra et al. 2012): Nearby galaxies and Virgo, Fornax, Perseus, and Coma galaxy cluster coordinates and distances

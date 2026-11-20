@@ -1,29 +1,14 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin', 'vietnamese'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin', 'vietnamese'],
-  weight: ['400', '500', '600'],
-  variable: '--font-jetbrains-mono',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'Milky Way 1:1 Observatory — NASA & Gaia DR3 Galactic Atlas',
   description:
-    'Mô phỏng 3D Dải Ngân Hà chuẩn NASA & ESA Gaia DR3 tỷ lệ thực 1:1 với hố đen siêu khối lượng Sagittarius A*, 48 thiên thể thực tế, điều khiển bay tự do WASD và tùy chỉnh đồ họa tự động theo phần cứng.',
+    'Continuous multi-scale WebGL2 universe viewer from Earth surface to Local Group and galaxy clusters with real astronomy-engine ephemeris, Hipparcos/Gaia DR3 stars, and volumetric Sagittarius A* gravitational lensing.',
   openGraph: {
     title: 'Milky Way 1:1 Observatory — NASA & Gaia DR3 Galactic Atlas',
     description:
-      'Mô phỏng 3D Dải Ngân Hà chuẩn NASA & ESA Gaia DR3 tỷ lệ thực 1:1 với hố đen siêu khối lượng Sagittarius A*, 48 thiên thể thực tế và giao diện Astryx.',
+      'Continuous multi-scale WebGL2 universe viewer from Earth surface to Local Group and galaxy clusters with real astronomy-engine ephemeris, Hipparcos/Gaia DR3 stars, and volumetric Sagittarius A* gravitational lensing.',
     type: 'website',
   },
 };
@@ -35,8 +20,8 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="vi"
-      className={`${inter.variable} ${jetbrainsMono.variable} dark`}
+      lang="en"
+      className="dark"
       suppressHydrationWarning
     >
       <body

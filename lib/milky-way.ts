@@ -41,62 +41,65 @@ export interface SpiralArmDefinition {
 }
 
 /**
- * Exact 4 spiral arms + Orion-Cygnus Local Spur mapped by NASA/JPL-Caltech (Spitzer GLIMPSE & Gaia)
+ * Exact 4 spiral arms + Orion-Cygnus Local Spur mapped by NASA/JPL-Caltech (Spitzer GLIMPSE & Gaia).
+ * Star shares are proportional to physical spiral arc area so no minor spur blows out brighter than major arms.
  */
 export const MILKY_WAY_SPIRAL_ARMS: SpiralArmDefinition[] = [
   {
     id: 'scutum-centaurus',
     isMajor: true,
     startAngleRad: MILKY_WAY_NASA_DATA.barAngleRad,
-    startRadius: 20.5,
+    startRadius: 22.5,
     endRadius: 86.0,
     windFactor: 3.15,
-    widthUnits: 4.8,
-    starShare: 0.28,
+    widthUnits: 5.2,
+    starShare: 0.295,
     nebulaTintHex: '#f472b6',
   },
   {
     id: 'perseus',
     isMajor: true,
     startAngleRad: MILKY_WAY_NASA_DATA.barAngleRad + Math.PI,
-    startRadius: 20.5,
+    startRadius: 22.5,
     endRadius: 88.0,
     windFactor: 3.15,
-    widthUnits: 4.8,
-    starShare: 0.28,
+    widthUnits: 5.2,
+    starShare: 0.295,
     nebulaTintHex: '#60a5fa',
   },
   {
     id: 'sagittarius-carina',
     isMajor: false,
     startAngleRad: MILKY_WAY_NASA_DATA.barAngleRad + Math.PI * 0.52,
-    startRadius: 21.5,
-    endRadius: 79.0,
+    startRadius: 23.0,
+    endRadius: 81.0,
     windFactor: 3.05,
-    widthUnits: 3.7,
-    starShare: 0.16,
+    widthUnits: 4.1,
+    starShare: 0.185,
     nebulaTintHex: '#e879f9',
   },
   {
     id: 'norma-outer',
     isMajor: false,
     startAngleRad: MILKY_WAY_NASA_DATA.barAngleRad + Math.PI * 1.52,
-    startRadius: 21.5,
-    endRadius: 84.0,
+    startRadius: 23.0,
+    endRadius: 85.0,
     windFactor: 3.05,
-    widthUnits: 3.7,
-    starShare: 0.16,
+    widthUnits: 4.1,
+    starShare: 0.185,
     nebulaTintHex: '#38bdf8',
   },
   {
+    // Local Orion-Cygnus Spur: delicate branch aligned with the 12-13 deg logarithmic pitch,
+    // passing directly through the Solar System (r = 44.5, angle = 1.18 rad) with balanced density.
     id: 'orion-spur',
     isMajor: false,
-    startAngleRad: 0.65,
-    startRadius: 37.5,
-    endRadius: 56.5,
-    windFactor: 1.55,
-    widthUnits: 2.9,
-    starShare: 0.12,
+    startAngleRad: 0.56,
+    startRadius: 35.5,
+    endRadius: 58.5,
+    windFactor: 2.75,
+    widthUnits: 4.1,
+    starShare: 0.04,
     nebulaTintHex: '#fbbf24',
   },
 ];
@@ -122,6 +125,72 @@ function gaussianRandom(rng: () => number): number {
   const u1 = Math.max(1e-6, rng());
   const u2 = rng();
   return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+}
+
+/**
+ * Smooth Hermite interpolation in [0, 1] for soft radial feathering with zero hard boundaries
+ */
+function smoothstep01(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(1e-6, edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Selects a spiral arm weighted proportionally by arm.starShare
+ */
+function pickWeightedSpiralArm(rng: () => number): SpiralArmDefinition {
+  const r = rng();
+  let acc = 0;
+  for (const arm of MILKY_WAY_SPIRAL_ARMS) {
+    acc += arm.starShare;
+    if (r <= acc) return arm;
+  }
+  return MILKY_WAY_SPIRAL_ARMS[0];
+}
+
+/**
+ * Samples an organic triaxial elliptical Galactic Bar & Bulge coordinate (bx, bz)
+ * using smooth rejection sampling with ZERO rectangular clamping and smooth feathering outside Sgr A*'s accretion disk.
+ */
+function sampleOrganicGalacticBar(
+  rng: () => number,
+  innerFadeStart = 21.8,
+  innerFadeEnd = 30.5
+): [number, number] {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    // 68% elongated triaxial bar (27 deg NASA Spitzer bar) + 32% round soft central bulge
+    const isBulgeHalo = rng() < 0.32;
+    let bx: number;
+    let bz: number;
+    if (isBulgeHalo) {
+      bx = gaussianRandom(rng) * 20.5;
+      bz = gaussianRandom(rng) * 18.0;
+    } else {
+      // Smooth elongated elliptical bar with tapered rounded tips and subtle S-twist into the major spiral arms
+      bx = gaussianRandom(rng) * 22.5;
+      const tipTaper = 1.0 / (1.0 + Math.pow(Math.abs(bx) / 34.0, 2.2));
+      bz = gaussianRandom(rng) * (6.2 + 5.6 * tipTaper);
+      // Gentle S-curve shear so the outer bar tips flow smoothly into Scutum-Centaurus & Perseus
+      bz += Math.sign(bx) * Math.pow(Math.max(0, Math.abs(bx) - 18.0) / 28.0, 1.8) * 6.5;
+    }
+
+    const r2d = Math.hypot(bx, bz);
+    if (r2d < innerFadeStart || r2d > 62.0) continue;
+
+    // Smooth radial ramp outward from Sgr A*'s accretion disk edge (zero hard ring or sharp cutout)
+    const innerProb = smoothstep01(innerFadeStart, innerFadeEnd, r2d);
+    const outerProb = 1.0 - smoothstep01(44.0, 62.0, r2d);
+    if (rng() <= innerProb * outerProb) {
+      return [bx, bz];
+    }
+  }
+
+  // Smooth elliptical polar fallback (zero straight-line clamping)
+  const theta = rng() * Math.PI * 2;
+  const rBase = innerFadeEnd + Math.abs(gaussianRandom(rng)) * 9.5;
+  const bx = Math.cos(theta) * rBase * 1.18;
+  const bz = Math.sin(theta) * rBase * 0.72;
+  return [bx, bz];
 }
 
 /**
@@ -165,9 +234,9 @@ export interface MilkyWayParticleData {
 
 /**
  * Procedurally generates NASA-accurate Milky Way Barred Spiral Galaxy star positions & spectral colors:
- * - 18% Central Galactic Bulge & 27° Elongated Stellar Bar (warm K/M gold-amber giants)
- * - 72% 4 Logarithmic Spiral Arms + Orion-Cygnus Spur (hot blue-white O/B stars + solar F/G stars + H-II pockets)
- * - 10% Diffuse Galactic Disk & Stellar Halo
+ * - 14% Organic Triaxial Central Galactic Bar & Golden Bulge (warm K/M gold-amber giants, zero hard edges)
+ * - 74% 4 Logarithmic Spiral Arms + balanced Orion-Cygnus Spur (blue-white O/B + solar F/G + H-II pockets)
+ * - 12% Diffuse Inter-Arm Galactic Disk & Stellar Halo
  */
 export function generateMilkyWayStarfield(
   totalStars = 20000,
@@ -179,8 +248,8 @@ export function generateMilkyWayStarfield(
   const sizes = new Float32Array(totalStars);
   const phases = new Float32Array(totalStars);
 
-  const barCount = Math.floor(totalStars * 0.19);
-  const haloCount = Math.floor(totalStars * 0.11);
+  const barCount = Math.floor(totalStars * 0.14);
+  const haloCount = Math.floor(totalStars * 0.12);
   const armTotalCount = totalStars - barCount - haloCount;
 
   const cosBar = Math.cos(MILKY_WAY_NASA_DATA.barAngleRad);
@@ -188,59 +257,65 @@ export function generateMilkyWayStarfield(
 
   let idx = 0;
 
-  // 1. CENTRAL GALACTIC BAR & GOLDEN BULGE (Spitzer GLIMPSE 27° Bar, keeping center hollow outside Sgr A* accretion disk)
+  // 1. ORGANIC TRIAXIAL CENTRAL GALACTIC BAR & GOLDEN BULGE (Spitzer GLIMPSE 27 deg Bar)
   for (let i = 0; i < barCount; i++) {
-    // Elongated ellipsoidal bar along barAngleRad, clear of immediate black hole accretion disk (r > 22.5)
-    let bx = gaussianRandom(rng) * 16.5;
-    let bz = gaussianRandom(rng) * 5.2;
-    const r2d = Math.hypot(bx, bz);
-    if (r2d < 22.5) {
-      const push = (22.5 + rng() * 9.5) / Math.max(0.5, r2d);
-      bx *= push;
-      bz *= push * 0.68;
-    }
-    bx = Math.max(-30.0, Math.min(30.0, bx));
-    bz = Math.max(-13.5, Math.min(13.5, bz));
+    const [bx, bz] = sampleOrganicGalacticBar(rng, 21.8, 30.5);
 
     const lx = bx * cosBar - bz * sinBar;
     const lz = bx * sinBar + bz * cosBar;
-    const radialNorm = Math.min(1, Math.hypot(lx, lz) / 26.0);
-    const ly = gaussianRandom(rng) * (2.6 * (1.0 - radialNorm * 0.45));
+    const r2d = Math.hypot(lx, lz);
+    const radialNorm = Math.min(1, r2d / 38.0);
+    const ly = gaussianRandom(rng) * (2.4 * (1.0 - radialNorm * 0.42));
 
     positions[idx * 3] = lx;
     positions[idx * 3 + 1] = ly;
     positions[idx * 3 + 2] = lz;
 
-    // Warm cream-gold -> amber-peach bulge palette
+    // Balanced warm golden-amber bulge palette (prevents additive white clipping)
     const warmMix = rng();
-    colors[idx * 3] = 0.96 + 0.04 * warmMix;
-    colors[idx * 3 + 1] = 0.76 + 0.18 * warmMix;
-    colors[idx * 3 + 2] = 0.48 + 0.28 * warmMix;
+    const fade = 0.72 + 0.24 * smoothstep01(21.8, 31.0, r2d);
+    colors[idx * 3] = (0.86 + 0.08 * warmMix) * fade;
+    colors[idx * 3 + 1] = (0.68 + 0.16 * warmMix) * fade;
+    colors[idx * 3 + 2] = (0.44 + 0.24 * warmMix) * fade;
 
-    sizes[idx] = 0.9 + Math.pow(rng(), 2.8) * 2.4;
+    sizes[idx] = 0.8 + Math.pow(rng(), 2.9) * 2.1;
     phases[idx] = rng() * Math.PI * 2;
     idx++;
   }
 
-  // 2. FOUR LOGARITHMIC SPIRAL ARMS + ORION-CYGNUS LOCAL SPUR
+  // 2. FOUR LOGARITHMIC SPIRAL ARMS + BALANCED ORION-CYGNUS LOCAL SPUR
   for (const arm of MILKY_WAY_SPIRAL_ARMS) {
     const armStars = Math.floor(armTotalCount * arm.starShare);
+    const isLocalSpur = arm.id === 'orion-spur';
     for (let i = 0; i < armStars && idx < totalStars - haloCount; i++) {
-      // Bias slightly denser toward inner-mid spiral arms, tapering gracefully out to 88 units
-      const t = Math.pow(rng(), 0.88);
+      // Smooth distribution along arm; Orion Spur uses a bell-shaped radial profile so both ends taper gently
+      const t = isLocalSpur
+        ? Math.max(0.02, Math.min(0.98, 0.5 + gaussianRandom(rng) * 0.26))
+        : Math.pow(rng(), 0.88);
       const baseR = arm.startRadius + t * (arm.endRadius - arm.startRadius);
+
       // Logarithmic spiral sweep
       const spiralTheta =
         arm.startAngleRad +
         arm.windFactor * Math.log(baseR / Math.max(12.0, arm.startRadius));
 
-      // Arm width flares smoothly outward with radius
-      const localWidth = arm.widthUnits * (0.65 + 0.75 * t);
-      const radialScatter = gaussianRandom(rng) * localWidth;
-      const angularScatter =
-        (gaussianRandom(rng) * localWidth * 0.55) / Math.max(18.0, baseR);
+      // Arm width flares smoothly outward with radius (no blunt tips)
+      const endSoftness = isLocalSpur ? 1.0 + 0.65 * Math.abs(t - 0.5) * 2.0 : 1.0;
+      const localWidth = arm.widthUnits * (0.68 + 0.78 * t) * endSoftness;
 
-      const finalR = Math.max(20.0, Math.min(92.0, baseR + radialScatter));
+      // Keep stars smoothly outside Sgr A*'s disk without hard boundary stacking
+      let radialScatter = gaussianRandom(rng) * localWidth;
+      let finalR = baseR + radialScatter;
+      if (finalR < 22.0) {
+        finalR = 22.0 + Math.abs(radialScatter) * 0.65 + rng() * 2.5;
+        radialScatter = finalR - baseR;
+      } else if (finalR > 92.0) {
+        finalR = 92.0 - Math.abs(radialScatter) * 0.5 - rng() * 3.0;
+        radialScatter = finalR - baseR;
+      }
+
+      const angularScatter =
+        (gaussianRandom(rng) * localWidth * 0.58) / Math.max(18.0, baseR);
       const finalTheta = spiralTheta + angularScatter;
 
       const lx = Math.cos(finalTheta) * finalR;
@@ -255,30 +330,32 @@ export function generateMilkyWayStarfield(
       // Spectral distribution along spiral arms:
       // Bright young blue-white O/B stars near arm ridge, warm gold F/G stars further out, rose H-II pockets
       const ridgeProximity = Math.exp(
-        -(radialScatter * radialScatter) / (localWidth * localWidth * 0.45)
+        -(radialScatter * radialScatter) / (localWidth * localWidth * 0.48)
       );
       const roll = rng();
+      // Gently attenuate Orion Spur brightness slightly so it reads as a delicate minor branch like NASA's map
+      const spurScale = isLocalSpur ? 0.86 : 1.0;
 
-      if (roll < 0.08 * ridgeProximity) {
+      if (roll < 0.075 * ridgeProximity) {
         // Pink/rose H-alpha star-forming H-II region
-        colors[idx * 3] = 0.96;
-        colors[idx * 3 + 1] = 0.44 + 0.16 * rng();
-        colors[idx * 3 + 2] = 0.68 + 0.14 * rng();
-        sizes[idx] = 1.6 + rng() * 2.2;
-      } else if (roll < 0.58 * ridgeProximity + 0.15) {
+        colors[idx * 3] = 0.92 * spurScale;
+        colors[idx * 3 + 1] = (0.44 + 0.16 * rng()) * spurScale;
+        colors[idx * 3 + 2] = (0.66 + 0.14 * rng()) * spurScale;
+        sizes[idx] = 1.4 + rng() * 1.9;
+      } else if (roll < 0.56 * ridgeProximity + 0.15) {
         // Hot young blue-white O/B spiral arm stars
         const cool = rng();
-        colors[idx * 3] = 0.62 + 0.32 * cool;
-        colors[idx * 3 + 1] = 0.78 + 0.19 * cool;
-        colors[idx * 3 + 2] = 0.98;
-        sizes[idx] = 0.85 + Math.pow(rng(), 2.5) * 2.5;
+        colors[idx * 3] = (0.62 + 0.30 * cool) * spurScale;
+        colors[idx * 3 + 1] = (0.78 + 0.18 * cool) * spurScale;
+        colors[idx * 3 + 2] = 0.96 * spurScale;
+        sizes[idx] = 0.8 + Math.pow(rng(), 2.6) * 2.3;
       } else {
         // Solar-like cream / pale gold / soft white disk stars
         const s = rng();
-        colors[idx * 3] = 0.95;
-        colors[idx * 3 + 1] = 0.84 + 0.12 * s;
-        colors[idx * 3 + 2] = 0.66 + 0.24 * s;
-        sizes[idx] = 0.75 + Math.pow(rng(), 3.0) * 2.0;
+        colors[idx * 3] = 0.92 * spurScale;
+        colors[idx * 3 + 1] = (0.82 + 0.12 * s) * spurScale;
+        colors[idx * 3 + 2] = (0.64 + 0.24 * s) * spurScale;
+        sizes[idx] = 0.72 + Math.pow(rng(), 3.0) * 1.9;
       }
 
       phases[idx] = rng() * Math.PI * 2;
@@ -289,8 +366,8 @@ export function generateMilkyWayStarfield(
   // 3. DIFFUSE INTER-ARM DISK & OUTER GALACTIC HALO
   while (idx < totalStars) {
     const theta = rng() * Math.PI * 2;
-    const r = 22.0 + Math.pow(rng(), 0.72) * 72.0;
-    const isHalo = rng() < 0.22;
+    const r = 22.5 + Math.pow(rng(), 0.74) * 71.0;
+    const isHalo = rng() < 0.24;
     const ly = gaussianRandom(rng) * (isHalo ? 7.5 : 1.5);
 
     positions[idx * 3] = Math.cos(theta) * r;
@@ -311,7 +388,7 @@ export function generateMilkyWayStarfield(
 
 /**
  * Generates ~420 soft glowing volumetric H-II nebulae, blue star-forming clouds, and warm central bar haze
- * along NASA's Milky Way spiral arms to give painterly astronomical depth.
+ * weighted proportionally across NASA's Milky Way spiral arms and organic elliptical bar.
  */
 export function generateMilkyWayNebulae(
   totalClouds = 420,
@@ -323,46 +400,45 @@ export function generateMilkyWayNebulae(
   const sizes = new Float32Array(totalClouds);
   const phases = new Float32Array(totalClouds);
 
-  const barClouds = Math.floor(totalClouds * 0.22);
+  const barClouds = Math.floor(totalClouds * 0.16);
   const cosBar = Math.cos(MILKY_WAY_NASA_DATA.barAngleRad);
   const sinBar = Math.sin(MILKY_WAY_NASA_DATA.barAngleRad);
 
   let idx = 0;
 
-  // Warm golden haze along the 27° Galactic Bar (safely outside Sgr A* accretion disk to avoid edge-on additive blowout)
+  // Soft warm golden haze along the organic 27 deg Galactic Bar (zero straight walls, clear of Sgr A* disk)
   for (let i = 0; i < barClouds; i++) {
-    let bx = gaussianRandom(rng) * 16.5;
-    let bz = gaussianRandom(rng) * 4.8;
-    if (Math.hypot(bx, bz) < 26.5) {
-      bx = (bx >= 0 ? 1 : -1) * (26.5 + rng() * 9.5);
-    }
+    const [bx, bz] = sampleOrganicGalacticBar(rng, 25.0, 33.5);
     const lx = bx * cosBar - bz * sinBar;
     const lz = bx * sinBar + bz * cosBar;
-    const ly = gaussianRandom(rng) * 1.25;
+    const ly = gaussianRandom(rng) * 1.2;
 
     positions[idx * 3] = lx;
     positions[idx * 3 + 1] = ly;
     positions[idx * 3 + 2] = lz;
 
-    colors[idx * 3] = 0.76;
-    colors[idx * 3 + 1] = 0.56;
-    colors[idx * 3 + 2] = 0.34;
-    sizes[idx] = 12.0 + rng() * 11.0;
+    colors[idx * 3] = 0.68;
+    colors[idx * 3 + 1] = 0.50;
+    colors[idx * 3 + 2] = 0.30;
+    sizes[idx] = 11.0 + rng() * 10.0;
     phases[idx] = rng() * Math.PI * 2;
     idx++;
   }
 
-  // Soft sapphire & magenta-rose H-II nebulae tracing the 4 spiral arms + Orion Spur
+  // Soft sapphire & magenta-rose H-II nebulae weighted proportionally by arm starShare
   while (idx < totalClouds) {
-    const arm = MILKY_WAY_SPIRAL_ARMS[idx % MILKY_WAY_SPIRAL_ARMS.length];
-    const t = Math.pow(rng(), 0.92);
+    const arm = pickWeightedSpiralArm(rng);
+    const isLocalSpur = arm.id === 'orion-spur';
+    const t = isLocalSpur
+      ? Math.max(0.08, Math.min(0.92, 0.5 + gaussianRandom(rng) * 0.24))
+      : Math.pow(rng(), 0.92);
     const baseR = arm.startRadius + t * (arm.endRadius - arm.startRadius);
     const spiralTheta =
       arm.startAngleRad +
       arm.windFactor * Math.log(baseR / Math.max(12.0, arm.startRadius));
 
-    const scatterR = gaussianRandom(rng) * (arm.widthUnits * 0.55);
-    const r = Math.max(21.0, baseR + scatterR);
+    const scatterR = gaussianRandom(rng) * (arm.widthUnits * 0.6);
+    const r = Math.max(23.5, baseR + scatterR);
     const lx = Math.cos(spiralTheta) * r;
     const lz = Math.sin(spiralTheta) * r;
     const ly = gaussianRandom(rng) * 0.65;
@@ -371,25 +447,25 @@ export function generateMilkyWayNebulae(
     positions[idx * 3 + 1] = ly;
     positions[idx * 3 + 2] = lz;
 
-    const isHAlpha = rng() < 0.34;
+    const isHAlpha = rng() < 0.32;
     if (isHAlpha) {
       // H-II Magenta/Rose star-forming nebula (Orion, Carina, Eagle, Lagoon)
-      colors[idx * 3] = 0.88;
-      colors[idx * 3 + 1] = 0.34;
-      colors[idx * 3 + 2] = 0.58;
-      sizes[idx] = 11.0 + rng() * 11.0;
-    } else if (arm.id === 'orion-spur') {
-      // Soft golden-blue local Orion Spur glow
-      colors[idx * 3] = 0.78;
-      colors[idx * 3 + 1] = 0.82;
-      colors[idx * 3 + 2] = 0.96;
-      sizes[idx] = 12.0 + rng() * 10.0;
+      colors[idx * 3] = 0.82;
+      colors[idx * 3 + 1] = 0.32;
+      colors[idx * 3 + 2] = 0.54;
+      sizes[idx] = 10.5 + rng() * 10.0;
+    } else if (isLocalSpur) {
+      // Delicate pale golden-blue local Orion Spur dust glow
+      colors[idx * 3] = 0.62;
+      colors[idx * 3 + 1] = 0.68;
+      colors[idx * 3 + 2] = 0.82;
+      sizes[idx] = 10.0 + rng() * 8.0;
     } else {
       // Sapphire-indigo young spiral arm dust & OB association glow
-      colors[idx * 3] = 0.36;
-      colors[idx * 3 + 1] = 0.58;
-      colors[idx * 3 + 2] = 0.96;
-      sizes[idx] = 14.0 + rng() * 16.0;
+      colors[idx * 3] = 0.34;
+      colors[idx * 3 + 1] = 0.54;
+      colors[idx * 3 + 2] = 0.92;
+      sizes[idx] = 13.0 + rng() * 15.0;
     }
 
     phases[idx] = rng() * Math.PI * 2;

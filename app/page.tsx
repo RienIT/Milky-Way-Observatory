@@ -1,13 +1,25 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import AddMemoryModal from '@/components/AddMemoryModal';
-import BlackHoleCanvas from '@/components/BlackHoleCanvas';
 import ExoplanetCatalogView from '@/components/ExoplanetCatalogView';
 import GraphicsSettingsModal from '@/components/GraphicsSettingsModal';
 import MemoryDetailDrawer from '@/components/MemoryDetailDrawer';
 import ObservatorySidebar from '@/components/ObservatorySidebar';
 import TopSearchBar, { ActiveWebView } from '@/components/TopSearchBar';
+
+const UniverseCanvas = dynamic(() => import('@/components/UniverseCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-[#05060a] flex items-center justify-center">
+      <div className="flex items-center gap-2.5 px-4 py-2 rounded-[10px] bg-[#111318] border border-white/[0.08] text-xs font-mono text-[#9ca3af]">
+        <span className="w-2 h-2 rounded-full bg-[#0082fb] animate-pulse" />
+        <span>WebGL2 Multi-Scale Observatory</span>
+      </div>
+    </div>
+  ),
+});
 import {
   detectClientHardwareProfile,
   GRAPHICS_PRESETS,
@@ -73,6 +85,10 @@ export default function MilkyWayObservatoryPage() {
     let cancelled = false;
     const rafId = window.requestAnimationFrame(() => {
       if (cancelled) return;
+
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
 
       try {
         const savedLang = window.localStorage.getItem(STORAGE_LANG_KEY) as LanguageCode | null;
@@ -265,9 +281,9 @@ export default function MilkyWayObservatoryPage() {
             lang={lang}
           />
 
-          {/* 3D NASA Milky Way & Sagittarius A* Interactive Viewport */}
+          {/* 3D Continuous Multi-Scale Universe & Sagittarius A* Viewport */}
           <main className="relative flex-1 h-full overflow-hidden">
-            <BlackHoleCanvas
+            <UniverseCanvas
               memories={memories}
               links={links}
               matchedIds={matchedIds}

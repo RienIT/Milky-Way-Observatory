@@ -18,6 +18,8 @@ import {
 } from '@/lib/memory-types';
 import { LanguageCode, UI_STRINGS } from '@/lib/i18n';
 import { getLocalizedNode } from '@/lib/celestial-translations';
+import { UNIVERSE_HUD_COPY } from '@/lib/universe-i18n';
+import { EXTRAGALACTIC_CATALOG } from '@/lib/extragalactic-catalog';
 
 interface ObservatorySidebarProps {
   isOpen: boolean;
@@ -162,7 +164,7 @@ export default function ObservatorySidebar({
       </div>
 
       {/* Pinned Sagittarius A* Galactic Core Card */}
-      <div className="px-3 pt-3 pb-2">
+      <div className="px-3 pt-3 pb-2 space-y-2">
         <button
           type="button"
           onClick={() => onSelectNode('BLACK_HOLE_CORE')}
@@ -185,6 +187,43 @@ export default function ObservatorySidebar({
             {t.inspectCoreAction} →
           </span>
         </button>
+
+        {/* Local Group & Nearby Clusters Quick-Jump */}
+        <div className="rounded-[10px] bg-[#141720] border border-white/[0.06] p-2">
+          <p className="text-[10px] font-mono uppercase tracking-wider text-[#9ca3af] mb-1.5">
+            {UNIVERSE_HUD_COPY[lang].extragalacticSection}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {EXTRAGALACTIC_CATALOG.filter((g) =>
+              ['m31', 'lmc', 'smc', 'm33', 'virgo-cluster', 'coma-cluster'].includes(g.id)
+            ).map((gal) => {
+              const active = selectedId === gal.id;
+              return (
+                <button
+                  key={gal.id}
+                  type="button"
+                  data-testid={`sidebar-jump-${gal.id}`}
+                  onClick={() => onSelectNode(gal.id)}
+                  className={`px-2 py-0.5 rounded-[5px] text-[10px] font-medium transition-colors whitespace-nowrap ${
+                    active
+                      ? 'bg-[#0082fb] text-white'
+                      : 'bg-[#1b202b] text-[#d1d5db] hover:text-white hover:bg-[#252c3b]'
+                  }`}
+                >
+                  {gal.id === 'virgo-cluster'
+                    ? 'Virgo (16.5 Mpc)'
+                    : gal.id === 'coma-cluster'
+                      ? 'Coma (99 Mpc)'
+                      : gal.id === 'm31'
+                        ? 'M31 (778 kpc)'
+                        : gal.id === 'm33'
+                          ? 'M33'
+                          : gal.id.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Scrollable NASA Milky Way Celestial Directory with Real Physical Diameters */}
