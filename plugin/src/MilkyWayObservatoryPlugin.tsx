@@ -75,6 +75,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
     onSelectObject,
     onLanguageChange,
     onGraphicsChange,
+    onReady,
   },
   ref
 ) {
@@ -434,6 +435,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                 }}
                 lang={lang}
                 assetBasePath={assetBasePath}
+                onBootReady={onReady}
               />
             ) : (
               <div className="relative w-full h-full bg-[#05060a]">

@@ -50,6 +50,8 @@ export interface MilkyWayPluginProps {
   onLanguageChange?: (lang: LanguageCode) => void;
   /** Fired when graphics settings or preset tier changes. */
   onGraphicsChange?: (settings: GraphicsSettings) => void;
+  /** Fired once the WebGL2 engine finishes its staged startup and renders the first frame. */
+  onReady?: () => void;
 }
 
 export interface MilkyWayPluginHandle {
