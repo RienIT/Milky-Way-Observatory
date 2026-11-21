@@ -317,6 +317,27 @@ test('NASA Milky Way model generates deterministic barred spiral arms, Solar Sys
   assert.equal(nebulae.count, 120);
   assert.equal(nebulae.colors.length, 120 * 3);
 
+  // Regression guard: NASA kpc starfield fills the central golden Galactic Bar (no hollow center hole)
+  // and fades smoothly past 14 kpc (no sharp circular outer cutoff)
+  const { generateNasaMilkyWayKpcStarfield } = await import('./milky-way');
+  const kpcStars = generateNasaMilkyWayKpcStarfield(12000);
+  assert.equal(kpcStars.count, 12000);
+  let innerCoreStars = 0;
+  let outerHaloStars = 0;
+  for (let i = 0; i < kpcStars.count; i++) {
+    const rKpc = Math.hypot(kpcStars.positions[i * 3], kpcStars.positions[i * 3 + 2]);
+    if (rKpc < 2.2) innerCoreStars++;
+    if (rKpc > 14.5) outerHaloStars++;
+  }
+  assert.ok(
+    innerCoreStars > 500,
+    `Expected golden central Galactic Bar populated inside 2.2 kpc (zero hollow donut), got ${innerCoreStars}`
+  );
+  assert.ok(
+    outerHaloStars > 250,
+    `Expected smooth exponential outer disk fading past 14.5 kpc, got ${outerHaloStars}`
+  );
+
   for (const langOpt of SUPPORTED_LANGUAGES) {
     const mw = MILKY_WAY_I18N[langOpt.code];
     assert.ok(mw.diskToggleLabel.length > 0);
@@ -449,6 +470,40 @@ test('ESA Gaia DR3 galactocentric transform, True 1:1 scaling, rocky belts & har
   assert.ok(
     weakLaptopRec.recommendedTier === 'low' || weakLaptopRec.recommendedTier === 'medium'
   );
+
+  const rtx3050Rec = scoreHardwareAndRecommend({
+    gpuRenderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3050 Laptop GPU Direct3D11)',
+    gpuVendor: 'NVIDIA',
+    isSoftwareGl: false,
+    webgl2Supported: true,
+    maxTextureSize: 16384,
+    cpuCores: 8,
+    deviceMemoryGb: 8,
+    devicePixelRatio: 1,
+    screenWidth: 1920,
+    screenHeight: 1080,
+  });
+  assert.equal(rtx3050Rec.recommendedTier, 'rtx');
+  assert.equal(rtx3050Rec.recommendedSettings.resolutionScale, 1.5);
+  assert.equal(rtx3050Rec.recommendedSettings.starfieldCount, 120000);
+  assert.equal(rtx3050Rec.recommendedSettings.asteroidBeltCount, 16000);
+  assert.equal(rtx3050Rec.recommendedSettings.planetSegments, 96);
+  assert.equal(rtx3050Rec.recommendedSettings.blackHoleRaySteps, 96);
+
+  const rtx4050Rec = scoreHardwareAndRecommend({
+    gpuRenderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4050 Laptop GPU Direct3D11)',
+    gpuVendor: 'NVIDIA',
+    isSoftwareGl: false,
+    webgl2Supported: true,
+    maxTextureSize: 16384,
+    cpuCores: 12,
+    deviceMemoryGb: 8,
+    devicePixelRatio: 1.5,
+    screenWidth: 2560,
+    screenHeight: 1440,
+  });
+  assert.equal(rtx4050Rec.recommendedTier, 'rtx');
+  assert.equal(rtx4050Rec.recommendedSettings.resolutionScale, 1.5);
 
   const workstationRec = scoreHardwareAndRecommend({
     gpuRenderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4080 Direct3D11)',

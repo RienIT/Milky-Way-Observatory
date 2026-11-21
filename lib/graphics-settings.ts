@@ -1,6 +1,13 @@
 import { LanguageCode } from './i18n';
 
-export type QualityTierId = 'potato' | 'low' | 'medium' | 'high' | 'ultra' | 'custom';
+export type QualityTierId =
+  | 'potato'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'rtx'
+  | 'ultra'
+  | 'custom';
 
 export type ResolutionScaleOption = 0.5 | 0.75 | 1.0 | 1.25 | 1.5 | 2.0;
 
@@ -85,12 +92,23 @@ export const GRAPHICS_PRESETS: Record<
     showAtmosphereAndNebulae: true,
     fpsCap: 60,
   },
+  rtx: {
+    tier: 'rtx',
+    resolutionScale: 1.5,
+    starfieldCount: 120000,
+    asteroidBeltCount: 16000,
+    planetSegments: 96,
+    blackHoleRaySteps: 96,
+    antialias: true,
+    showAtmosphereAndNebulae: true,
+    fpsCap: 60,
+  },
   ultra: {
     tier: 'ultra',
     resolutionScale: 2.0,
     starfieldCount: 140000,
     asteroidBeltCount: 20000,
-    planetSegments: 80,
+    planetSegments: 112,
     blackHoleRaySteps: 96,
     antialias: true,
     showAtmosphereAndNebulae: true,
@@ -110,9 +128,9 @@ export const RESOLUTION_OPTIONS: {
   { scale: 2.0, badge: '2.0x (4K HiDPI)' },
 ];
 
-export const STAR_COUNT_OPTIONS = [6000, 16000, 40000, 80000, 140000] as const;
-export const ASTEROID_COUNT_OPTIONS = [0, 1500, 4500, 10000, 20000] as const;
-export const TESSELLATION_OPTIONS = [20, 28, 40, 56, 80] as const;
+export const STAR_COUNT_OPTIONS = [6000, 16000, 40000, 80000, 120000, 140000] as const;
+export const ASTEROID_COUNT_OPTIONS = [0, 1500, 4500, 10000, 16000, 20000] as const;
+export const TESSELLATION_OPTIONS = [20, 28, 40, 56, 96, 112] as const;
 export const RAYMARCH_STEP_OPTIONS = [24, 36, 52, 72, 96] as const;
 export const FPS_CAP_OPTIONS: (30 | 60 | 0)[] = [30, 60, 0];
 
@@ -128,6 +146,10 @@ export function scoreHardwareAndRecommend(
 
   let gpuClass: HardwareRecommendation['gpuClass'] = 'integrated-modern';
   let gpuScore = 46;
+  const isRtx3050To4050Class =
+    /rtx\s?(3050|3060|4050|2060|2070)|rx\s?(66[05]0|67[05]0|7600)|arc\s?a7[57]0/i.test(
+      gpuLower
+    );
 
   if (
     profile.isSoftwareGl ||
@@ -145,12 +167,13 @@ export function scoreHardwareAndRecommend(
     gpuClass = 'discrete-high';
     gpuScore = 62;
   } else if (
+    isRtx3050To4050Class ||
     /rtx\s?(20|3050|3060|4050)|gtx\s?(10[6-8]0|16[56]0)|rx\s?(5[67]00|6[5-7]00|7600)|apple\s?m[1-4]|arc\s?a[57]|radeon pro/i.test(
       gpuLower
     )
   ) {
     gpuClass = 'discrete-mid';
-    gpuScore = 52;
+    gpuScore = isRtx3050To4050Class ? 55 : 50;
   } else if (
     /intel(?:\(r\))?\s*(?:uhd|hd graphics|celeron|pentium)|mali-g[35]|adreno\s?[45]|powervr|geforce\s?(mx|gt\s?[67])/i.test(
       gpuLower
@@ -188,9 +211,11 @@ export function scoreHardwareAndRecommend(
   let recommendedTier: Exclude<QualityTierId, 'custom'>;
   if (gpuClass === 'software') {
     recommendedTier = cores >= 4 && mem >= 4 ? 'low' : 'potato';
-  } else if (score >= 86) {
+  } else if (gpuClass === 'discrete-high' && score >= 86) {
     recommendedTier = 'ultra';
-  } else if (score >= 68) {
+  } else if ((isRtx3050To4050Class && score >= 68) || score >= 76) {
+    recommendedTier = 'rtx';
+  } else if (score >= 64) {
     recommendedTier = 'high';
   } else if (score >= 48) {
     recommendedTier = 'medium';
@@ -200,7 +225,7 @@ export function scoreHardwareAndRecommend(
     recommendedTier = 'potato';
   }
 
-  // Respect native DPR cap so Ultra doesn't needlessly oversample 1x displays unless chosen manually
+  // Respect native DPR cap on non-RTX tiers, while preserving 1.5x SSAA on RTX 3050-4050
   const basePreset = { ...GRAPHICS_PRESETS[recommendedTier] };
   if (recommendedTier === 'ultra' && profile.devicePixelRatio <= 1.1) {
     basePreset.resolutionScale = 1.5;
@@ -209,28 +234,30 @@ export function scoreHardwareAndRecommend(
   }
 
   const memLabel = profile.deviceMemoryGb ? `${profile.deviceMemoryGb} GB RAM` : 'RAM N/A';
+  const tierDisplayLabel =
+    recommendedTier === 'rtx' ? 'RTX 3050–4050' : recommendedTier.toUpperCase();
 
   const summaryByLang: Record<LanguageCode, string> = {
     vi:
       gpuClass === 'software'
-        ? `Phát hiện trình dựng đồ họa phần mềm (${profile.gpuRenderer}) · ${cores} nhân CPU. Khuyến nghị mức ${recommendedTier.toUpperCase()} (${basePreset.resolutionScale}x) để giữ tốc độ mượt mà.`
-        : `Phát hiện ${profile.gpuRenderer} · ${cores} nhân CPU · ${memLabel} (Điểm ${score}/100). Khuyến nghị mức ${recommendedTier.toUpperCase()} với độ phân giải ${basePreset.resolutionScale}x.`,
+        ? `Phát hiện trình dựng đồ họa phần mềm (${profile.gpuRenderer}) · ${cores} nhân CPU. Khuyến nghị mức ${tierDisplayLabel} (${basePreset.resolutionScale}x) để giữ tốc độ mượt mà.`
+        : `Phát hiện ${profile.gpuRenderer} · ${cores} nhân CPU · ${memLabel} (Điểm ${score}/100). Khuyến nghị mức ${tierDisplayLabel} với độ phân giải ${basePreset.resolutionScale}x.`,
     en:
       gpuClass === 'software'
-        ? `Software WebGL renderer detected (${profile.gpuRenderer}) · ${cores} CPU threads. Recommended ${recommendedTier.toUpperCase()} (${basePreset.resolutionScale}x) for smooth navigation.`
-        : `Detected ${profile.gpuRenderer} · ${cores} CPU threads · ${memLabel} (Score ${score}/100). Recommended ${recommendedTier.toUpperCase()} at ${basePreset.resolutionScale}x render scale.`,
+        ? `Software WebGL renderer detected (${profile.gpuRenderer}) · ${cores} CPU threads. Recommended ${tierDisplayLabel} (${basePreset.resolutionScale}x) for smooth navigation.`
+        : `Detected ${profile.gpuRenderer} · ${cores} CPU threads · ${memLabel} (Score ${score}/100). Recommended ${tierDisplayLabel} at ${basePreset.resolutionScale}x render scale.`,
     ja:
       gpuClass === 'software'
-        ? `ソフトウェアWebGLレンダラーを検出（${profile.gpuRenderer}）・${cores}スレッド。快適な操作のため ${recommendedTier.toUpperCase()}（${basePreset.resolutionScale}x）を推奨します。`
-        : `${profile.gpuRenderer}・${cores}スレッド・${memLabel}（スコア ${score}/100）を検出。${recommendedTier.toUpperCase()}（${basePreset.resolutionScale}x）が最適です。`,
+        ? `ソフトウェアWebGLレンダラーを検出（${profile.gpuRenderer}）・${cores}スレッド。快適な操作のため ${tierDisplayLabel}（${basePreset.resolutionScale}x）を推奨します。`
+        : `${profile.gpuRenderer}・${cores}スレッド・${memLabel}（スコア ${score}/100）を検出。${tierDisplayLabel}（${basePreset.resolutionScale}x）が最適です。`,
     zh:
       gpuClass === 'software'
-        ? `检测到软件 WebGL 渲染器 (${profile.gpuRenderer}) · ${cores} 线程。建议使用 ${recommendedTier.toUpperCase()} (${basePreset.resolutionScale}x) 以保持流畅。`
-        : `检测到 ${profile.gpuRenderer} · ${cores} 线程 · ${memLabel}（评分 ${score}/100）。推荐使用 ${recommendedTier.toUpperCase()} (${basePreset.resolutionScale}x) 预设。`,
+        ? `检测到软件 WebGL 渲染器 (${profile.gpuRenderer}) · ${cores} 线程。建议使用 ${tierDisplayLabel} (${basePreset.resolutionScale}x) 以保持流畅。`
+        : `检测到 ${profile.gpuRenderer} · ${cores} 线程 · ${memLabel}（评分 ${score}/100）。推荐使用 ${tierDisplayLabel} (${basePreset.resolutionScale}x) 预设。`,
     ko:
       gpuClass === 'software'
-        ? `소프트웨어 WebGL 렌더러 감지(${profile.gpuRenderer}) · ${cores} 스레드. 원활한 탐색을 위해 ${recommendedTier.toUpperCase()}(${basePreset.resolutionScale}x)를 권장합니다.`
-        : `${profile.gpuRenderer} · ${cores} 스레드 · ${memLabel}(점수 ${score}/100) 감지. ${recommendedTier.toUpperCase()}(${basePreset.resolutionScale}x) 프리셋을 권장합니다.`,
+        ? `소프트웨어 WebGL 렌더러 감지(${profile.gpuRenderer}) · ${cores} 스레드. 원활한 탐색을 위해 ${tierDisplayLabel}(${basePreset.resolutionScale}x)를 권장합니다.`
+        : `${profile.gpuRenderer} · ${cores} 스레드 · ${memLabel}(점수 ${score}/100) 감지. ${tierDisplayLabel}(${basePreset.resolutionScale}x) 프리셋을 권장합니다.`,
   };
 
   return {

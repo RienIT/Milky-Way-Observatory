@@ -88,6 +88,7 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: 'Nhẹ',
       medium: 'Cân bằng',
       high: 'Cao',
+      rtx: 'RTX 3050–4050',
       ultra: 'Cực đại 4K',
     },
     tierDescs: {
@@ -95,7 +96,8 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '0.75x · 16k sao · 36 bước',
       medium: '1.0x · 40k sao · 52 bước',
       high: '1.25x · 80k sao · 72 bước',
-      ultra: '2.0x · 140k sao · 96 bước',
+      rtx: '4–8GB · 1.5x · 120k sao · 96 seg · 96 bước',
+      ultra: '2.0x · 140k sao · 112 seg · 96 bước',
     },
     resolutionLabel: 'Tỷ lệ Độ phân giải Kết xuất (Render Scale)',
     liveRenderSize: 'Độ phân giải thực tế',
@@ -132,6 +134,7 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: 'Low',
       medium: 'Medium',
       high: 'High',
+      rtx: 'RTX 3050–4050',
       ultra: 'Ultra 4K',
     },
     tierDescs: {
@@ -139,7 +142,8 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '0.75x · 16k stars · 36 steps',
       medium: '1.0x · 40k stars · 52 steps',
       high: '1.25x · 80k stars · 72 steps',
-      ultra: '2.0x · 140k stars · 96 steps',
+      rtx: '4–8GB · 1.5x · 120k stars · 96 seg · 96 steps',
+      ultra: '2.0x · 140k stars · 112 seg · 96 steps',
     },
     resolutionLabel: 'Render Resolution Scale',
     liveRenderSize: 'Active buffer',
@@ -176,6 +180,7 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '低',
       medium: '標準',
       high: '高',
+      rtx: 'RTX 3050–4050',
       ultra: '最高 4K',
     },
     tierDescs: {
@@ -183,7 +188,8 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '0.75x・1.6万星・36ステップ',
       medium: '1.0x・4万星・52ステップ',
       high: '1.25x・8万星・72ステップ',
-      ultra: '2.0x・14万星・96ステップ',
+      rtx: '4–8GB・1.5x・12万星・96分割・96歩',
+      ultra: '2.0x・14万星・112分割・96歩',
     },
     resolutionLabel: 'レンダリング解像度スケール',
     liveRenderSize: '描画バッファ',
@@ -220,6 +226,7 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '流畅',
       medium: '均衡',
       high: '高清',
+      rtx: 'RTX 3050–4050',
       ultra: '极致 4K',
     },
     tierDescs: {
@@ -227,7 +234,8 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '0.75x · 1.6万星 · 36步',
       medium: '1.0x · 4万星 · 52步',
       high: '1.25x · 8万星 · 72步',
-      ultra: '2.0x · 14万星 · 96步',
+      rtx: '4–8GB · 1.5x · 12万星 · 96细分 · 96步',
+      ultra: '2.0x · 14万星 · 112细分 · 96步',
     },
     resolutionLabel: '渲染分辨率缩放 (Render Scale)',
     liveRenderSize: '实时渲染像素',
@@ -264,6 +272,7 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '낮음',
       medium: '보통',
       high: '높음',
+      rtx: 'RTX 3050–4050',
       ultra: '울트라 4K',
     },
     tierDescs: {
@@ -271,7 +280,8 @@ const LABELS: Record<LanguageCode, ModalLabels> = {
       low: '0.75x · 별 1.6만 · 36스텝',
       medium: '1.0x · 별 4만 · 52스텝',
       high: '1.25x · 별 8만 · 72스텝',
-      ultra: '2.0x · 별 14만 · 96스텝',
+      rtx: '4–8GB · 1.5x · 별 12만 · 96세그 · 96스텝',
+      ultra: '2.0x · 별 14만 · 112세그 · 96스텝',
     },
     resolutionLabel: '렌더링 해상도 배율 (Render Scale)',
     liveRenderSize: '실제 렌더 해상도',
@@ -297,6 +307,7 @@ const TIER_ORDER: Exclude<QualityTierId, 'custom'>[] = [
   'low',
   'medium',
   'high',
+  'rtx',
   'ultra',
 ];
 
@@ -503,10 +514,11 @@ export default function GraphicsSettingsModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {TIER_ORDER.map((tierId) => {
                 const isSelected = settings.tier === tierId;
                 const isRecommended = recommendation.recommendedTier === tierId;
+                const isRtxTier = tierId === 'rtx';
                 return (
                   <button
                     key={tierId}
@@ -515,16 +527,29 @@ export default function GraphicsSettingsModal({
                     onClick={() => applyPreset(tierId)}
                     className={`rounded-[10px] p-2.5 text-left border transition-colors relative ${
                       isSelected
-                        ? 'bg-[#0082fb]/15 border-[#0082fb] text-white'
-                        : 'bg-[#161922] hover:bg-[#1c202b] border-white/[0.08] text-[#d1d5db]'
+                        ? isRtxTier
+                          ? 'bg-[#10b981]/15 border-[#10b981] text-white'
+                          : 'bg-[#0082fb]/15 border-[#0082fb] text-white'
+                        : isRtxTier
+                          ? 'bg-[#131c1a] hover:bg-[#192623] border-[#10b981]/35 text-[#e5e7eb]'
+                          : 'bg-[#161922] hover:bg-[#1c202b] border-white/[0.08] text-[#d1d5db]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-semibold">
-                        {copy.tierNames[tierId]}
+                      <span className="text-xs font-semibold flex items-center gap-1.5">
+                        <span>{copy.tierNames[tierId]}</span>
+                        {isRtxTier && (
+                          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#10b981]/20 text-[#34d399] font-mono text-[9px] font-semibold">
+                            4–8GB
+                          </span>
+                        )}
                       </span>
                       {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-[#54a8ff] shrink-0" />
+                        <Check
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            isRtxTier ? 'text-[#34d399]' : 'text-[#54a8ff]'
+                          }`}
+                        />
                       )}
                     </div>
                     <p className="text-[10px] font-mono text-[#9ca3af] mt-1 leading-snug">
@@ -596,7 +621,7 @@ export default function GraphicsSettingsModal({
                   {(settings.starfieldCount / 1000).toFixed(0)}k
                 </span>
               </div>
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
                 {STAR_COUNT_OPTIONS.map((cnt) => (
                   <button
                     key={cnt}
@@ -626,7 +651,7 @@ export default function GraphicsSettingsModal({
                     : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
                 </span>
               </div>
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
                 {ASTEROID_COUNT_OPTIONS.map((cnt) => (
                   <button
                     key={cnt}
@@ -654,7 +679,7 @@ export default function GraphicsSettingsModal({
                   {settings.planetSegments} seg
                 </span>
               </div>
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
                 {TESSELLATION_OPTIONS.map((seg) => (
                   <button
                     key={seg}

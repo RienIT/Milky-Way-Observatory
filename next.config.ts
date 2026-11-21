@@ -23,6 +23,17 @@ export default function nextConfig(phase: string): NextConfig {
       ],
     },
     output: 'standalone',
+    outputFileTracingExcludes: {
+      '*': [
+        'node_modules/firebase-tools/**',
+        'node_modules/@google-cloud/**',
+        'node_modules/@electric-sql/**',
+        'node_modules/pglite-2/**',
+        'node_modules/eslint/**',
+        'node_modules/typescript/**',
+        '.playwright-cli/**',
+      ],
+    },
     transpilePackages: ['motion'],
     webpack: (config, {dev}) => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

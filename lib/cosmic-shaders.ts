@@ -521,6 +521,7 @@ export function createRealisticPlanetMaterial(
       uOpacity: { value: 1.0 },
       uHighlight: { value: 0.0 },
       uLightPos: { value: new THREE.Vector3(0, 0, 0) },
+      uDetailBoost: { value: 0.0 },
     },
     vertexShader: `
       #include <common>
@@ -547,6 +548,7 @@ export function createRealisticPlanetMaterial(
       uniform float uOpacity;
       uniform float uHighlight;
       uniform vec3 uLightPos;
+      uniform float uDetailBoost;
 
       varying vec3 vLocalPos;
       varying vec3 vWorldPos;
@@ -868,11 +870,25 @@ export function createRealisticPlanetMaterial(
         vec3 cloudColor = vec3(0.98, 0.96, 0.93);
         vec3 compositeAlbedo = mix(surfaceAlbedo, cloudColor, cloudAlpha);
 
+        // High-frequency micro-relief & atmospheric eddy detail unlocked on RTX 3050-4050 / Ultra
+        float microShade = 1.0;
+        if (uDetailBoost > 0.01) {
+          float fineA = noise3(p * 26.0 + vec3(uSeed * 0.13));
+          float fineB = noise3(p * 62.0 - vec3(uSeed * 0.27));
+          float micro = (fineA * 0.62 + fineB * 0.38) - 0.5;
+          compositeAlbedo *= (1.0 + micro * 0.24 * uDetailBoost);
+          // Subtle micro-bump relief along terminator for solid & storm surfaces (non-stars)
+          if (uArchetype < 8.5 || uArchetype > 9.5) {
+            float fineShift = noise3((p + L * 0.018) * 26.0 + vec3(uSeed * 0.13));
+            microShade = clamp(1.0 + (fineShift - fineA) * 1.45 * uDetailBoost, 0.78, 1.24);
+          }
+        }
+
         vec3 coreLightCol = vec3(1.0, 0.95, 0.86);
         vec3 ambientSpaceCol = vec3(0.21, 0.23, 0.29);
         vec3 twilightScatterCol = mix(vec3(0.95, 0.52, 0.22), uAtmoColor, 0.45);
 
-        vec3 litSurface = compositeAlbedo * (ambientSpaceCol + coreLightCol * dayFactor * 1.14);
+        vec3 litSurface = compositeAlbedo * (ambientSpaceCol + coreLightCol * dayFactor * 1.14 * microShade);
         litSurface += twilightScatterCol * twilight * 0.20;
         litSurface += vec3(1.0, 0.92, 0.76) * specBase * specularMask * 0.90;
         litSurface += nightEmission;
@@ -1105,6 +1121,7 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
       uTime: { value: 0 },
       uPixelRatio: { value: 1 },
       uOpacity: { value: 1.0 },
+      uDensityScale: { value: 1.0 },
       uLensingPass: { value: 0.0 },
     },
     vertexShader: `
@@ -1122,7 +1139,7 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
 
       void main() {
         vColor = aColor;
-        vTwinkle = 0.86 + 0.14 * sin(uTime * 1.4 + aPhase);
+        vTwinkle = 0.88 + 0.12 * sin(uTime * 1.3 + aPhase);
         vCull = 0.0;
 
         vec4 worldPos = modelMatrix * vec4(position, 1.0);
@@ -1141,8 +1158,10 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
         }
 
         vec4 mvPosition = viewMatrix * worldPos;
-        float dist = max(10.0, -mvPosition.z);
-        gl_PointSize = vCull > 0.5 ? 0.0 : clamp(aSize * uPixelRatio * (145.0 / dist), 1.1, 8.2);
+        float dist = max(0.35, -mvPosition.z);
+        // Calibrated for kpc galactic coordinates: delicate crisp star pinpoints that never turn into chalky white blobs
+        float sz = aSize * uPixelRatio * (18.5 / pow(dist, 0.72));
+        gl_PointSize = vCull > 0.5 ? 0.0 : clamp(sz, 0.85, 3.3);
         gl_Position = vCull > 0.5 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * mvPosition;
         #include <logdepthbuf_vertex>
       }
@@ -1151,6 +1170,7 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
       #include <common>
       #include <logdepthbuf_pars_fragment>
       uniform float uOpacity;
+      uniform float uDensityScale;
       varying vec3 vColor;
       varying float vTwinkle;
       varying float vCull;
@@ -1161,10 +1181,10 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
         float r2 = dot(uv, uv);
         if (r2 > 1.0) discard;
 
-        float core = exp(-r2 * 14.0);
-        float halo = exp(-r2 * 3.2) * 0.50;
-        float alpha = (core + halo) * vTwinkle * uOpacity;
-        vec3 col = mix(vColor, vec3(1.0, 0.99, 0.96), core * 0.65);
+        float core = exp(-r2 * 18.0);
+        float halo = exp(-r2 * 4.5) * 0.24;
+        float alpha = clamp((core * 0.72 + halo) * vTwinkle * uOpacity * uDensityScale, 0.0, 0.92);
+        vec3 col = mix(vColor, vec3(1.0, 0.99, 0.97), core * 0.42);
         gl_FragColor = vec4(col, alpha);
         #include <logdepthbuf_fragment>
       }
@@ -1307,6 +1327,7 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
     uniforms: {
       uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
       uTime: { value: 0 },
+      uDetailBoost: { value: 0 },
     },
     vertexShader: `
       #include <common>
@@ -1331,6 +1352,7 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
 
       uniform vec3 uSunDir;
       uniform float uTime;
+      uniform float uDetailBoost;
 
       varying vec3 vObjPos;
       varying vec3 vWorldNormal;
@@ -1381,7 +1403,14 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
         );
         float continentField = fbm(p * 2.45 + (warp - 0.5) * 0.92);
         float ridgeDetail = fbm(p * 11.0 + warp * 1.4);
-        float elevation = continentField + (ridgeDetail - 0.5) * 0.16;
+        float microTopo = 0.0;
+        if (uDetailBoost > 0.01) {
+          microTopo =
+            ((noise3(p * 28.0 + warp * 2.1) - 0.5) * 0.055 +
+              (noise3(p * 64.0 - warp * 1.7) - 0.5) * 0.028) *
+            uDetailBoost;
+        }
+        float elevation = continentField + (ridgeDetail - 0.5) * 0.16 + microTopo;
 
         float seaLevel = 0.505;
         float landMask = smoothstep(seaLevel - 0.008, seaLevel + 0.014, elevation);
@@ -1434,8 +1463,20 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
         float habitableLat = (1.0 - smoothstep(0.52, 0.74, lat)) * (1.0 - iceCap) * (1.0 - mountain * 0.7);
         float coastBias = smoothstep(0.0, 0.18, elevation - seaLevel) * (1.0 - smoothstep(0.14, 0.32, elevation - seaLevel));
         float cityClusters = noise3(p * 34.0) * noise3(p * 78.0 + vec3(4.2, -1.7, 9.3));
-        float citySparks = smoothstep(0.36, 0.62, cityClusters + coastBias * 0.28) * landMask * habitableLat;
-        vec3 cityLights = vec3(1.0, 0.74, 0.34) * citySparks * nightMask * 1.45;
+        float fineMetropolis =
+          uDetailBoost > 0.01
+            ? smoothstep(0.62, 0.86, noise3(p * 145.0 + vec3(1.8, 5.4, -3.1))) * 0.22 * uDetailBoost
+            : 0.0;
+        float citySparks = smoothstep(0.36, 0.62, cityClusters + coastBias * 0.28 + fineMetropolis) * landMask * habitableLat;
+        vec3 cityLights = vec3(1.0, 0.74, 0.34) * citySparks * nightMask * (1.45 + 0.25 * uDetailBoost);
+
+        // Analytical alpine relief shading on RTX 3050-4050 / Ultra
+        float landRelief = 1.0;
+        if (uDetailBoost > 0.01 && landMask > 0.05) {
+          float hHere = noise3(p * 32.0 + warp * 1.6);
+          float hSun = noise3((p + L * 0.012) * 32.0 + warp * 1.6);
+          landRelief = clamp(1.0 + (hSun - hHere) * 1.5 * landMask * uDetailBoost, 0.78, 1.24);
+        }
 
         // Rayleigh blue atmospheric scattering along limb
         float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.2);
@@ -1444,7 +1485,7 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
 
         // Earthshine ambient floor on dark side so silhouette stays readable against stars
         vec3 nightAmbient = surfaceAlbedo * 0.032;
-        vec3 litColor = surfaceAlbedo * (diffuse * 1.18) + twilightTint + specular + nightAmbient * (1.0 - dayFactor);
+        vec3 litColor = surfaceAlbedo * (diffuse * 1.18 * landRelief) + twilightTint + specular + nightAmbient * (1.0 - dayFactor);
         vec3 finalColor = litColor + cityLights + rayleighDay + rayleighNight;
 
         gl_FragColor = vec4(finalColor, 1.0);
@@ -1465,6 +1506,7 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
     uniforms: {
       uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
       uTime: { value: 0 },
+      uDetailBoost: { value: 0 },
     },
     vertexShader: `
       #include <common>
@@ -1486,6 +1528,7 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
 
       uniform vec3 uSunDir;
       uniform float uTime;
+      uniform float uDetailBoost;
       varying vec3 vObjPos;
       varying vec3 vWorldNormal;
 
@@ -1532,6 +1575,10 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
         vec3 windCoord = vec3(p.x * 3.4, p.y * 5.2, p.z * 3.4);
         float swirl = fbm(windCoord + vec3(0.0, 1.2, 0.0));
         float clouds = fbm(windCoord * 1.45 + vec3(swirl * 1.15));
+        if (uDetailBoost > 0.01) {
+          float cirrus = noise3(windCoord * 5.8 + vec3(swirl * 2.4)) - 0.5;
+          clouds += cirrus * 0.14 * uDetailBoost;
+        }
         float alpha = smoothstep(0.51, 0.77, clouds) * 0.78;
         if (alpha < 0.01) discard;
 
@@ -1550,16 +1597,17 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
 }
 
 /**
- * Parametric Milky Way Continuous Spiral Disk + Dust Lanes Shader (Phase 3, illustrative: true).
- * Calibrated to Reid et al. (2019) 4 logarithmic spiral arms + Orion Spur + Wegg+2015 27° bar.
- * Double-sided so top-down, bottom-up, and oblique views remain 100% organic with zero rectangular edges.
+ * NASA/JPL-Caltech (R. Hurt / Spitzer GLIMPSE / Reid et al. 2019) Barred-Spiral Milky Way Disk Shader (illustrative: true).
+ * Uses NormalBlending so dark reddish-brown interstellar dust lanes genuinely absorb light along the
+ * inner concave edge of every spiral arm and around the creamy-gold central Galactic Bar, while bright
+ * blue-white OB star ridges and ruby-pink H-II star-forming knots trace all 4 tightly-wound arms + Orion Spur.
  */
 export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
     side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     uniforms: {
       uOpacity: { value: 1.0 },
       uTime: { value: 0.0 },
@@ -1569,7 +1617,7 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
       #include <logdepthbuf_pars_vertex>
       varying vec2 vDiskPos;
       void main() {
-        // Plane lies in XZ in kpc units (-18..+18 kpc)
+        // Plane lies in XZ in kpc units (-22..+22 kpc)
         vDiskPos = position.xz;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         #include <logdepthbuf_vertex>
@@ -1585,8 +1633,8 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
       varying vec2 vDiskPos;
 
       float hash21(vec2 p) {
-        p = fract(p * vec2(123.34, 456.21));
-        p += dot(p, p + 45.32);
+        p = fract(p * vec2(127.1, 311.7));
+        p += dot(p, p + 34.23);
         return fract(p.x * p.y);
       }
 
@@ -1604,75 +1652,194 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
       float fbm2(vec2 p) {
         float v = 0.0;
         float a = 0.5;
-        for (int i = 0; i < 4; i++) {
+        mat2 rot = mat2(0.80, -0.60, 0.60, 0.80);
+        for (int i = 0; i < 5; i++) {
           v += a * noise2(p);
-          p = p * 2.08 + vec2(7.3, -4.1);
+          p = rot * p * 2.07 + vec2(5.2, -3.7);
           a *= 0.5;
         }
         return v;
       }
 
+      // Ridged filamentary noise for dark dust lanes & delicate star-cluster veins
+      float ridgedFbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.52;
+        mat2 rot = mat2(0.80, -0.60, 0.60, 0.80);
+        for (int i = 0; i < 4; i++) {
+          float n = 1.0 - abs(noise2(p) * 2.0 - 1.0);
+          v += a * n * n;
+          p = rot * p * 2.15 + vec2(-2.9, 4.3);
+          a *= 0.48;
+        }
+        return v;
+      }
+
       void main() {
-        // vDiskPos is in kpc: radius ~0..18 kpc
+        // vDiskPos is in kpc: radius 0..21.5 kpc
         float r = length(vDiskPos);
-        if (r > 18.0 || uOpacity <= 0.001) discard;
+        if (r > 21.5 || uOpacity <= 0.001) discard;
 
         float angle = atan(vDiskPos.y, vDiskPos.x);
 
-        // Wegg et al. (2015) smooth organic ellipsoidal Galactic Bar tilted 27 deg
-        float barAngle = 0.471239; // 27 deg
+        // -----------------------------------------------------------------
+        // 1. Creamy-Gold Elliptical Galactic Bar (NASA R. Hurt / Wegg+2015)
+        //    Synchronized with generateNasaMilkyWayKpcStarfield (barAngle = -0.95 rad)
+        // -----------------------------------------------------------------
+        float barAngle = -0.95;
         float cb = cos(barAngle);
         float sb = sin(barAngle);
         vec2 bPos = vec2(
           vDiskPos.x * cb + vDiskPos.y * sb,
           -vDiskPos.x * sb + vDiskPos.y * cb
         );
-        float barDist = length(vec2(bPos.x / 4.8, bPos.y / 1.85));
-        float barGlow = exp(-barDist * barDist * 1.45) * 0.72;
-        float bulgeGlow = exp(-(r * r) / 5.2) * 1.05;
 
-        // 4 logarithmic spiral arms (Reid+2019 pitch ~12.5 deg -> k = 1/tan(12.5 deg) ≈ 4.51)
-        float logR = log(max(1.2, r));
-        float pitchK = 4.45;
-        float spiralAccum = 0.0;
-        float dustAccum = 0.0;
+        // Soft boxy/peanut-ellipse bar distance (semi-major ~4.0 kpc, semi-minor ~1.52 kpc)
+        vec2 bScaled = vec2(bPos.x / 4.05, bPos.y / 1.52);
+        float barShape = pow(
+          pow(abs(bScaled.x), 2.25) + pow(abs(bScaled.y), 2.15),
+          0.455
+        );
+        float barBody = exp(-barShape * barShape * 1.55);
+        float barCore = exp(-dot(bPos / vec2(2.1, 0.92), bPos / vec2(2.1, 0.92)) * 1.35);
+        float nuclearPeak = exp(-(r * r) / 0.55);
+
+        // Subtle miniature inner nuclear spiral curl right inside the bright yellow bar (NASA signature!)
+        float innerSwirlPhase = angle + 3.2 * log(max(0.18, r)) - barAngle;
+        float innerSwirl = (0.5 + 0.5 * cos(innerSwirlPhase * 2.0)) * smoothstep(2.6, 0.35, r) * smoothstep(0.08, 0.32, r);
+        float barGranule = fbm2(bPos * 1.65 + vec2(1.7, -2.3));
+
+        // Darker slate-brown dust moat cradling both long flanks of the golden bar
+        float barMoat = exp(-pow((barShape - 1.12) / 0.28, 2.0)) * smoothstep(0.25, 0.85, abs(bScaled.y) / max(0.25, barShape));
+
+        // -----------------------------------------------------------------
+        // 2. Four Tightly-Wound Logarithmic Spiral Arms (pitch ~12.4°, k = 4.55)
+        //    Counter-clockwise outward from the bar ends (r0 = 3.15 kpc)
+        // -----------------------------------------------------------------
+        float r0 = 3.15;
+        float pitchK = 4.55;
+        float logR = log(max(1.35, r) / r0);
+
+        // Gentle organic domain warp so arms have natural spurs, kinks & feathers
+        vec2 warpCoord = vDiskPos * 0.24;
+        float angleWarp = (fbm2(warpCoord + vec2(3.1, -1.9)) - 0.5) * 0.26;
+        float fineCluster = fbm2(vDiskPos * 1.35 + vec2(-4.2, 2.8));
+        float microSparkle = fbm2(vDiskPos * 3.8 + vec2(8.1, -6.4));
+        float dustFilament = ridgedFbm(vDiskPos * 1.45 + vec2(2.4, 5.1));
+        float h2Field = fbm2(vDiskPos * 2.85 - vec2(6.3, 1.9));
+
+        float broadArm = 0.0;
+        float crispRidge = 0.0;
+        float dustLane = 0.0;
+        float h2Accum = 0.0;
+
+        float armOffsets[4];
+        armOffsets[0] = barAngle;                // Scutum-Centaurus (major)
+        armOffsets[1] = barAngle + 1.57;         // Sagittarius-Carina (secondary)
+        armOffsets[2] = barAngle + 3.14159265;   // Perseus (major)
+        armOffsets[3] = barAngle - 1.57;         // Norma-Outer (secondary)
+
         for (int i = 0; i < 4; i++) {
-          float armOffset = float(i) * 1.5707963;
-          float phase = angle - pitchK * logR + armOffset;
-          float s = 0.5 + 0.5 * cos(phase);
-          float armWeight = (i == 0 || i == 2) ? 1.0 : 0.74;
-          spiralAccum += pow(s, 5.0) * armWeight;
-          // Dark absorbing dust lane along the inner trailing edge of each arm
-          float dustPhase = phase + 0.24;
-          dustAccum += pow(0.5 + 0.5 * cos(dustPhase), 9.0) * armWeight;
+          float isMajor = (i == 0 || i == 2) ? 1.0 : 0.78;
+          // Secondary arms stay delicate in the innermost bar zone and pick up past 3.2 kpc
+          float armStartMask = (i == 0 || i == 2)
+            ? smoothstep(2.05, 3.45, r)
+            : smoothstep(2.75, 4.35, r);
+
+          // Phase wraps every 2*PI; arms wind counter-clockwise as r increases
+          float phase = angle + pitchK * logR - armOffsets[i] + angleWarp;
+          float c = 0.5 + 0.5 * cos(phase);
+
+          // Broad periwinkle-blue stellar spiral band
+          broadArm += pow(c, 3.2) * isMajor * armStartMask;
+
+          // Narrow glittering icy blue-white OB-star ridge with organic granulation
+          float ridge = pow(c, 15.0) * isMajor * armStartMask;
+          crispRidge += ridge * (0.48 + 0.92 * fineCluster) * (0.65 + 0.65 * microSparkle);
+
+          // Dark reddish-brown absorbing dust lane hugging the INNER CONCAVE side of each arm!
+          // For counter-clockwise outward winding, inner concave edge sits slightly behind in phase (-0.20 rad)
+          float dustC = 0.5 + 0.5 * cos(phase - 0.21);
+          float dustBand = pow(dustC, 18.0) * (0.55 + 0.85 * dustFilament) * armStartMask;
+          // Also delicate dark dust feathers trailing slightly outward
+          float featherC = 0.5 + 0.5 * cos(phase + 0.32 + fineCluster * 0.9);
+          float featherDust = pow(featherC, 12.0) * dustFilament * 0.28 * armStartMask;
+          dustLane += (dustBand + featherDust) * (0.72 + 0.28 * isMajor);
+
+          // Ruby-pink H-II star-forming nebular beads dotted right along the OB ridge
+          float h2Noise = smoothstep(0.60, 0.83, h2Field * 0.62 + microSparkle * 0.45);
+          h2Accum += pow(c, 19.0) * h2Noise * isMajor * armStartMask;
         }
 
-        // Subtle Orion-Cygnus local spur near Solar Circle (r ≈ 8.2 kpc)
-        float orionMask = exp(-pow((r - 8.2) / 1.4, 2.0)) * smoothstep(0.2, 0.9, cos(angle - 3.05));
-        spiralAccum += orionMask * 0.35;
+        // -----------------------------------------------------------------
+        // 3. Orion-Cygnus Local Spur passing through Solar System (-8.178, 0) kpc
+        // -----------------------------------------------------------------
+        float orionPhase = angle + pitchK * log(max(4.0, r) / 8.18) - 3.14159265 + angleWarp * 0.6;
+        float orionRadial = exp(-pow((r - 8.18) / 1.45, 2.0));
+        float orionArc = pow(0.5 + 0.5 * cos(orionPhase), 12.0) * orionRadial * smoothstep(-0.2, 0.75, -cos(angle));
+        broadArm += orionArc * 0.45;
+        crispRidge += orionArc * (0.6 + 0.7 * fineCluster) * 0.62;
+        h2Accum += orionArc * smoothstep(0.62, 0.84, h2Field) * 0.55;
 
-        // Radial exponential thin disk + smooth outer fade
-        float radialEnv = smoothstep(1.8, 4.4, r) * exp(-max(0.0, r - 3.5) / 6.2) * smoothstep(17.8, 13.0, r);
-        float clumping = 0.65 + 0.75 * fbm2(vDiskPos * 0.42 + vec2(3.1, -1.7));
-        float fineDust = fbm2(vDiskPos * 1.15 - vec2(1.4, 5.2));
+        // Faint outer trailing stellar arc on the far right/outer periphery (r ~ 15.5-18.5 kpc)
+        float outerArcPhase = angle + pitchK * log(max(6.0, r) / r0) - (barAngle - 1.57) + angleWarp;
+        float outerArc = pow(0.5 + 0.5 * cos(outerArcPhase), 14.0) * exp(-pow((r - 16.4) / 1.9, 2.0)) * (0.45 + 0.75 * fineCluster);
 
-        // Attenuate luminosity inside dark interstellar dust lanes
-        float dustAbsorption = clamp(1.0 - dustAccum * radialEnv * fineDust * 0.52, 0.35, 1.0);
+        // -----------------------------------------------------------------
+        // 4. Smooth Radial Envelopes & NASA R. Hurt Color Synthesis
+        // -----------------------------------------------------------------
+        float diskBase = exp(-r / 7.2) * smoothstep(21.2, 11.2, r);
+        float armRadialEnv = smoothstep(2.1, 4.2, r) * exp(-max(0.0, r - 3.6) / 8.2) * smoothstep(20.6, 12.0, r);
+        float dustRadialEnv = smoothstep(2.2, 4.5, r) * smoothstep(18.5, 10.5, r);
 
-        vec3 coreColor = vec3(1.0, 0.84, 0.62);
-        vec3 armBlueWhite = vec3(0.56, 0.74, 1.0);
-        vec3 h2Pink = vec3(0.95, 0.42, 0.56);
+        // NASA R. Hurt palette
+        vec3 deepSlateDisk = vec3(0.18, 0.22, 0.34);     // Outer indigo-slate stellar disk
+        vec3 periwinkleArm = vec3(0.46, 0.54, 0.74);     // Broad dusty blue-lavender spiral arm
+        vec3 obBlueWhite   = vec3(0.84, 0.91, 1.00);     // Crisp icy blue-white OB clusters
+        vec3 barCreamCore  = vec3(1.00, 0.95, 0.76);     // Creamy butter-gold galactic nucleus
+        vec3 barWarmGold   = vec3(0.86, 0.72, 0.46);     // Warm golden-amber bar body
+        vec3 dustRustUmber = vec3(0.24, 0.12, 0.08);     // Dark reddish-brown absorbing dust lanes
+        vec3 h2RubyPink    = vec3(1.00, 0.38, 0.58);     // Glowing H-alpha magenta-pink H-II knots
 
-        float armIntensity = spiralAccum * radialEnv * clumping * 0.48;
-        float h2Knots = smoothstep(0.66, 0.88, fineDust) * armIntensity * 0.45;
+        // Build continuous stellar disk + spiral arms
+        vec3 diskCol = deepSlateDisk * (0.58 + 0.48 * fineCluster) * diskBase;
+        diskCol += periwinkleArm * clamp(broadArm, 0.0, 1.45) * armRadialEnv * (0.72 + 0.38 * fineCluster) * 0.74;
+        diskCol += obBlueWhite * clamp(crispRidge, 0.0, 1.6) * armRadialEnv * 0.85;
+        diskCol += obBlueWhite * outerArc * 0.42 * smoothstep(20.8, 15.5, r);
 
-        vec3 color =
-          coreColor * (bulgeGlow + barGlow) +
-          armBlueWhite * armIntensity * dustAbsorption +
-          h2Pink * h2Knots;
+        // Darken & tint with reddish-brown interstellar dust lanes (authentic light absorption!)
+        float dustMask = clamp(dustLane * dustRadialEnv * 0.72 + barMoat * (0.38 + 0.45 * dustFilament), 0.0, 0.84);
+        diskCol = mix(diskCol, dustRustUmber * (0.35 + 0.65 * diskBase), dustMask);
 
-        float alpha = clamp((bulgeGlow * 0.55 + barGlow * 0.45 + armIntensity * 0.68) * uOpacity, 0.0, 0.92);
-        gl_FragColor = vec4(color * uOpacity, alpha);
+        // Blend creamy-gold elliptical Galactic Bar smoothly over center (zero donut hole!)
+        float barAlpha = clamp(barBody * 0.92 + barCore * 0.45, 0.0, 1.0);
+        vec3 barCol = mix(barWarmGold, barCreamCore, clamp(barCore * 0.75 + nuclearPeak * 0.55 + innerSwirl * 0.14, 0.0, 1.0));
+        barCol *= (0.90 + 0.14 * barGranule - 0.10 * innerSwirl * (1.0 - nuclearPeak));
+        // Subtle warm dust curls grazing the very edges of the bar
+        float barEdgeDust = smoothstep(0.55, 1.05, barShape) * dustFilament * 0.22;
+        barCol = mix(barCol, dustRustUmber * 1.15, barEdgeDust);
+
+        vec3 finalCol = mix(diskCol, barCol, smoothstep(0.06, 0.82, barAlpha));
+        // Add luminous golden core glow + bright ruby-pink H-II knots sitting above dust
+        finalCol += barCreamCore * nuclearPeak * 0.32;
+        finalCol += h2RubyPink * clamp(h2Accum, 0.0, 1.4) * armRadialEnv * 1.05;
+
+        // Soft filmic shoulder so nothing ever clips to harsh flat #ffffff
+        finalCol = finalCol / (vec3(1.0) + finalCol * 0.28);
+
+        // Smooth radial alpha that melts seamlessly into pure black intergalactic space
+        float lumAlpha = clamp(
+          diskBase * 0.92 +
+          broadArm * armRadialEnv * 0.65 +
+          crispRidge * armRadialEnv * 0.55 +
+          outerArc * 0.45 +
+          barBody * 0.98,
+          0.0,
+          0.98
+        );
+        float alpha = lumAlpha * smoothstep(21.2, 13.8, r) * uOpacity;
+
+        gl_FragColor = vec4(finalCol, alpha);
         #include <logdepthbuf_fragment>
       }
     `,

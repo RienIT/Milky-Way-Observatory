@@ -14,6 +14,7 @@ import {
 import {
   computeSolarSystemEphemeris,
   computeSunDirectionFromBody,
+  eclipticJ2000ToGalactic,
   sampleOrbitCurveHelioM,
   SolarSystemEphemerisSnapshot,
   SUN_GALACTOCENTRIC_THREE_M,
@@ -42,7 +43,7 @@ import { GraphicsSettings } from '@/lib/graphics-settings';
 import { LanguageCode } from '@/lib/i18n';
 import { BLACK_HOLE_DISK_ROLL } from '@/lib/memory-logic';
 import { ConstellationLink, MemoryNode } from '@/lib/memory-types';
-import { generateMilkyWayStarfield } from '@/lib/milky-way';
+import { generateNasaMilkyWayKpcStarfield } from '@/lib/milky-way';
 import {
   AnchorFrameId,
   AnchorOriginsM,
@@ -53,6 +54,7 @@ import {
   computeScaleBar,
   computeScaleLayerWeights,
   formatDistanceAuto,
+  galacticToThreeUp,
   interpolateLogDistance,
   lengthVec3d,
   MAX_UNIVERSE_RADIUS_M,
@@ -664,9 +666,6 @@ export default function UniverseCanvas({
     });
     renderer.autoClear = false;
     renderer.setSize(width, height);
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio || 1, graphicsRef.current.resolutionScale)
-    );
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
     container.appendChild(renderer.domElement);
@@ -686,6 +685,29 @@ export default function UniverseCanvas({
     } catch {
       // ignore
     }
+
+    const computeTargetPixelRatio = (gs: GraphicsSettings, adaptFactor = 1.0): number => {
+      if (isSoftwareGl) {
+        return Math.max(0.5, Math.min(1.0, gs.resolutionScale));
+      }
+      // Allow real 1.25x / 1.5x (RTX 3050-4050) / 2.0x (Ultra) supersampling even on 1080p monitors!
+      const desired = Math.max(0.5, Math.min(2.0, gs.resolutionScale));
+      return Math.max(0.5, desired * adaptFactor);
+    };
+
+    const computeLensingTargetDims = (w: number, h: number, gs: GraphicsSettings) => {
+      const mult = isSoftwareGl
+        ? 0.65
+        : gs.resolutionScale >= 1.5 || gs.blackHoleRaySteps >= 96
+          ? Math.min(1.5, gs.resolutionScale)
+          : 0.75;
+      return {
+        lw: Math.max(256, Math.min(2560, Math.round(w * mult))),
+        lh: Math.max(256, Math.min(1600, Math.round(h * mult))),
+      };
+    };
+
+    renderer.setPixelRatio(computeTargetPixelRatio(graphicsRef.current, 1.0));
 
     // Shared perspective camera updated per pass with tight near/far clip planes
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.01, 1e6);
@@ -707,37 +729,44 @@ export default function UniverseCanvas({
     const skyDomeMesh = new THREE.Mesh(skyDomeGeo, skyDomeMat);
     extragalacticScene.add(skyDomeMesh);
 
-    // Background distant starfield shell (all-sky celestial sphere)
-    const bgStarCount = Math.min(18000, Math.max(4000, Math.round(graphicsRef.current.starfieldCount * 0.35)));
-    const bgPos = new Float32Array(bgStarCount * 3);
-    const bgCol = new Float32Array(bgStarCount * 3);
-    const bgSize = new Float32Array(bgStarCount);
-    const bgPhase = new Float32Array(bgStarCount);
-    let seed = 4219;
-    const nextRnd = () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 4294967296;
+    const buildBgStarsGeometry = (count: number): THREE.BufferGeometry => {
+      const bgPos = new Float32Array(count * 3);
+      const bgCol = new Float32Array(count * 3);
+      const bgSize = new Float32Array(count);
+      const bgPhase = new Float32Array(count);
+      let seed = 4219;
+      const nextRnd = () => {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+      for (let i = 0; i < count; i += 1) {
+        const u = nextRnd() * 2 - 1;
+        const theta = nextRnd() * Math.PI * 2;
+        const r = 2200;
+        const s = Math.sqrt(Math.max(0, 1 - u * u));
+        bgPos[i * 3 + 0] = r * s * Math.cos(theta);
+        bgPos[i * 3 + 1] = r * u;
+        bgPos[i * 3 + 2] = r * s * Math.sin(theta);
+        const tint = nextRnd();
+        bgCol[i * 3 + 0] = tint < 0.3 ? 0.78 : 1.0;
+        bgCol[i * 3 + 1] = tint < 0.3 ? 0.88 : tint < 0.7 ? 0.96 : 0.85;
+        bgCol[i * 3 + 2] = tint < 0.7 ? 1.0 : 0.72;
+        bgSize[i] = 0.7 + Math.pow(nextRnd(), 3.2) * 2.4;
+        bgPhase[i] = nextRnd() * Math.PI * 2;
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
+      g.setAttribute('aColor', new THREE.BufferAttribute(bgCol, 3));
+      g.setAttribute('aSize', new THREE.BufferAttribute(bgSize, 1));
+      g.setAttribute('aPhase', new THREE.BufferAttribute(bgPhase, 1));
+      return g;
     };
-    for (let i = 0; i < bgStarCount; i += 1) {
-      const u = nextRnd() * 2 - 1;
-      const theta = nextRnd() * Math.PI * 2;
-      const r = 2200;
-      const s = Math.sqrt(Math.max(0, 1 - u * u));
-      bgPos[i * 3 + 0] = r * s * Math.cos(theta);
-      bgPos[i * 3 + 1] = r * u;
-      bgPos[i * 3 + 2] = r * s * Math.sin(theta);
-      const tint = nextRnd();
-      bgCol[i * 3 + 0] = tint < 0.3 ? 0.78 : 1.0;
-      bgCol[i * 3 + 1] = tint < 0.3 ? 0.88 : tint < 0.7 ? 0.96 : 0.85;
-      bgCol[i * 3 + 2] = tint < 0.7 ? 1.0 : 0.72;
-      bgSize[i] = 0.7 + Math.pow(nextRnd(), 3.2) * 2.4;
-      bgPhase[i] = nextRnd() * Math.PI * 2;
-    }
-    const bgGeo = track(new THREE.BufferGeometry());
-    bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
-    bgGeo.setAttribute('aColor', new THREE.BufferAttribute(bgCol, 3));
-    bgGeo.setAttribute('aSize', new THREE.BufferAttribute(bgSize, 1));
-    bgGeo.setAttribute('aPhase', new THREE.BufferAttribute(bgPhase, 1));
+
+    // Background distant starfield shell (all-sky celestial sphere; scales up to 36k on RTX/Ultra)
+    let activeBgStarCount = isSoftwareGl
+      ? 6000
+      : Math.min(36000, Math.max(4000, Math.round(graphicsRef.current.starfieldCount * 0.3)));
+    let bgGeo = buildBgStarsGeometry(activeBgStarCount);
     const bgMat = track(createBackgroundStarfieldMaterial());
     const bgStarsPoints = new THREE.Points(bgGeo, bgMat);
     extragalacticScene.add(bgStarsPoints);
@@ -779,28 +808,36 @@ export default function UniverseCanvas({
     const galacticRoot = new THREE.Group();
     galacticScene.add(galacticRoot);
 
-    // Continuous double-sided parametric Milky Way spiral disk + dust lanes (illustrative: true)
-    const mwDiskGeo = track(new THREE.PlaneGeometry(36, 36, 1, 1));
+    // Continuous double-sided NASA/JPL-Caltech (R. Hurt) barred-spiral disk + absorbing dust lanes (illustrative: true)
+    const mwDiskGeo = track(new THREE.PlaneGeometry(44, 44, 1, 1));
     mwDiskGeo.rotateX(-Math.PI / 2);
     const mwDiskMat = track(createMilkyWayParametricDiskMaterial());
     const mwDiskMesh = new THREE.Mesh(mwDiskGeo, mwDiskMat);
+    mwDiskMesh.renderOrder = 1;
     galacticRoot.add(mwDiskMesh);
 
-    // Volumetric Milky Way starfield scaled into exact kpc (MW radius ~15.5 kpc)
-    const mwStarBudget = isSoftwareGl
+    const buildMilkyWayStarsGeometry = (budget: number): THREE.BufferGeometry => {
+      const mwRaw = generateNasaMilkyWayKpcStarfield(budget);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(mwRaw.positions, 3));
+      g.setAttribute('aColor', new THREE.BufferAttribute(mwRaw.colors, 3));
+      g.setAttribute('aSize', new THREE.BufferAttribute(mwRaw.sizes, 1));
+      g.setAttribute('aPhase', new THREE.BufferAttribute(mwRaw.phases, 1));
+      return g;
+    };
+
+    const computeMwDensityScale = (count: number) =>
+      Math.max(0.28, Math.min(0.82, Math.sqrt(11000 / Math.max(6000, count)) * 0.72));
+
+    // Volumetric Milky Way starfield in exact kpc aligned 1:1 with NASA's barred-spiral disk (up to 120k RTX / 140k Ultra)
+    let activeMwStarCount = isSoftwareGl
       ? 12000
-      : Math.min(48000, Math.max(12000, Math.round(graphicsRef.current.starfieldCount * 0.85)));
-    const mwRaw = generateMilkyWayStarfield(mwStarBudget);
-    const mwScaleToKpc = 15.5 / 118.0; // Map existing 118-unit Milky Way disk -> exact 15.5 kpc!
-    for (let i = 0; i < mwRaw.positions.length; i += 1) {
-      mwRaw.positions[i] *= mwScaleToKpc;
-    }
-    const mwStarsGeo = track(new THREE.BufferGeometry());
-    mwStarsGeo.setAttribute('position', new THREE.BufferAttribute(mwRaw.positions, 3));
-    mwStarsGeo.setAttribute('aColor', new THREE.BufferAttribute(mwRaw.colors, 3));
-    mwStarsGeo.setAttribute('aSize', new THREE.BufferAttribute(mwRaw.sizes, 1));
+      : Math.min(140000, Math.max(6000, graphicsRef.current.starfieldCount));
+    let mwStarsGeo = buildMilkyWayStarsGeometry(activeMwStarCount);
     const mwStarsMat = track(createMilkyWayStarfieldMaterial());
+    mwStarsMat.uniforms.uDensityScale.value = computeMwDensityScale(activeMwStarCount);
     const mwStarsPoints = new THREE.Points(mwStarsGeo, mwStarsMat);
+    mwStarsPoints.renderOrder = 2;
     galacticRoot.add(mwStarsPoints);
 
     // Galactic Polar Grid (kpc concentric rings around Sgr A*, toggleable)
@@ -1107,8 +1144,14 @@ export default function UniverseCanvas({
     // PASS 4A: Planetary / Solar System Scene (1 unit = 1,000 km = 1e6 m)
     // =========================================================================
     const planetaryScene = new THREE.Scene();
-    const segs = isSoftwareGl ? 32 : Math.max(36, graphicsRef.current.planetSegments);
-    const unitSphereGeo = track(new THREE.SphereGeometry(1, segs, Math.round(segs * 0.75)));
+    let activePlanetSegs = isSoftwareGl
+      ? 32
+      : Math.max(20, graphicsRef.current.planetSegments);
+    let unitSphereGeo = new THREE.SphereGeometry(
+      1,
+      activePlanetSegs,
+      Math.round(activePlanetSegs * 0.75)
+    );
 
     interface PlanetMeshEntry {
       id: string;
@@ -1122,6 +1165,8 @@ export default function UniverseCanvas({
       atmoMat?: THREE.ShaderMaterial;
       ringMesh?: THREE.Mesh;
       ringMat?: THREE.ShaderMaterial;
+      ringInner?: number;
+      ringOuter?: number;
     }
 
     const planetEntries = new Map<string, PlanetMeshEntry>();
@@ -1169,7 +1214,8 @@ export default function UniverseCanvas({
       let ringMesh: THREE.Mesh | undefined;
       let ringMat: THREE.ShaderMaterial | undefined;
       if (vis.hasRings && vis.ringInner && vis.ringOuter && vis.ringColor) {
-        const ringGeo = track(new THREE.RingGeometry(vis.ringInner, vis.ringOuter, 96));
+        const ringSegs = activePlanetSegs >= 80 ? 160 : 96;
+        const ringGeo = new THREE.RingGeometry(vis.ringInner, vis.ringOuter, ringSegs);
         ringGeo.rotateX(-Math.PI / 2);
         ringMat = track(
           createPlanetRingMaterial(
@@ -1195,8 +1241,115 @@ export default function UniverseCanvas({
         atmoMat,
         ringMesh,
         ringMat,
+        ringInner: vis.ringInner,
+        ringOuter: vis.ringOuter,
       });
     }
+
+    // Real Ecliptic Main Asteroid Belt (2.18-3.26 AU) & Kuiper Belt (30.5-48.0 AU)
+    const buildSolarBeltGeometry = (totalCount: number): THREE.BufferGeometry => {
+      const g = new THREE.BufferGeometry();
+      if (totalCount <= 0) {
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+        g.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array(0), 3));
+        g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(0), 1));
+        return g;
+      }
+      const pos = new Float32Array(totalCount * 3);
+      const col = new Float32Array(totalCount * 3);
+      const size = new Float32Array(totalCount);
+      const unitsPerAu = AU_IN_METERS / SCALE_LAYERS.planetary.metersPerUnit;
+      const mainCount = Math.round(totalCount * 0.58);
+      let s = 918273;
+      const rnd = () => {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+      for (let i = 0; i < totalCount; i += 1) {
+        const isMain = i < mainCount;
+        const rAu = isMain
+          ? 2.18 + Math.pow(rnd(), 0.92) * 1.08
+          : 30.5 + Math.pow(rnd(), 1.15) * 17.5;
+        const theta = rnd() * Math.PI * 2;
+        const inclSpan = isMain ? 0.14 : 0.24;
+        const zAu = (rnd() + rnd() - 1.0) * rAu * inclSpan;
+        const eclAu: Vec3d = [rAu * Math.cos(theta), rAu * Math.sin(theta), zAu];
+        const threeAu = galacticToThreeUp(eclipticJ2000ToGalactic(eclAu));
+        pos[i * 3 + 0] = threeAu[0] * unitsPerAu;
+        pos[i * 3 + 1] = threeAu[1] * unitsPerAu;
+        pos[i * 3 + 2] = threeAu[2] * unitsPerAu;
+
+        if (isMain) {
+          // Rocky silicate & carbonaceous chondrite tints
+          const t = rnd();
+          col[i * 3 + 0] = 0.72 + t * 0.20;
+          col[i * 3 + 1] = 0.65 + t * 0.17;
+          col[i * 3 + 2] = 0.56 + t * 0.14;
+          size[i] = 1.05 + Math.pow(rnd(), 2.8) * 2.1;
+        } else {
+          // Icy Trans-Neptunian / Kuiper Belt objects
+          const t = rnd();
+          col[i * 3 + 0] = 0.64 + t * 0.18;
+          col[i * 3 + 1] = 0.74 + t * 0.16;
+          col[i * 3 + 2] = 0.88 + t * 0.12;
+          size[i] = 1.15 + Math.pow(rnd(), 2.5) * 2.2;
+        }
+      }
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+      g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+      return g;
+    };
+
+    let activeBeltCount = isSoftwareGl
+      ? Math.min(2000, graphicsRef.current.asteroidBeltCount)
+      : graphicsRef.current.asteroidBeltCount;
+    let solarBeltGeo = buildSolarBeltGeometry(activeBeltCount);
+    const solarBeltMat = track(
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+          uOpacity: { value: 0.72 },
+        },
+        vertexShader: `
+          #include <common>
+          #include <logdepthbuf_pars_vertex>
+          attribute float aSize;
+          attribute vec3 aColor;
+          uniform float uPixelRatio;
+          varying vec3 vColor;
+          void main() {
+            vColor = aColor;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            float dist = max(1000.0, -mvPosition.z);
+            gl_PointSize = clamp(aSize * uPixelRatio * (18.0 / pow(dist * 0.00001, 0.24)), 1.0, 4.2);
+            gl_Position = projectionMatrix * mvPosition;
+            #include <logdepthbuf_vertex>
+          }
+        `,
+        fragmentShader: `
+          precision highp float;
+          #include <common>
+          #include <logdepthbuf_pars_fragment>
+          uniform float uOpacity;
+          varying vec3 vColor;
+          void main() {
+            vec2 uv = gl_PointCoord * 2.0 - 1.0;
+            float r = length(uv);
+            if (r > 1.0 || uOpacity <= 0.005) discard;
+            float core = exp(-r * r * 5.2);
+            float a = clamp(core * uOpacity, 0.0, 0.9);
+            gl_FragColor = vec4(vColor * a, a);
+            #include <logdepthbuf_fragment>
+          }
+        `,
+      })
+    );
+    const solarBeltPoints = new THREE.Points(solarBeltGeo, solarBeltMat);
+    planetaryScene.add(solarBeltPoints);
 
     // Radiant Volumetric Solar Corona & Halo Billboard around the Sun
     const solarCoronaGeo = track(new THREE.PlaneGeometry(1, 1));
@@ -1218,7 +1371,7 @@ export default function UniverseCanvas({
 
     const initialDate = new Date(simDateMsRef.current);
     for (const id of ORBIT_CURVE_BODY_IDS) {
-      const ptsM = sampleOrbitCurveHelioM(id, initialDate, 96);
+      const ptsM = sampleOrbitCurveHelioM(id, initialDate, 128);
       const positions = new Float32Array(ptsM.length * 3);
       const geo = track(new THREE.BufferGeometry());
       geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -1260,16 +1413,13 @@ export default function UniverseCanvas({
     volumetricBhMesh.renderOrder = 6;
     blackHoleScene.add(volumetricBhMesh);
 
+    const initLensDims = computeLensingTargetDims(width, height, graphicsRef.current);
     const lensingTarget = track(
-      new THREE.WebGLRenderTarget(
-        Math.max(256, Math.round(width * 0.75)),
-        Math.max(256, Math.round(height * 0.75)),
-        {
-          minFilter: THREE.LinearFilter,
-          magFilter: THREE.LinearFilter,
-          type: THREE.UnsignedByteType,
-        }
-      )
+      new THREE.WebGLRenderTarget(initLensDims.lw, initLensDims.lh, {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        type: THREE.UnsignedByteType,
+      })
     );
 
     // =========================================================================
@@ -1542,10 +1692,8 @@ export default function UniverseCanvas({
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
-      lensingTarget.setSize(
-        Math.max(256, Math.round(w * 0.75)),
-        Math.max(256, Math.round(h * 0.75))
-      );
+      const ld = computeLensingTargetDims(w, h, graphicsRef.current);
+      lensingTarget.setSize(ld.lw, ld.lh);
       volumetricBhMat.uniforms.uResolution.value.set(
         renderer.domElement.width || w,
         renderer.domElement.height || h
@@ -1676,6 +1824,7 @@ export default function UniverseCanvas({
     let lastHudSyncMs = 0;
     let lastEphemerisMs = 0;
     let adaptiveResFactor = 1.0;
+    let lastAppliedGfxSig = '';
     const fpsSamples: number[] = [];
 
     function afterDraw(cb: (ts: number) => void) {
@@ -1719,18 +1868,122 @@ export default function UniverseCanvas({
       const avgFps = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
       camCtrlRef.current.fps = Math.round(avgFps);
 
+      // Live graphics preset/settings synchronization (instant SSAA, tessellation, star/belt density, detail boost)
+      const activeGs = graphicsRef.current;
+      const nextGfxSig = `${activeGs.tier}|${activeGs.resolutionScale}|${activeGs.starfieldCount}|${activeGs.asteroidBeltCount}|${activeGs.planetSegments}|${activeGs.blackHoleRaySteps}|${activeGs.showAtmosphereAndNebulae}`;
+      if (nextGfxSig !== lastAppliedGfxSig) {
+        lastAppliedGfxSig = nextGfxSig;
+        adaptiveResFactor = 1.0;
+
+        // 1. Live render pixel ratio (1.5x SSAA on RTX 3050-4050, 2.0x on Ultra)
+        renderer.setPixelRatio(computeTargetPixelRatio(activeGs, 1.0));
+        const cw = container?.clientWidth || width;
+        const ch = container?.clientHeight || height;
+        const ld = computeLensingTargetDims(cw, ch, activeGs);
+        lensingTarget.setSize(ld.lw, ld.lh);
+
+        // 2. Live planet sphere & planetary ring tessellation upgrade
+        const nextSegs = isSoftwareGl ? 32 : Math.max(20, activeGs.planetSegments);
+        if (nextSegs !== activePlanetSegs) {
+          const prevSphere = unitSphereGeo;
+          activePlanetSegs = nextSegs;
+          unitSphereGeo = new THREE.SphereGeometry(
+            1,
+            activePlanetSegs,
+            Math.round(activePlanetSegs * 0.75)
+          );
+          const nextRingSegs = activePlanetSegs >= 80 ? 160 : 96;
+          for (const entry of planetEntries.values()) {
+            entry.mesh.geometry = unitSphereGeo;
+            if (entry.cloudMesh) entry.cloudMesh.geometry = unitSphereGeo;
+            if (entry.atmoMesh) entry.atmoMesh.geometry = unitSphereGeo;
+            if (entry.ringMesh && entry.ringInner && entry.ringOuter) {
+              const oldRing = entry.ringMesh.geometry;
+              const newRing = new THREE.RingGeometry(
+                entry.ringInner,
+                entry.ringOuter,
+                nextRingSegs
+              );
+              newRing.rotateX(-Math.PI / 2);
+              entry.ringMesh.geometry = newRing;
+              oldRing.dispose();
+            }
+          }
+          prevSphere.dispose();
+        }
+
+        // 3. Live Milky Way & deep-sky starfield density rebuild
+        const nextMwStars = isSoftwareGl
+          ? 12000
+          : Math.min(140000, Math.max(6000, activeGs.starfieldCount));
+        if (nextMwStars !== activeMwStarCount) {
+          const prevMw = mwStarsGeo;
+          activeMwStarCount = nextMwStars;
+          mwStarsGeo = buildMilkyWayStarsGeometry(activeMwStarCount);
+          mwStarsPoints.geometry = mwStarsGeo;
+          mwStarsMat.uniforms.uDensityScale.value = computeMwDensityScale(activeMwStarCount);
+          prevMw.dispose();
+        }
+
+        const nextBgStars = isSoftwareGl
+          ? 6000
+          : Math.min(36000, Math.max(4000, Math.round(activeGs.starfieldCount * 0.3)));
+        if (nextBgStars !== activeBgStarCount) {
+          const prevBg = bgGeo;
+          activeBgStarCount = nextBgStars;
+          bgGeo = buildBgStarsGeometry(activeBgStarCount);
+          bgStarsPoints.geometry = bgGeo;
+          prevBg.dispose();
+        }
+
+        // 4. Live Solar System Main Asteroid Belt & Kuiper Belt rebuild
+        const nextBeltCount = isSoftwareGl
+          ? Math.min(2000, activeGs.asteroidBeltCount)
+          : activeGs.asteroidBeltCount;
+        if (nextBeltCount !== activeBeltCount) {
+          const prevBelt = solarBeltGeo;
+          activeBeltCount = nextBeltCount;
+          solarBeltGeo = buildSolarBeltGeometry(activeBeltCount);
+          solarBeltPoints.geometry = solarBeltGeo;
+          prevBelt.dispose();
+        }
+
+        // 5. Shader micro-relief boost (Earth alpine relief, crisp clouds, planet eddies/craters)
+        const detailBoost = isSoftwareGl
+          ? 0.25
+          : activeGs.tier === 'rtx' ||
+              activeGs.tier === 'ultra' ||
+              activeGs.planetSegments >= 80
+            ? 1.0
+            : activeGs.tier === 'high'
+              ? 0.55
+              : 0.0;
+        for (const entry of planetEntries.values()) {
+          if (entry.mat.uniforms.uDetailBoost) {
+            entry.mat.uniforms.uDetailBoost.value = detailBoost;
+          }
+          if (entry.cloudMat?.uniforms.uDetailBoost) {
+            entry.cloudMat.uniforms.uDetailBoost.value = detailBoost;
+          }
+          if (entry.cloudMesh) {
+            entry.cloudMesh.visible = activeGs.showAtmosphereAndNebulae;
+          }
+          if (entry.atmoMesh && entry.id !== 'sun') {
+            entry.atmoMesh.visible = activeGs.showAtmosphereAndNebulae;
+          }
+        }
+      }
+
       if (!isSoftwareGl && fpsSamples.length >= 25) {
         if (avgFps < 28 && adaptiveResFactor > 0.65) {
           adaptiveResFactor = Math.max(0.65, adaptiveResFactor - 0.05);
           renderer.setPixelRatio(
-            Math.min(window.devicePixelRatio || 1, graphicsRef.current.resolutionScale) *
-              adaptiveResFactor
+            computeTargetPixelRatio(graphicsRef.current, adaptiveResFactor)
           );
         } else if (avgFps > 54 && adaptiveResFactor < 1.0) {
           adaptiveResFactor = Math.min(1.0, adaptiveResFactor + 0.02);
           renderer.setPixelRatio(
-            Math.min(window.devicePixelRatio || 1, graphicsRef.current.resolutionScale) *
-              adaptiveResFactor
+            computeTargetPixelRatio(graphicsRef.current, adaptiveResFactor)
           );
         }
       }
@@ -1999,17 +2252,18 @@ export default function UniverseCanvas({
           0,
           Math.min(1, (distToSgrAKpc - 0.35) / 2.85)
         );
-        mwDiskMat.uniforms.uOpacity.value = mwOpacity * 0.88 * bulgeProximityFade;
+        const nebulaFactor = graphicsRef.current.showAtmosphereAndNebulae ? 1.0 : 0.18;
+        mwDiskMat.uniforms.uOpacity.value = mwOpacity * 0.96 * bulgeProximityFade * nebulaFactor;
         mwDiskMat.uniforms.uTime.value = elapsedSec;
 
         // Keep Milky Way stars visible inside the Galactic Bulge even at 184 pc!
         const starFloor = insideMilkyWay ? 0.52 : 0;
-        mwStarsMat.uniforms.uOpacity.value = Math.max(mwOpacity * 0.95, starFloor);
+        mwStarsMat.uniforms.uOpacity.value = Math.max(mwOpacity * 0.86, starFloor);
         mwStarsMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
 
         galacticGridGroup.visible = showGridRef.current && weights.galactic > 0.12;
 
-        // Far galactic nucleus glow (only above ~2.5 kpc; handed off to gcClusterScene below 3 kpc)
+        // Subtle warm galactic nucleus glint (mwDiskMat already renders the creamy-gold NASA bar & core!)
         const farCoreFade = Math.max(0, Math.min(1, (distToSgrAKpc - 1.8) / 2.2));
         sgrACoreBillboard.visible = !nearSgrACloseup && mwOpacity > 0.05 && farCoreFade > 0.01;
         sgrACoreBillboard.lookAt(
@@ -2017,7 +2271,7 @@ export default function UniverseCanvas({
           camGalacticM[1] / KILOPARSEC_METERS,
           camGalacticM[2] / KILOPARSEC_METERS
         );
-        sgrACoreMat.uniforms.uOpacity.value = mwOpacity * 0.55 * farCoreFade;
+        sgrACoreMat.uniforms.uOpacity.value = mwOpacity * 0.24 * farCoreFade;
         sgrACoreMat.uniforms.uCloseFactor.value = 0.0;
         sgrACoreMat.uniforms.uTime.value = elapsedSec;
 
@@ -2197,6 +2451,14 @@ export default function UniverseCanvas({
             entry.ringMat.uniforms.uPlanetRadius.value = radiusUnits;
             entry.ringMat.uniforms.uLightPos.value.set(sunGpuX, sunGpuY, sunGpuZ);
           }
+        }
+
+        // Position Main Asteroid Belt & Kuiper Belt around the Sun in true J2000 Ecliptic plane
+        solarBeltPoints.visible = activeBeltCount > 0 && weights.planetary > 0.02;
+        if (solarBeltPoints.visible) {
+          solarBeltPoints.position.set(sunGpuX, sunGpuY, sunGpuZ);
+          solarBeltMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+          solarBeltMat.uniforms.uOpacity.value = Math.min(0.85, weights.planetary * 0.82);
         }
 
         // Update real ephemeris orbit curves relative to floating-origin camera
@@ -2570,6 +2832,17 @@ export default function UniverseCanvas({
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
 
+      try {
+        unitSphereGeo.dispose();
+        mwStarsGeo.dispose();
+        bgGeo.dispose();
+        solarBeltGeo.dispose();
+        for (const entry of planetEntries.values()) {
+          entry.ringMesh?.geometry.dispose();
+        }
+      } catch {
+        // ignore
+      }
       for (const d of disposables) {
         try {
           d.dispose();

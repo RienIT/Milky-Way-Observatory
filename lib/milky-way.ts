@@ -474,3 +474,203 @@ export function generateMilkyWayNebulae(
 
   return { positions, colors, sizes, phases, count: totalClouds };
 }
+
+/**
+ * Generates a 3D volumetric Milky Way starfield directly in kiloparsecs (kpc) aligned 1:1
+ * with NASA/JPL-Caltech (R. Hurt / Spitzer GLIMPSE / Reid et al. 2019) barred-spiral morphology:
+ * - Full creamy-gold triaxial central Galactic Bar (r = 0..4.4 kpc, tilted -54° in XZ; ZERO hollow center hole)
+ * - 4 tightly-wound logarithmic spiral arms (Scutum-Centaurus, Perseus, Sagittarius-Carina, Norma-Outer)
+ *   winding counter-clockwise outward (pitch ~12.4°, k = 4.55) with crisp OB blue-white ridges & pink H-II knots
+ * - Orion-Cygnus Local Spur passing through the Solar System at (-8.178, 0.02, 0) kpc
+ * - Smooth exponential outer disk & stellar halo fading organically to 19.5 kpc (ZERO hard circular edge)
+ */
+export function generateNasaMilkyWayKpcStarfield(
+  totalStars = 20000,
+  seed = 20220512
+): MilkyWayParticleData {
+  const rng = createSeededRng(seed);
+  const positions = new Float32Array(totalStars * 3);
+  const colors = new Float32Array(totalStars * 3);
+  const sizes = new Float32Array(totalStars);
+  const phases = new Float32Array(totalStars);
+
+  // Shared NASA R. Hurt geometry constants (synchronized with createMilkyWayParametricDiskMaterial)
+  const barAngle = -0.95; // -54.4° in Three.js XZ (top-right to bottom-left diagonal)
+  const cosBar = Math.cos(barAngle);
+  const sinBar = Math.sin(barAngle);
+  const r0 = 3.15; // kpc bar-tip launch radius
+  const pitchK = 4.55; // cot(12.4°)
+
+  const armDefs = [
+    { startAngle: barAngle, isMajor: true, share: 0.275, maxR: 17.5, widthBase: 0.42 }, // Scutum-Centaurus
+    { startAngle: barAngle + Math.PI, isMajor: true, share: 0.275, maxR: 18.0, widthBase: 0.42 }, // Perseus
+    { startAngle: barAngle + 1.57, isMajor: false, share: 0.19, maxR: 16.5, widthBase: 0.36 }, // Sagittarius-Carina
+    { startAngle: barAngle - 1.57, isMajor: false, share: 0.21, maxR: 18.8, widthBase: 0.38 }, // Norma-Outer
+  ];
+
+  const barCount = Math.floor(totalStars * 0.20);
+  const orionCount = Math.floor(totalStars * 0.035);
+  const haloCount = Math.floor(totalStars * 0.185);
+  const armTotalCount = totalStars - barCount - orionCount - haloCount;
+
+  let idx = 0;
+
+  // 1. FULL CREAMY-GOLD CENTRAL GALACTIC BAR & NUCLEAR BULGE (r = 0..4.6 kpc, zero donut cutout!)
+  for (let i = 0; i < barCount; i++) {
+    const isNuclearBulge = rng() < 0.38;
+    let bx: number;
+    let bz: number;
+    if (isNuclearBulge) {
+      bx = gaussianRandom(rng) * 1.45;
+      bz = gaussianRandom(rng) * 1.15;
+    } else {
+      // Elongated triaxial peanut-ellipse bar
+      bx = gaussianRandom(rng) * 2.35;
+      const tipTaper = 1.0 / (1.0 + Math.pow(Math.abs(bx) / 3.6, 2.4));
+      bz = gaussianRandom(rng) * (0.48 + 0.56 * tipTaper);
+      // Gentle counter-clockwise S-twist at outer bar tips into Scutum-Centaurus & Perseus
+      bz -= Math.sign(bx) * Math.pow(Math.max(0, Math.abs(bx) - 2.2) / 2.6, 1.7) * 0.55;
+    }
+
+    const rBar = Math.hypot(bx, bz);
+    if (rBar > 5.8) {
+      const s = 5.8 / rBar;
+      bx *= s;
+      bz *= s;
+    }
+
+    const lx = bx * cosBar - bz * sinBar;
+    const lz = bx * sinBar + bz * cosBar;
+    const ly = gaussianRandom(rng) * (0.58 * Math.exp(-rBar / 4.2) + 0.12);
+
+    positions[idx * 3] = lx;
+    positions[idx * 3 + 1] = ly;
+    positions[idx * 3 + 2] = lz;
+
+    // Warm creamy-gold / pale-amber K & G bulge giants (NASA R. Hurt central bar hue)
+    const coreProx = Math.exp(-(rBar * rBar) / 5.5);
+    const w = rng();
+    const bright = 0.58 + 0.34 * coreProx;
+    colors[idx * 3] = (0.98 - 0.08 * w) * bright;
+    colors[idx * 3 + 1] = (0.86 - 0.12 * w) * bright;
+    colors[idx * 3 + 2] = (0.56 + 0.18 * coreProx - 0.10 * w) * bright;
+    sizes[idx] = 0.72 + Math.pow(rng(), 3.2) * 1.65;
+    phases[idx] = rng() * Math.PI * 2;
+    idx++;
+  }
+
+  // 2. FOUR TIGHTLY-WOUND LOGARITHMIC SPIRAL ARMS (counter-clockwise outward from bar tips)
+  for (const arm of armDefs) {
+    const count = Math.floor(armTotalCount * arm.share);
+    for (let i = 0; i < count && idx < totalStars - orionCount - haloCount; i++) {
+      // Exponential-weighted radial sampling -> denser in inner-mid galaxy, smoothly vanishing past 15-18 kpc
+      const u = Math.pow(rng(), 0.78);
+      const baseR = r0 + u * (arm.maxR - r0);
+      const radialFade = Math.exp(-Math.max(0, baseR - 3.2) / 7.8) * smoothstep01(arm.maxR + 1.2, 11.5, baseR);
+
+      // Counter-clockwise logarithmic spiral: theta decreases as r grows
+      const spiralTheta = arm.startAngle - pitchK * Math.log(baseR / r0);
+      const localWidth = arm.widthBase * (0.72 + 1.25 * u);
+      const radialScatter = gaussianRandom(rng) * localWidth;
+      const finalR = Math.max(2.6, baseR + radialScatter);
+      const angularScatter = (gaussianRandom(rng) * localWidth * 0.42) / Math.max(2.8, finalR);
+      const finalTheta = spiralTheta + angularScatter;
+
+      const lx = Math.cos(finalTheta) * finalR;
+      const lz = Math.sin(finalTheta) * finalR;
+      const ly = gaussianRandom(rng) * (0.14 + 0.24 * Math.exp(-finalR / 8.5));
+
+      positions[idx * 3] = lx;
+      positions[idx * 3 + 1] = ly;
+      positions[idx * 3 + 2] = lz;
+
+      const ridgeProx = Math.exp(
+        -(radialScatter * radialScatter) / Math.max(0.04, localWidth * localWidth * 0.45)
+      );
+      const roll = rng();
+      const lum = (0.48 + 0.52 * radialFade) * (arm.isMajor ? 1.0 : 0.86);
+
+      if (roll < 0.10 * ridgeProx) {
+        // Ruby-pink / rose H-II star-forming nebular knots beaded along arm ridges
+        colors[idx * 3] = 0.98 * lum;
+        colors[idx * 3 + 1] = (0.36 + 0.16 * rng()) * lum;
+        colors[idx * 3 + 2] = (0.58 + 0.16 * rng()) * lum;
+        sizes[idx] = 1.25 + Math.pow(rng(), 2.0) * 1.85;
+      } else if (roll < 0.64 * ridgeProx + 0.12) {
+        // Icy blue-white young OB associations along the spiral ridge
+        const c = rng();
+        colors[idx * 3] = (0.68 + 0.28 * c) * lum;
+        colors[idx * 3 + 1] = (0.80 + 0.18 * c) * lum;
+        colors[idx * 3 + 2] = 1.0 * lum;
+        sizes[idx] = 0.72 + Math.pow(rng(), 2.8) * 1.95;
+      } else {
+        // Dusty periwinkle-blue & soft cream disk stars
+        const s = rng();
+        colors[idx * 3] = (0.64 + 0.24 * s) * lum;
+        colors[idx * 3 + 1] = (0.70 + 0.18 * s) * lum;
+        colors[idx * 3 + 2] = (0.86 + 0.10 * s) * lum;
+        sizes[idx] = 0.62 + Math.pow(rng(), 3.1) * 1.35;
+      }
+
+      phases[idx] = rng() * Math.PI * 2;
+      idx++;
+    }
+  }
+
+  // 3. ORION-CYGNUS LOCAL SPUR passing cleanly through Solar System (-8.178, 0) kpc
+  for (let i = 0; i < orionCount && idx < totalStars - haloCount; i++) {
+    const t = Math.max(-1, Math.min(1, gaussianRandom(rng) * 0.42));
+    const baseR = 8.18 + t * 1.45;
+    const baseTheta = Math.PI - pitchK * Math.log(baseR / 8.18);
+    const scatterR = gaussianRandom(rng) * 0.34;
+    const finalR = Math.max(6.4, baseR + scatterR);
+    const finalTheta = baseTheta + (gaussianRandom(rng) * 0.12) / finalR;
+
+    positions[idx * 3] = Math.cos(finalTheta) * finalR;
+    positions[idx * 3 + 1] = gaussianRandom(rng) * 0.14;
+    positions[idx * 3 + 2] = Math.sin(finalTheta) * finalR;
+
+    const isPink = rng() < 0.12;
+    const taper = Math.exp(-t * t * 1.8) * 0.84;
+    if (isPink) {
+      colors[idx * 3] = 0.96 * taper;
+      colors[idx * 3 + 1] = 0.42 * taper;
+      colors[idx * 3 + 2] = 0.62 * taper;
+      sizes[idx] = 1.1 + rng() * 1.3;
+    } else {
+      colors[idx * 3] = 0.78 * taper;
+      colors[idx * 3 + 1] = 0.86 * taper;
+      colors[idx * 3 + 2] = 1.0 * taper;
+      sizes[idx] = 0.72 + Math.pow(rng(), 2.8) * 1.5;
+    }
+    phases[idx] = rng() * Math.PI * 2;
+    idx++;
+  }
+
+  // 4. SMOOTH EXPONENTIAL INTER-ARM DISK & OUTER STELLAR HALO (fades organically out to ~20 kpc, zero hard edge!)
+  while (idx < totalStars) {
+    const theta = rng() * Math.PI * 2;
+    // Exponential radial distribution: -R_d * ln(1 - u) -> smooth natural disk falloff with zero outer ring cutoff!
+    const u = Math.min(0.996, rng());
+    const r = Math.min(20.5, -5.6 * Math.log(1.0 - u));
+    const isHalo = rng() < 0.22;
+    const ly = gaussianRandom(rng) * (isHalo ? 1.85 * Math.exp(-r / 12.0) + 0.35 : 0.28);
+
+    positions[idx * 3] = Math.cos(theta) * r;
+    positions[idx * 3 + 1] = ly;
+    positions[idx * 3 + 2] = Math.sin(theta) * r;
+
+    const outerFade = smoothstep01(20.5, 10.5, r);
+    const dim = (0.30 + 0.36 * rng()) * (0.25 + 0.75 * outerFade);
+    const warmCore = Math.exp(-(r * r) / 16.0);
+    colors[idx * 3] = (0.58 + 0.36 * warmCore) * dim;
+    colors[idx * 3 + 1] = (0.64 + 0.20 * warmCore) * dim;
+    colors[idx * 3 + 2] = (0.86 - 0.24 * warmCore) * dim;
+    sizes[idx] = 0.58 + Math.pow(rng(), 3.0) * 1.15;
+    phases[idx] = rng() * Math.PI * 2;
+    idx++;
+  }
+
+  return { positions, colors, sizes, phases, count: totalStars };
+}
+
