@@ -17,6 +17,7 @@ import {
   SOLAR_SYSTEM_BODIES,
 } from './constants';
 import {
+  eclipticJ2000ToGalactic,
   SolarSystemEphemerisSnapshot,
   SUN_GALACTOCENTRIC_THREE_M,
 } from './ephemeris';
@@ -25,13 +26,15 @@ import {
   getExtragalacticPosThreeM,
   getExtragalacticRadiusM,
 } from './extragalactic-catalog';
-import { MemoryNode } from './memory-types';
+import { getPlanetSpecForNode, MemoryNode } from './memory-types';
 import {
   AnchorFrameId,
   galacticToThreeUp,
   UniversePosition,
   Vec3d,
 } from './scale-engine';
+import { getLocalizedNode } from './celestial-translations';
+import { LanguageCode } from './i18n';
 import { getScientificAstrometry } from './scientific-catalog';
 import { ScalePresetId } from './universe-i18n';
 
@@ -83,6 +86,41 @@ export const EPHEMERIS_ID_TO_MEMORY_ID: Record<string, string> = Object.fromEntr
   Object.entries(MEMORY_ID_TO_EPHEMERIS_ID).map(([k, v]) => [v, k])
 );
 
+/** Catalog IDs that map to specialized core/extragalactic renderers rather than individual 3D meshes. */
+const SPECIALIZED_CORE_IDS = new Set([
+  'astro-bh-01',
+  'astro-bh-02',
+  'astro-bh-04',
+  'astro-bh-05',
+]);
+
+/**
+ * Deterministic heliocentric J2000 ecliptic polar placements (radiusAu, lonDeg, incDeg)
+ * for non-ephemeris Solar System small bodies so they sit at true AU distances around the Sun
+ * instead of collapsing onto [0, 0, 0].
+ */
+const SOLAR_SMALL_BODY_HELIO_ORBITS: Record<
+  string,
+  { radiusAu: number; lonDeg: number; incDeg: number }
+> = {
+  'small-eris': { radiusAu: 67.9, lonDeg: 142.0, incDeg: 24.5 },
+  'small-vesta': { radiusAu: 2.36, lonDeg: 296.0, incDeg: 7.1 },
+  'small-bennu': { radiusAu: 1.13, lonDeg: 87.0, incDeg: 6.0 },
+  'small-halley': { radiusAu: 17.9, lonDeg: 145.0, incDeg: 14.5 },
+  'small-oumuamua': { radiusAu: 32.0, lonDeg: 214.0, incDeg: 28.0 },
+};
+
+/**
+ * Returns true when a MemoryNode should be given its own dedicated 3D procedural model
+ * in UniverseCanvas's catalog object renderer (all non-Sun stars, exoplanets, extra small bodies,
+ * and user-created AI-simulated worlds).
+ */
+export function isCatalogDirectRenderedId(nodeId: string): boolean {
+  if (MEMORY_ID_TO_EPHEMERIS_ID[nodeId]) return false;
+  if (SPECIALIZED_CORE_IDS.has(nodeId)) return false;
+  return true;
+}
+
 export interface ResolvedUniverseTarget {
   id: string;
   label: string;
@@ -126,16 +164,109 @@ export function computeCatalogNodeGalacticPosM(node: MemoryNode): Vec3d {
 }
 
 /**
+ * Unified UniversePosition resolver for any non-ephemeris catalog object.
+ * - Solar System small bodies (Eris, 4 Vesta, 101955 Bennu, 1P/Halley, 1I/'Oumuamua)
+ *   use exact heliocentric J2000 ecliptic AU coordinates ('heliocentric' anchor).
+ * - All interstellar stars, exoplanets, and custom AI-simulated worlds use exact
+ *   ESA Gaia DR3 Galactocentric coordinates ('galactic' anchor).
+ */
+export function computeCatalogObjectPosition(node: MemoryNode): UniversePosition {
+  const smallOrbit = SOLAR_SMALL_BODY_HELIO_ORBITS[node.id];
+  if (smallOrbit) {
+    const rM = smallOrbit.radiusAu * AU_IN_METERS;
+    const lon = (smallOrbit.lonDeg * Math.PI) / 180;
+    const inc = (smallOrbit.incDeg * Math.PI) / 180;
+    const cosInc = Math.cos(inc);
+    const eclM: Vec3d = [
+      rM * cosInc * Math.cos(lon),
+      rM * cosInc * Math.sin(lon),
+      rM * Math.sin(inc),
+    ];
+    const helioThreeM = galacticToThreeUp(eclipticJ2000ToGalactic(eclM));
+    return { anchor: 'heliocentric', offsetM: helioThreeM };
+  }
+
+  // Custom user-created objects get a deterministic, unique galactic offset so they never overlap
+  const astro = getScientificAstrometry(node.id);
+  if (
+    !node.id.startsWith('star-') &&
+    !node.id.startsWith('astro-') &&
+    !node.id.startsWith('small-')
+  ) {
+    let hash = 0;
+    for (let i = 0; i < node.id.length; i++) {
+      hash = (hash * 31 + node.id.charCodeAt(i)) >>> 0;
+    }
+    const lDeg = (hash % 3600) / 10;
+    const bDeg = (((hash >> 8) % 600) / 10) - 30;
+    const distLy = 80 + ((hash >> 14) % 2400);
+    const lRad = (lDeg * Math.PI) / 180;
+    const bRad = (bDeg * Math.PI) / 180;
+    const distM = distLy * LIGHT_YEAR_METERS;
+    const cosB = Math.cos(bRad);
+    const helioThree = galacticToThreeUp([
+      distM * cosB * Math.cos(lRad),
+      distM * cosB * Math.sin(lRad),
+      distM * Math.sin(bRad),
+    ]);
+    return {
+      anchor: 'galactic',
+      offsetM: [
+        SUN_GALACTOCENTRIC_THREE_M[0] + helioThree[0],
+        SUN_GALACTOCENTRIC_THREE_M[1] + helioThree[1],
+        SUN_GALACTOCENTRIC_THREE_M[2] + helioThree[2],
+      ],
+    };
+  }
+
+  if (astro.semiMajorAxisAu && astro.semiMajorAxisAu > 0) {
+    const rM = astro.semiMajorAxisAu * AU_IN_METERS;
+    const lon = node.orbitAngle || 1.2;
+    const inc = node.orbitTilt || 0.08;
+    const eclM: Vec3d = [
+      rM * Math.cos(inc) * Math.cos(lon),
+      rM * Math.cos(inc) * Math.sin(lon),
+      rM * Math.sin(inc),
+    ];
+    return {
+      anchor: 'heliocentric',
+      offsetM: galacticToThreeUp(eclipticJ2000ToGalactic(eclM)),
+    };
+  }
+
+  return { anchor: 'galactic', offsetM: computeCatalogNodeGalacticPosM(node) };
+}
+
+/**
+ * Compute physical radius [m] for any catalog MemoryNode.
+ */
+export function computeCatalogObjectRadiusM(node: MemoryNode): number {
+  const astro = getScientificAstrometry(node.id);
+  const isStar = node.id.startsWith('star-') || astro.objectClass === 'star';
+  if (astro?.diameterKmNumeric && astro.diameterKmNumeric > 0) {
+    return astro.diameterKmNumeric * 500;
+  }
+  return isStar ? SOLAR_RADIUS_M : EARTH_MEAN_RADIUS_M * 1.5;
+}
+
+/**
  * Resolve any target ID (Solar System body, Sgr A*, MemoryNode, or Extragalactic galaxy/cluster)
  * at the current ephemeris snapshot.
  */
 export function resolveUniverseTarget(
   rawId: string,
   ephemeris: SolarSystemEphemerisSnapshot,
-  memories: MemoryNode[]
+  memories: MemoryNode[],
+  lang: LanguageCode = 'en'
 ): ResolvedUniverseTarget {
-  // 1. Sagittarius A* (Galactic Center)
-  if (rawId === 'BLACK_HOLE_CORE' || rawId === 'sgr-a' || rawId === 'astro-bh-04') {
+  // 1. Sagittarius A* (Galactic Center & relativistic core phenomena)
+  if (
+    rawId === 'BLACK_HOLE_CORE' ||
+    rawId === 'sgr-a' ||
+    rawId === 'astro-bh-04' ||
+    rawId === 'astro-bh-01' ||
+    rawId === 'astro-bh-02'
+  ) {
     return {
       id: 'BLACK_HOLE_CORE',
       label: 'Sagittarius A*',
@@ -163,11 +294,15 @@ export function resolveUniverseTarget(
           ? bodyState.localOffsetM
           : bodyState.helioPosM;
 
-    const ringFactor = ephemId === 'saturn' ? 5.8 : ephemId === 'uranus' ? 4.4 : 3.4;
-    const idealDistM =
+    const ringFactor =
       ephemId === 'sun'
-        ? 4.2 * AU_IN_METERS
-        : phys.meanRadiusM * ringFactor;
+        ? 4.8
+        : ephemId === 'saturn'
+          ? 5.8
+          : ephemId === 'uranus'
+            ? 4.4
+            : 3.4;
+    const idealDistM = phys.meanRadiusM * ringFactor;
 
     return {
       id: ephemId,
@@ -176,7 +311,7 @@ export function resolveUniverseTarget(
       radiusM: phys.meanRadiusM,
       idealDistM,
       idealYaw: ephemId === 'earth' ? 0.55 : 0.65,
-      idealPitch: ephemId === 'sun' ? 0.58 : 0.24,
+      idealPitch: 0.24,
       provenance: 'measured',
       showSurfaceAltitude: ephemId !== 'sun',
     };
@@ -206,35 +341,52 @@ export function resolveUniverseTarget(
   // 4. M87* -> Virgo Cluster
   if (rawId === 'astro-bh-05') {
     const virgo = EXTRAGALACTIC_CATALOG.find((g) => g.id === 'virgo-cluster')!;
-    return resolveUniverseTarget(virgo.id, ephemeris, memories);
+    return resolveUniverseTarget(virgo.id, ephemeris, memories, lang);
   }
 
-  // 5. Remaining Milky Way Catalog Nodes (Exoplanets, Bright Stars, Pulsars, Nebulae)
+  // 5. Remaining Milky Way Catalog Nodes (Bright Stars, Exoplanets, Small Bodies & Custom Objects)
   const mem = memories.find((m) => m.id === rawId);
   if (mem) {
-    const posM = computeCatalogNodeGalacticPosM(mem);
+    const localized = getLocalizedNode(mem, lang);
+    const position = computeCatalogObjectPosition(mem);
     const astro = getScientificAstrometry(mem.id);
-    const isStar = mem.id.startsWith('star-');
-    const radiusM = astro?.diameterKmNumeric
-      ? astro.diameterKmNumeric * 500
-      : isStar
-        ? SOLAR_RADIUS_M
-        : EARTH_MEAN_RADIUS_M * 1.5;
+    const spec = getPlanetSpecForNode(mem);
+    const isStar = mem.id.startsWith('star-') || astro.objectClass === 'star';
+    const radiusM = computeCatalogObjectRadiusM(mem);
+    const maxAxis = astro.irregularShape
+      ? Math.max(...astro.irregularShape)
+      : 1.0;
+
+    let idealDistM: number;
+    if (isStar) {
+      idealDistM = spec.hasRings
+        ? radiusM * Math.max(5.6, spec.ringOuterRadius * 2.35)
+        : radiusM * 4.8;
+    } else if (spec.hasRings && spec.ringOuterRadius > 1.05) {
+      idealDistM = radiusM * Math.max(5.8, spec.ringOuterRadius * 2.35);
+    } else if (astro.hasCometTail) {
+      idealDistM = Math.max(radiusM * 6.5, radiusM + 600);
+    } else if (maxAxis > 1.4) {
+      idealDistM = Math.max(radiusM * maxAxis * 2.8, radiusM + 600);
+    } else {
+      idealDistM = Math.max(radiusM * 3.6, radiusM + 600);
+    }
+
     return {
       id: mem.id,
-      label: mem.title.split(' — ')[0],
-      position: { anchor: 'galactic', offsetM: posM },
+      label: localized.title.split(' — ')[0],
+      position,
       radiusM,
-      idealDistM: Math.max(radiusM * 4.5, 0.015 * LIGHT_YEAR_METERS),
-      idealYaw: 0.5,
-      idealPitch: 0.28,
+      idealDistM,
+      idealYaw: spec.hasRings ? 0.58 : 0.55,
+      idealPitch: spec.hasRings ? 0.34 : 0.24,
       provenance: 'measured',
-      showSurfaceAltitude: false,
+      showSurfaceAltitude: !isStar,
     };
   }
 
   // Fallback: Earth
-  return resolveUniverseTarget('earth', ephemeris, memories);
+  return resolveUniverseTarget('earth', ephemeris, memories, lang);
 }
 
 /**

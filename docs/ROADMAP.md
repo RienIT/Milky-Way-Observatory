@@ -66,6 +66,7 @@
   - [x] Real FPS sliding-window adaptive quality governor + WebGL2 `fenceSync` software-GL pacing
   - [x] Off-main-thread Web Worker star tile streaming with progress banner & fallback
   - [x] Playwright multi-scale visual verification (`Earth`, `600 m` altitude, `Solar System`, `Nearby Stars`, `Milky Way`, `Sgr A*` 3-pose baseline parity, `Local Group`, mobile `390×844`) + updated `README.md`, `NOTICE`, and `docs/ROADMAP.md`
+  - [x] Dedicated **RTX 3050–4050 (4–8 GB VRAM)** preset, NASA/JPL-Caltech R. Hurt Milky Way visual fidelity rebuild, standalone `/plugin/` (`@milky-way/observatory-plugin`) package, English default localization across app/docs, and optimized standalone Next.js build tracing
 
 ---
 

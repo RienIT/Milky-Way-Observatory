@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "typecheck:plugin": "tsc -p plugin/tsconfig.json --noEmit",
+    "sync:plugin": "node scripts/sync-plugin.mjs",
     "test": "tsx --test lib/*.test.ts",
     "clean": "next clean"
   },

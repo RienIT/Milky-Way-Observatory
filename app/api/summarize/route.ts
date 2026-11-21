@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
     const rawText = typeof body?.content === 'string' ? body.content.trim() : '';
     const customTitle =
       typeof body?.title === 'string' ? body.title.trim() : '';
-    const langCode = typeof body?.language === 'string' ? body.language : 'vi';
-    const targetLanguage = LANGUAGE_NAME_MAP[langCode] || 'Vietnamese';
+    const langCode = typeof body?.language === 'string' ? body.language : 'en';
+    const targetLanguage = LANGUAGE_NAME_MAP[langCode] || 'English';
 
     if (!rawText || rawText.length < 10) {
       return NextResponse.json(

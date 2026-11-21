@@ -26,10 +26,13 @@ import {
 } from '@/lib/extragalactic-catalog';
 import {
   createBackgroundStarfieldMaterial,
+  createClusterHaloMaterial,
+  createCometTailMaterial,
   createDeepSpaceDomeMaterial,
   createEarthCloudsMaterial,
   createEarthHighResMaterial,
   createGalaxySpriteMaterial,
+  createMemoryClusterNodeMaterial,
   createMilkyWayParametricDiskMaterial,
   createMilkyWayStarfieldMaterial,
   createPlanetAtmosphereMaterial,
@@ -37,12 +40,26 @@ import {
   createRealisticPlanetMaterial,
   createSgrACoreGlowBillboardMaterial,
   createSolarCoronaBillboardMaterial,
+  createTrajectoryTrailMaterial,
   createVolumetricBlackHoleMaterial,
 } from '@/lib/cosmic-shaders';
+import { getLocalizedNode } from '@/lib/celestial-translations';
 import { GraphicsSettings } from '@/lib/graphics-settings';
-import { LanguageCode } from '@/lib/i18n';
+import { LanguageCode, UI_STRINGS } from '@/lib/i18n';
+import {
+  MEMORY_TRAIL_SEGMENTS,
+  MemoryClusterSimulation,
+  packMemoryTrailsToLineSegments,
+  SOLAR_TRAIL_SEGMENTS,
+  SolarOrbitalWakeTracker,
+} from '@/lib/memory-dynamics';
 import { BLACK_HOLE_DISK_ROLL } from '@/lib/memory-logic';
-import { ConstellationLink, MemoryNode } from '@/lib/memory-types';
+import {
+  ALL_CATEGORIES,
+  ConstellationLink,
+  getPlanetSpecForNode,
+  MemoryNode,
+} from '@/lib/memory-types';
 import { generateNasaMilkyWayKpcStarfield } from '@/lib/milky-way';
 import {
   AnchorFrameId,
@@ -65,11 +82,14 @@ import {
   UniversePosition,
   Vec3d,
 } from '@/lib/scale-engine';
-import { SimulationScaleMode } from '@/lib/scientific-catalog';
+import { getScientificAstrometry, SimulationScaleMode } from '@/lib/scientific-catalog';
 import { ScalePresetId, UNIVERSE_HUD_COPY } from '@/lib/universe-i18n';
 import {
   computeCatalogNodeGalacticPosM,
+  computeCatalogObjectPosition,
+  computeCatalogObjectRadiusM,
   EPHEMERIS_ID_TO_MEMORY_ID,
+  isCatalogDirectRenderedId,
   MEMORY_ID_TO_EPHEMERIS_ID,
   resolveScalePreset,
   resolveUniverseTarget,
@@ -98,6 +118,7 @@ export interface UniverseCanvasProps {
   cameraResetTrigger: number;
   onResetCamera: () => void;
   lang: LanguageCode;
+  assetBasePath?: string;
 }
 
 interface ProjectedLabel {
@@ -389,8 +410,11 @@ function toGalacticMeters(pos: UniversePosition, origins: AnchorOriginsM): Vec3d
 
 export default function UniverseCanvas({
   memories,
+  matchedIds,
+  isFilterActive,
   selectedId,
   onSelectNode,
+  orbitSpeedMultiplier,
   showOrbitRings,
   onToggleOrbitRings,
   showMilkyWayDisk,
@@ -398,11 +422,19 @@ export default function UniverseCanvas({
   graphicsSettings,
   cameraResetTrigger,
   lang,
+  assetBasePath = '',
 }: UniverseCanvasProps) {
+  const normalizedAssetBase = assetBasePath.replace(/\/+$/, '');
+  const assetBaseRef = useRef(normalizedAssetBase);
+  useEffect(() => {
+    assetBaseRef.current = normalizedAssetBase;
+  }, [normalizedAssetBase]);
   const mountRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
 
   // Layer toggles & UX preferences
+  const [showTrails, setShowTrails] = useState(true);
+  const [clusterMode, setClusterMode] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showGrid, setShowGrid] = useState(false);
   const [showGalaxies, setShowGalaxies] = useState(true);
@@ -435,9 +467,16 @@ export default function UniverseCanvas({
 
   // Refs for zero-teardown render loop
   const memoriesRef = useRef(memories);
-  const selectedIdRef = useRef(selectedId);
+  const matchedIdsRef = useRef(matchedIds);
+  const isFilterActiveRef = useRef(isFilterActive);
+  const orbitSpeedRef = useRef(orbitSpeedMultiplier);
+  const selectedIdRef = useRef<string | null>(null);
+  const hasMountedSelectionRef = useRef(false);
+  const langRef = useRef(lang);
   const onSelectNodeRef = useRef(onSelectNode);
   const showOrbitsRef = useRef(showOrbitRings);
+  const showTrailsRef = useRef(showTrails);
+  const clusterModeRef = useRef(clusterMode);
   const showMilkyWayRef = useRef(showMilkyWayDisk);
   const showLabelsRef = useRef(showLabels);
   const showGridRef = useRef(showGrid);
@@ -453,11 +492,29 @@ export default function UniverseCanvas({
     memoriesRef.current = memories;
   }, [memories]);
   useEffect(() => {
+    matchedIdsRef.current = matchedIds;
+  }, [matchedIds]);
+  useEffect(() => {
+    isFilterActiveRef.current = isFilterActive;
+  }, [isFilterActive]);
+  useEffect(() => {
+    orbitSpeedRef.current = orbitSpeedMultiplier;
+  }, [orbitSpeedMultiplier]);
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
+  useEffect(() => {
     onSelectNodeRef.current = onSelectNode;
   }, [onSelectNode]);
   useEffect(() => {
     showOrbitsRef.current = showOrbitRings;
   }, [showOrbitRings]);
+  useEffect(() => {
+    showTrailsRef.current = showTrails;
+  }, [showTrails]);
+  useEffect(() => {
+    clusterModeRef.current = clusterMode;
+  }, [clusterMode]);
   useEffect(() => {
     showMilkyWayRef.current = showMilkyWayDisk;
   }, [showMilkyWayDisk]);
@@ -576,38 +633,50 @@ export default function UniverseCanvas({
         memoriesRef.current
       );
       startFlyTo(resolved);
-      if (preset === 'sgr-a') {
-        onSelectNodeRef.current('BLACK_HOLE_CORE');
-      } else if (preset === 'earth') {
-        onSelectNodeRef.current(EPHEMERIS_ID_TO_MEMORY_ID.earth ?? null);
-      } else if (preset === 'solar-system') {
-        onSelectNodeRef.current(EPHEMERIS_ID_TO_MEMORY_ID.sun ?? null);
-      } else {
-        onSelectNodeRef.current(null);
-      }
+      const nextSelectedId =
+        preset === 'sgr-a'
+          ? 'BLACK_HOLE_CORE'
+          : preset === 'earth'
+            ? (EPHEMERIS_ID_TO_MEMORY_ID.earth ?? null)
+            : preset === 'solar-system'
+              ? (EPHEMERIS_ID_TO_MEMORY_ID.sun ?? null)
+              : null;
+      // Record selection before notifying parent so the selectedId effect does not overwrite this preset's framing distance
+      selectedIdRef.current = nextSelectedId;
+      onSelectNodeRef.current(nextSelectedId);
     },
     [startFlyTo]
   );
 
-  // Sync external selectedId (sidebar clicks / TopSearchBar Black Hole Lab / Catalog Inspect)
+  // Sync external selectedId (sidebar clicks / TopSearchBar Black Hole Lab / Catalog "View in 3D" / plugin initialTarget)
   useEffect(() => {
+    const isInitialMount = !hasMountedSelectionRef.current;
+    hasMountedSelectionRef.current = true;
     const prev = selectedIdRef.current;
     selectedIdRef.current = selectedId;
-    if (!selectedId || selectedId === prev) return;
+    if (!selectedId || (!isInitialMount && selectedId === prev)) return;
 
     const resolved = resolveUniverseTarget(
       selectedId,
       camCtrlRef.current.ephemeris,
-      memoriesRef.current
+      memoriesRef.current,
+      langRef.current
     );
     const nextPreset: ScalePresetId | null =
-      selectedId === 'BLACK_HOLE_CORE'
+      selectedId === 'BLACK_HOLE_CORE' || selectedId === 'astro-bh-04'
         ? 'sgr-a'
         : MEMORY_ID_TO_EPHEMERIS_ID[selectedId] === 'earth'
           ? 'earth'
           : null;
-    queueMicrotask(() => setActivePreset(nextPreset));
-    startFlyTo(resolved);
+    queueMicrotask(() => {
+      setActivePreset(nextPreset);
+      setTargetName(resolved.label);
+      setProvenance(resolved.provenance);
+      setIsSurfaceAltitude(resolved.showSurfaceAltitude);
+      setLogDistM(Math.log10(resolved.idealDistM));
+    });
+    // Jump immediately when mounting directly onto a selected body (e.g., from Planet Catalog -> View in 3D)
+    startFlyTo(resolved, undefined, isInitialMount);
   }, [selectedId, startFlyTo]);
 
   // Camera reset trigger
@@ -885,6 +954,68 @@ export default function UniverseCanvas({
     const sgrACoreBillboard = new THREE.Mesh(sgrACoreGeo, sgrACoreMat);
     galacticRoot.add(sgrACoreBillboard);
 
+    // -------------------------------------------------------------------------
+    // Dynamic Moving Memory Nodes: Fading Orbital Trajectory Trails &
+    // Category-Based Gravitational Star Clusters (1 unit = 1 kpc)
+    // -------------------------------------------------------------------------
+    const MAX_MEMORY_DYN_NODES = 128;
+    const memorySim = new MemoryClusterSimulation(memoriesRef.current);
+    memorySim.prewarm(110, clusterModeRef.current, 0.05);
+    let lastDynMemoriesRef: MemoryNode[] | null = memoriesRef.current;
+    let clusterHaloBlend = clusterModeRef.current ? 1.0 : 0.0;
+    let latestClusterMetrics = memorySim.computeClusterMetrics();
+
+    // 1. Soft volumetric category star-cluster halos (up to 12 categories)
+    const maxClusters = Math.max(12, ALL_CATEGORIES.length);
+    const clusterHaloPosArr = new Float32Array(maxClusters * 3);
+    const clusterHaloColArr = new Float32Array(maxClusters * 3);
+    const clusterHaloRadArr = new Float32Array(maxClusters);
+    const clusterHaloGeo = track(new THREE.BufferGeometry());
+    clusterHaloGeo.setAttribute('position', new THREE.BufferAttribute(clusterHaloPosArr, 3));
+    clusterHaloGeo.setAttribute('aColor', new THREE.BufferAttribute(clusterHaloColArr, 3));
+    clusterHaloGeo.setAttribute('aRadiusKpc', new THREE.BufferAttribute(clusterHaloRadArr, 1));
+    clusterHaloGeo.setDrawRange(0, 0);
+    const clusterHaloMat = track(createClusterHaloMaterial());
+    const clusterHaloPoints = new THREE.Points(clusterHaloGeo, clusterHaloMat);
+    clusterHaloPoints.renderOrder = 3;
+    clusterHaloPoints.frustumCulled = false;
+    galacticRoot.add(clusterHaloPoints);
+
+    // 2. Smooth fading orbital & clustering trajectory trails (1 single batched draw call!)
+    const maxTrailVertices = MAX_MEMORY_DYN_NODES * MEMORY_TRAIL_SEGMENTS * 2;
+    const memTrailPosArr = new Float32Array(maxTrailVertices * 3);
+    const memTrailColArr = new Float32Array(maxTrailVertices * 3);
+    const memTrailProgArr = new Float32Array(maxTrailVertices);
+    const memTrailGeo = track(new THREE.BufferGeometry());
+    memTrailGeo.setAttribute('position', new THREE.BufferAttribute(memTrailPosArr, 3));
+    memTrailGeo.setAttribute('aColor', new THREE.BufferAttribute(memTrailColArr, 3));
+    memTrailGeo.setAttribute('aProgress', new THREE.BufferAttribute(memTrailProgArr, 1));
+    memTrailGeo.setDrawRange(0, 0);
+    const memTrailMat = track(createTrajectoryTrailMaterial());
+    const memTrailLines = new THREE.LineSegments(memTrailGeo, memTrailMat);
+    memTrailLines.renderOrder = 4;
+    memTrailLines.frustumCulled = false;
+    galacticRoot.add(memTrailLines);
+
+    // 3. Glowing navigable moving memory star-nodes at each trail's leading head
+    const memNodePosArr = new Float32Array(MAX_MEMORY_DYN_NODES * 3);
+    const memNodeColArr = new Float32Array(MAX_MEMORY_DYN_NODES * 3);
+    const memNodeSizeArr = new Float32Array(MAX_MEMORY_DYN_NODES);
+    const memNodeHighlightArr = new Float32Array(MAX_MEMORY_DYN_NODES);
+    const memNodeAlphaArr = new Float32Array(MAX_MEMORY_DYN_NODES);
+    const memNodeGeo = track(new THREE.BufferGeometry());
+    memNodeGeo.setAttribute('position', new THREE.BufferAttribute(memNodePosArr, 3));
+    memNodeGeo.setAttribute('aColor', new THREE.BufferAttribute(memNodeColArr, 3));
+    memNodeGeo.setAttribute('aSize', new THREE.BufferAttribute(memNodeSizeArr, 1));
+    memNodeGeo.setAttribute('aHighlight', new THREE.BufferAttribute(memNodeHighlightArr, 1));
+    memNodeGeo.setAttribute('aAlpha', new THREE.BufferAttribute(memNodeAlphaArr, 1));
+    memNodeGeo.setDrawRange(0, 0);
+    const memNodeMat = track(createMemoryClusterNodeMaterial());
+    const memNodePoints = new THREE.Points(memNodeGeo, memNodeMat);
+    memNodePoints.renderOrder = 5;
+    memNodePoints.frustumCulled = false;
+    galacticRoot.add(memNodePoints);
+
     // =========================================================================
     // PASS 2B: Galactic Center Nuclear Star Cluster (NSC + S-Stars, 1 unit = 1 pc)
     // Eliminates the 1.6 kpc -> 184 pc -> 1 pc -> 100 AU dead zone when approaching Sgr A*!
@@ -1064,7 +1195,7 @@ export default function UniverseCanvas({
 
     const loadManifestForLabels = async () => {
       try {
-        const res = await fetch('/data/stars-manifest.json');
+        const res = await fetch(`${assetBaseRef.current}/data/stars-manifest.json`);
         if (!res.ok) return;
         const manifest = (await res.json()) as {
           namedStars?: {
@@ -1119,7 +1250,7 @@ export default function UniverseCanvas({
     void loadManifestForLabels();
 
     try {
-      starWorker = new Worker('/workers/star-tile-worker.js');
+      starWorker = new Worker(`${assetBaseRef.current}/workers/star-tile-worker.js`);
       starWorker.onmessage = (e: MessageEvent) => {
         const msg = e.data;
         if (!msg) return;
@@ -1132,7 +1263,10 @@ export default function UniverseCanvas({
       starWorker.postMessage({
         type: 'LOAD_STAR_TILES',
         requestId: 1,
-        urls: ['/data/stars-tier0.bin', '/data/stars-tier1.bin'],
+        urls: [
+          `${assetBaseRef.current}/data/stars-tier0.bin`,
+          `${assetBaseRef.current}/data/stars-tier1.bin`,
+        ],
       });
     } catch {
       queueMicrotask(() => {
@@ -1400,6 +1534,260 @@ export default function UniverseCanvas({
         geo,
       });
     }
+
+    // Smooth Fading Orbital Trajectory Wakes for Moving Solar System Planets & Moon (1 batched draw call)
+    const solarWakeTracker = new SolarOrbitalWakeTracker();
+    const maxSolarTrailVerts = 12 * SOLAR_TRAIL_SEGMENTS * 2;
+    const solarTrailPosArr = new Float32Array(maxSolarTrailVerts * 3);
+    const solarTrailColArr = new Float32Array(maxSolarTrailVerts * 3);
+    const solarTrailProgArr = new Float32Array(maxSolarTrailVerts);
+    const solarTrailGeo = track(new THREE.BufferGeometry());
+    solarTrailGeo.setAttribute('position', new THREE.BufferAttribute(solarTrailPosArr, 3));
+    solarTrailGeo.setAttribute('aColor', new THREE.BufferAttribute(solarTrailColArr, 3));
+    solarTrailGeo.setAttribute('aProgress', new THREE.BufferAttribute(solarTrailProgArr, 1));
+    solarTrailGeo.setDrawRange(0, 0);
+    const solarTrailMat = track(createTrajectoryTrailMaterial());
+    const solarTrailLines = new THREE.LineSegments(solarTrailGeo, solarTrailMat);
+    solarTrailLines.renderOrder = 2;
+    solarTrailLines.frustumCulled = false;
+    planetaryScene.add(solarTrailLines);
+
+    // =========================================================================
+    // PASS 4A-2: Full 3D Procedural Models for ALL Catalog Objects
+    // (All 8 non-Sun Gaia DR3 stars, all 15 NASA/JWST exoplanets, all 5 extra
+    //  Solar System small bodies & comets, plus any user-added custom worlds!)
+    // =========================================================================
+    const catalogScene = new THREE.Scene();
+    const sharedCatalogCoronaGeo = track(new THREE.PlaneGeometry(1, 1));
+    const sharedCometIonGeo = track(new THREE.ConeGeometry(1.75, 13.5, 28, 1, true));
+    sharedCometIonGeo.translate(0, -13.5 * 0.5, 0);
+    const sharedCometDustGeo = track(new THREE.ConeGeometry(3.0, 9.6, 28, 1, true));
+    sharedCometDustGeo.translate(0, -9.6 * 0.5, 0);
+
+    interface CatalogMeshEntry {
+      id: string;
+      node: MemoryNode;
+      position: UniversePosition;
+      radiusM: number;
+      isStar: boolean;
+      isHeliocentric: boolean;
+      hasCometTail: boolean;
+      shapeScale: [number, number, number];
+      spinRate: number;
+      group: THREE.Group;
+      axialGroup: THREE.Group;
+      mesh: THREE.Mesh;
+      mat: THREE.ShaderMaterial;
+      atmoMesh?: THREE.Mesh;
+      atmoMat?: THREE.ShaderMaterial;
+      ringMesh?: THREE.Mesh;
+      ringMat?: THREE.ShaderMaterial;
+      ringInner?: number;
+      ringOuter?: number;
+      coronaMesh?: THREE.Mesh;
+      coronaMat?: THREE.ShaderMaterial;
+      cometTailPivot?: THREE.Group;
+      cometIonMat?: THREE.ShaderMaterial;
+      cometDustMat?: THREE.ShaderMaterial;
+      accentColor: string;
+    }
+
+    const catalogEntries = new Map<string, CatalogMeshEntry>();
+    let lastSyncedMemoriesRef: MemoryNode[] | null = null;
+    const _antiSunVec = new THREE.Vector3();
+    const _negYAxis = new THREE.Vector3(0, -1, 0);
+    const _exoLightDir = new THREE.Vector3(0.76, 0.34, 0.55).normalize();
+
+    const createCatalogMeshEntry = (node: MemoryNode): CatalogMeshEntry => {
+      const spec = getPlanetSpecForNode(node);
+      const astro = getScientificAstrometry(node.id);
+      const position = computeCatalogObjectPosition(node);
+      const radiusM = computeCatalogObjectRadiusM(node);
+      const isStar = node.id.startsWith('star-') || astro.objectClass === 'star';
+      const isHeliocentric = position.anchor === 'heliocentric';
+      const hasCometTail = Boolean(astro.hasCometTail);
+
+      let seed = 0;
+      for (let i = 0; i < node.id.length; i += 1) {
+        seed = (seed * 31 + node.id.charCodeAt(i)) % 997;
+      }
+
+      const shapeScale: [number, number, number] = astro.irregularShape
+        ? [astro.irregularShape[0], astro.irregularShape[1], astro.irregularShape[2]]
+        : node.id === 'star-vega'
+          ? [1.12, 0.9, 1.12]
+          : [1, 1, 1];
+
+      const group = new THREE.Group();
+      const axialGroup = new THREE.Group();
+      axialGroup.rotation.z = spec.axialTiltRad || 0.14;
+      group.add(axialGroup);
+
+      const atmoColor = new THREE.Color(spec.atmosphereColorHex || '#38bdf8');
+      const mat = createRealisticPlanetMaterial(
+        spec.archetypeId,
+        seed + (spec.axialTiltRad || 0) * 19.7,
+        atmoColor
+      );
+
+      // Apply current detail boost immediately so RTX/Ultra detail is live from frame 1
+      const initGs = graphicsRef.current;
+      if (mat.uniforms.uDetailBoost) {
+        mat.uniforms.uDetailBoost.value = isSoftwareGl
+          ? 0.25
+          : initGs.tier === 'rtx' || initGs.tier === 'ultra' || initGs.planetSegments >= 80
+            ? 1.0
+            : initGs.tier === 'high'
+              ? 0.55
+              : 0.0;
+      }
+
+      const mesh = new THREE.Mesh(unitSphereGeo, mat);
+      mesh.scale.set(shapeScale[0], shapeScale[1], shapeScale[2]);
+      axialGroup.add(mesh);
+
+      // Atmospheric Fresnel halo for stars, planets with atmospheres, and comets
+      let atmoMesh: THREE.Mesh | undefined;
+      let atmoMat: THREE.ShaderMaterial | undefined;
+      const hasAtmosphere =
+        isStar ||
+        hasCometTail ||
+        (spec.archetypeId !== 7 && spec.archetypeId !== 10);
+      if (hasAtmosphere) {
+        atmoMat = createPlanetAtmosphereMaterial(atmoColor);
+        atmoMesh = new THREE.Mesh(unitSphereGeo, atmoMat);
+        const haloScale = isStar ? 1.24 : hasCometTail ? 1.09 : 1.055;
+        atmoMesh.scale.set(
+          shapeScale[0] * haloScale,
+          shapeScale[1] * haloScale,
+          shapeScale[2] * haloScale
+        );
+        atmoMesh.visible = isStar || hasCometTail || initGs.showAtmosphereAndNebulae;
+        axialGroup.add(atmoMesh);
+      }
+
+      // Multi-band planetary rings (e.g., J1407b's colossal 37-band ring system) or Vega's JWST debris disk
+      let ringMesh: THREE.Mesh | undefined;
+      let ringMat: THREE.ShaderMaterial | undefined;
+      let ringInner: number | undefined;
+      let ringOuter: number | undefined;
+      if (spec.hasRings && spec.ringOuterRadius > 1.05) {
+        ringInner = Math.max(1.12, spec.ringInnerRadius || 1.35);
+        ringOuter = Math.max(ringInner + 0.35, spec.ringOuterRadius);
+        const ringSegs = activePlanetSegs >= 80 ? 160 : 96;
+        const ringGeo = new THREE.RingGeometry(ringInner, ringOuter, ringSegs);
+        ringGeo.rotateX(-Math.PI / 2);
+        ringMat = createPlanetRingMaterial(
+          new THREE.Color(spec.ringColorHex || spec.atmosphereColorHex || '#fde68a'),
+          ringInner,
+          ringOuter
+        );
+        ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        axialGroup.add(ringMesh);
+      }
+
+      // Radiant spectral corona billboard for all stars + luminous coma halo for comets
+      let coronaMesh: THREE.Mesh | undefined;
+      let coronaMat: THREE.ShaderMaterial | undefined;
+      if (isStar || hasCometTail) {
+        coronaMat = createSolarCoronaBillboardMaterial(atmoColor);
+        coronaMesh = new THREE.Mesh(sharedCatalogCoronaGeo, coronaMat);
+        coronaMesh.renderOrder = 4;
+        group.add(coronaMesh);
+      }
+
+      // Dual volumetric ion & dust tail cones for active comets (1P/Halley)
+      let cometTailPivot: THREE.Group | undefined;
+      let cometIonMat: THREE.ShaderMaterial | undefined;
+      let cometDustMat: THREE.ShaderMaterial | undefined;
+      if (hasCometTail) {
+        cometTailPivot = new THREE.Group();
+        cometIonMat = createCometTailMaterial(new THREE.Color('#38bdf8'));
+        const ionMesh = new THREE.Mesh(sharedCometIonGeo, cometIonMat);
+        ionMesh.renderOrder = 3;
+        cometTailPivot.add(ionMesh);
+
+        cometDustMat = createCometTailMaterial(new THREE.Color('#dbeafe'));
+        const dustMesh = new THREE.Mesh(sharedCometDustGeo, cometDustMat);
+        dustMesh.rotation.z = 0.14;
+        dustMesh.renderOrder = 2;
+        cometTailPivot.add(dustMesh);
+
+        group.add(cometTailPivot);
+      }
+
+      group.visible = false;
+      catalogScene.add(group);
+
+      return {
+        id: node.id,
+        node,
+        position,
+        radiusM,
+        isStar,
+        isHeliocentric,
+        hasCometTail,
+        shapeScale,
+        spinRate:
+          node.id === 'star-vega'
+            ? 0.36
+            : isStar
+              ? 0.08
+              : hasCometTail || astro.irregularShape
+                ? 0.24
+                : 0.14,
+        group,
+        axialGroup,
+        mesh,
+        mat,
+        atmoMesh,
+        atmoMat,
+        ringMesh,
+        ringMat,
+        ringInner,
+        ringOuter,
+        coronaMesh,
+        coronaMat,
+        cometTailPivot,
+        cometIonMat,
+        cometDustMat,
+        accentColor: spec.atmosphereColorHex || '#38bdf8',
+      };
+    };
+
+    const disposeCatalogEntry = (entry: CatalogMeshEntry) => {
+      catalogScene.remove(entry.group);
+      entry.mat.dispose();
+      entry.atmoMat?.dispose();
+      if (entry.ringMesh) {
+        entry.ringMesh.geometry.dispose();
+      }
+      entry.ringMat?.dispose();
+      entry.coronaMat?.dispose();
+      entry.cometIonMat?.dispose();
+      entry.cometDustMat?.dispose();
+    };
+
+    const syncCatalogEntries = (list: MemoryNode[]) => {
+      if (list === lastSyncedMemoriesRef) return;
+      lastSyncedMemoriesRef = list;
+      const activeIds = new Set<string>();
+      for (const node of list) {
+        if (!isCatalogDirectRenderedId(node.id)) continue;
+        activeIds.add(node.id);
+        if (!catalogEntries.has(node.id)) {
+          catalogEntries.set(node.id, createCatalogMeshEntry(node));
+        }
+      }
+      for (const [id, entry] of catalogEntries.entries()) {
+        if (!activeIds.has(id)) {
+          disposeCatalogEntry(entry);
+          catalogEntries.delete(id);
+        }
+      }
+    };
+
+    syncCatalogEntries(memoriesRef.current);
 
     // =========================================================================
     // PASS 4B: Sagittarius A* Relativistic Black Hole Scene (100% UNTOUCHED SHADER!)
@@ -1909,6 +2297,21 @@ export default function UniverseCanvas({
               oldRing.dispose();
             }
           }
+          for (const entry of catalogEntries.values()) {
+            entry.mesh.geometry = unitSphereGeo;
+            if (entry.atmoMesh) entry.atmoMesh.geometry = unitSphereGeo;
+            if (entry.ringMesh && entry.ringInner && entry.ringOuter) {
+              const oldRing = entry.ringMesh.geometry;
+              const newRing = new THREE.RingGeometry(
+                entry.ringInner,
+                entry.ringOuter,
+                nextRingSegs
+              );
+              newRing.rotateX(-Math.PI / 2);
+              entry.ringMesh.geometry = newRing;
+              oldRing.dispose();
+            }
+          }
           prevSphere.dispose();
         }
 
@@ -1969,6 +2372,14 @@ export default function UniverseCanvas({
             entry.cloudMesh.visible = activeGs.showAtmosphereAndNebulae;
           }
           if (entry.atmoMesh && entry.id !== 'sun') {
+            entry.atmoMesh.visible = activeGs.showAtmosphereAndNebulae;
+          }
+        }
+        for (const entry of catalogEntries.values()) {
+          if (entry.mat.uniforms.uDetailBoost) {
+            entry.mat.uniforms.uDetailBoost.value = detailBoost;
+          }
+          if (entry.atmoMesh && !entry.isStar && !entry.hasCometTail) {
             entry.atmoMesh.visible = activeGs.showAtmosphereAndNebulae;
           }
         }
@@ -2275,6 +2686,124 @@ export default function UniverseCanvas({
         sgrACoreMat.uniforms.uCloseFactor.value = 0.0;
         sgrACoreMat.uniforms.uTime.value = elapsedSec;
 
+        // Update moving memory nodes, fading orbital trails, & gravitational category clusters
+        if (lastDynMemoriesRef !== memoriesRef.current) {
+          memorySim.syncMemories(memoriesRef.current);
+          lastDynMemoriesRef = memoriesRef.current;
+        }
+        const isGalacticClusterVisible =
+          !nearSgrACloseup &&
+          distToSgrAKpc > 0.45 &&
+          (weights.galactic > 0.04 || weights.extragalactic > 0.05);
+
+        // Advance N-body gravitational clustering & orbital trajectories smoothly every frame
+        if (isGalacticClusterVisible || weights.galactic > 0.01) {
+          memorySim.step({
+            dtSec: Math.min(0.05, Math.max(0.008, rawDt)),
+            clusteringEnabled: clusterModeRef.current,
+            orbitalSpeedScale: Math.max(0.4, orbitSpeedRef.current || 1.0),
+            reducedMotion: reducedMotionRef.current,
+          });
+          latestClusterMetrics = memorySim.computeClusterMetrics();
+        }
+
+        clusterHaloBlend = THREE.MathUtils.damp(
+          clusterHaloBlend,
+          clusterModeRef.current ? 1.0 : 0.0,
+          4.5,
+          Math.min(0.05, Math.max(0.008, rawDt))
+        );
+
+        const memOverlayAlpha = isGalacticClusterVisible
+          ? Math.max(weights.galactic, weights.extragalactic * 0.65) *
+            Math.max(0, Math.min(1, (distToSgrAKpc - 0.5) / 2.2))
+          : 0;
+
+        if (memOverlayAlpha > 0.01) {
+          const activeNodes = memorySim.nodes;
+          const nodeCount = Math.min(MAX_MEMORY_DYN_NODES, activeNodes.length);
+          const filterActive = isFilterActiveRef.current;
+          const matchedSet = matchedIdsRef.current;
+          const curSelId = selectedIdRef.current;
+
+          // Update moving memory star-nodes buffer in-place
+          for (let i = 0; i < nodeCount; i += 1) {
+            const nd = activeNodes[i];
+            const i3 = i * 3;
+            memNodePosArr[i3 + 0] = nd.posKpc[0];
+            memNodePosArr[i3 + 1] = nd.posKpc[1];
+            memNodePosArr[i3 + 2] = nd.posKpc[2];
+            memNodeColArr[i3 + 0] = nd.colorRgb[0];
+            memNodeColArr[i3 + 1] = nd.colorRgb[1];
+            memNodeColArr[i3 + 2] = nd.colorRgb[2];
+            memNodeSizeArr[i] = nd.starSize;
+            memNodeHighlightArr[i] = curSelId === nd.id ? 1.0 : 0.0;
+            memNodeAlphaArr[i] =
+              !filterActive || matchedSet.has(nd.id) || curSelId === nd.id ? 1.0 : 0.16;
+          }
+          (memNodeGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+          (memNodeGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
+          (memNodeGeo.getAttribute('aSize') as THREE.BufferAttribute).needsUpdate = true;
+          (memNodeGeo.getAttribute('aHighlight') as THREE.BufferAttribute).needsUpdate = true;
+          (memNodeGeo.getAttribute('aAlpha') as THREE.BufferAttribute).needsUpdate = true;
+          memNodeGeo.setDrawRange(0, nodeCount);
+          memNodePoints.visible = true;
+          memNodeMat.uniforms.uTime.value = elapsedSec;
+          memNodeMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+          memNodeMat.uniforms.uOpacity.value = Math.min(1.0, memOverlayAlpha * 1.15);
+
+          // Update smooth fading orbital trajectory trails buffer in-place
+          if (showTrailsRef.current) {
+            const packedVerts = packMemoryTrailsToLineSegments(
+              activeNodes,
+              memTrailPosArr,
+              memTrailColArr,
+              memTrailProgArr,
+              filterActive ? matchedSet : undefined,
+              curSelId
+            );
+            (memTrailGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+            (memTrailGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
+            (memTrailGeo.getAttribute('aProgress') as THREE.BufferAttribute).needsUpdate = true;
+            memTrailGeo.setDrawRange(0, packedVerts);
+            memTrailLines.visible = packedVerts > 0;
+            memTrailMat.uniforms.uTime.value = elapsedSec;
+            memTrailMat.uniforms.uOpacity.value = Math.min(0.95, memOverlayAlpha * 0.92);
+          } else {
+            memTrailLines.visible = false;
+          }
+
+          // Update soft volumetric category cluster halos
+          if (clusterHaloBlend > 0.02 && latestClusterMetrics.clusters.length > 0) {
+            const clusters = latestClusterMetrics.clusters;
+            const cCount = Math.min(maxClusters, clusters.length);
+            for (let c = 0; c < cCount; c += 1) {
+              const cl = clusters[c];
+              const c3 = c * 3;
+              clusterHaloPosArr[c3 + 0] = cl.centroidKpc[0];
+              clusterHaloPosArr[c3 + 1] = cl.centroidKpc[1];
+              clusterHaloPosArr[c3 + 2] = cl.centroidKpc[2];
+              clusterHaloColArr[c3 + 0] = cl.colorRgb[0];
+              clusterHaloColArr[c3 + 1] = cl.colorRgb[1];
+              clusterHaloColArr[c3 + 2] = cl.colorRgb[2];
+              clusterHaloRadArr[c] = Math.max(1.35, Math.min(3.4, cl.rmsRadiusKpc * 1.75 + 0.85));
+            }
+            (clusterHaloGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+            (clusterHaloGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
+            (clusterHaloGeo.getAttribute('aRadiusKpc') as THREE.BufferAttribute).needsUpdate = true;
+            clusterHaloGeo.setDrawRange(0, cCount);
+            clusterHaloPoints.visible = true;
+            clusterHaloMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+            clusterHaloMat.uniforms.uOpacity.value = memOverlayAlpha * clusterHaloBlend * 0.92;
+          } else {
+            clusterHaloPoints.visible = false;
+          }
+        } else {
+          memNodePoints.visible = false;
+          memTrailLines.visible = false;
+          clusterHaloPoints.visible = false;
+        }
+
         renderer.render(galacticScene, camera);
         renderer.clearDepth();
       }
@@ -2461,14 +2990,14 @@ export default function UniverseCanvas({
           solarBeltMat.uniforms.uOpacity.value = Math.min(0.85, weights.planetary * 0.82);
         }
 
-        // Update real ephemeris orbit curves relative to floating-origin camera
+        // Update real ephemeris orbit curves & smooth fading orbital wakes relative to floating-origin camera
+        const earthRelM = computeRelativeMeters(
+          { anchor: 'earth', offsetM: [0, 0, 0] },
+          camPos,
+          origins
+        );
         orbitGroup.visible = showOrbitsRef.current;
         if (showOrbitsRef.current) {
-          const earthRelM = computeRelativeMeters(
-            { anchor: 'earth', offsetM: [0, 0, 0] },
-            camPos,
-            origins
-          );
           for (const ol of orbitLines) {
             const baseRel = ol.parentId === 'earth' ? earthRelM : sunRelM;
             const posAttr = ol.geo.getAttribute('position') as THREE.BufferAttribute;
@@ -2483,7 +3012,208 @@ export default function UniverseCanvas({
           }
         }
 
+        // Smooth fading orbital trajectory wakes behind moving Solar System planets & Moon
+        if (showTrailsRef.current && weights.planetary > 0.02) {
+          const wakes = solarWakeTracker.update(simDateMsRef.current, ephem);
+          let vIdx = 0;
+          for (let w = 0; w < wakes.length; w += 1) {
+            const wake = wakes[w];
+            const baseRel = wake.parentId === 'earth' ? earthRelM : sunRelM;
+            const pts = wake.pointsM;
+            const segs = pts.length - 1;
+            const r = wake.colorRgb[0];
+            const g = wake.colorRgb[1];
+            const b = wake.colorRgb[2];
+            for (let s = 0; s < segs; s += 1) {
+              if (vIdx + 2 > maxSolarTrailVerts) break;
+              const p0 = pts[s];
+              const p1 = pts[s + 1];
+              const i0 = vIdx * 3;
+              solarTrailPosArr[i0 + 0] = (baseRel[0] + p0[0]) / mpu;
+              solarTrailPosArr[i0 + 1] = (baseRel[1] + p0[1]) / mpu;
+              solarTrailPosArr[i0 + 2] = (baseRel[2] + p0[2]) / mpu;
+              solarTrailColArr[i0 + 0] = r;
+              solarTrailColArr[i0 + 1] = g;
+              solarTrailColArr[i0 + 2] = b;
+              solarTrailProgArr[vIdx] = s / segs;
+
+              const i1 = (vIdx + 1) * 3;
+              solarTrailPosArr[i1 + 0] = (baseRel[0] + p1[0]) / mpu;
+              solarTrailPosArr[i1 + 1] = (baseRel[1] + p1[1]) / mpu;
+              solarTrailPosArr[i1 + 2] = (baseRel[2] + p1[2]) / mpu;
+              solarTrailColArr[i1 + 0] = r;
+              solarTrailColArr[i1 + 1] = g;
+              solarTrailColArr[i1 + 2] = b;
+              solarTrailProgArr[vIdx + 1] = (s + 1) / segs;
+
+              vIdx += 2;
+            }
+          }
+          (solarTrailGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+          (solarTrailGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
+          (solarTrailGeo.getAttribute('aProgress') as THREE.BufferAttribute).needsUpdate = true;
+          solarTrailGeo.setDrawRange(0, vIdx);
+          solarTrailLines.visible = vIdx > 0;
+          solarTrailMat.uniforms.uTime.value = elapsedSec;
+          solarTrailMat.uniforms.uOpacity.value = Math.min(0.95, weights.planetary * 0.95);
+        } else {
+          solarTrailLines.visible = false;
+        }
+
         renderer.render(planetaryScene, camera);
+      }
+
+      // =====================================================================
+      // PASS 4A-2: Dedicated Scale-Normalized 3D Catalog Objects Pass
+      // Renders ALL 8 non-Sun Gaia DR3 stars, ALL 15 NASA/JWST exoplanets,
+      // ALL 5 extra Solar System small bodies & comets, and custom AI worlds!
+      // =====================================================================
+      syncCatalogEntries(memoriesRef.current);
+      let renderedCatalogId = '';
+      {
+        const visibleCatalog: {
+          entry: CatalogMeshEntry;
+          relM: Vec3d;
+          distM: number;
+          opacity: number;
+        }[] = [];
+
+        for (const entry of catalogEntries.values()) {
+          const isActiveTarget = ctrl.targetId === entry.id;
+          // Exact float64 displacement with zero cancellation jitter when actively inspecting!
+          const relM: Vec3d = isActiveTarget
+            ? [-camRelTargetM[0], -camRelTargetM[1], -camRelTargetM[2]]
+            : computeRelativeMeters(entry.position, camPos, origins);
+          const distM = lengthVec3d(relM);
+          const maxVisDist = entry.isStar
+            ? Math.max(entry.radiusM * 6000, 0.35 * LIGHT_YEAR_METERS)
+            : entry.hasCometTail
+              ? entry.radiusM * 3200
+              : entry.radiusM * 1800;
+
+          if (distM <= maxVisDist) {
+            const fadeStart = maxVisDist * 0.45;
+            const opacity =
+              distM <= fadeStart
+                ? 1.0
+                : Math.max(0, Math.min(1, (maxVisDist - distM) / (maxVisDist - fadeStart)));
+            if (opacity > 0.01) {
+              visibleCatalog.push({ entry, relM, distM, opacity });
+            }
+          }
+          entry.group.visible = false;
+        }
+
+        if (visibleCatalog.length > 0) {
+          // Normalize GPU units around the primary visible catalog body (~20 units radius)
+          // so both 115 m 'Oumuamua and 630M km UY Scuti render with razor-sharp precision!
+          const primary =
+            visibleCatalog.find((v) => v.entry.id === ctrl.targetId) ?? visibleCatalog[0];
+          const catalogMpu = Math.max(10, primary.entry.radiusM / 20);
+          renderedCatalogId = primary.entry.id;
+
+          renderer.clearDepth();
+          camera.position.set(0, 0, 0);
+          camera.lookAt(-orbitOff[0], -orbitOff[1], -orbitOff[2]);
+          const primaryDistUnits = Math.max(1.0, primary.distM / catalogMpu);
+          camera.near = Math.max(0.05, Math.min(1.5, primaryDistUnits * 0.005));
+          camera.far = Math.max(25000, primaryDistUnits * 40);
+          camera.updateProjectionMatrix();
+
+          for (const item of visibleCatalog) {
+            const { entry, relM, distM, opacity } = item;
+            const gx = relM[0] / catalogMpu;
+            const gy = relM[1] / catalogMpu;
+            const gz = relM[2] / catalogMpu;
+            const radiusUnits = entry.radiusM / catalogMpu;
+            const distUnits = distM / catalogMpu;
+
+            entry.group.visible = true;
+            entry.group.position.set(gx, gy, gz);
+            entry.axialGroup.scale.setScalar(radiusUnits);
+            entry.mesh.rotation.y = elapsedSec * entry.spinRate;
+            entry.group.updateMatrixWorld(true);
+
+            // Compute authentic illumination position in normalized GPU space:
+            // - Stars emit their own incandescent photosphere light
+            // - Solar System small bodies are lit by our real Sun
+            // - Interstellar exoplanets are lit by their local host star at cinematic 3/4 phase
+            let lightX = gx + _exoLightDir.x * Math.max(2000, radiusUnits * 80);
+            let lightY = gy + _exoLightDir.y * Math.max(2000, radiusUnits * 80);
+            let lightZ = gz + _exoLightDir.z * Math.max(2000, radiusUnits * 80);
+
+            if (entry.isStar) {
+              // Offset straight up along +Y so Vega's debris disk is illuminated 360° with zero self-shadow
+              lightX = gx;
+              lightY = gy + Math.max(1500, radiusUnits * 60);
+              lightZ = gz;
+            } else if (entry.isHeliocentric) {
+              const sunDir = computeSunDirectionFromBody(entry.position.offsetM);
+              const lightRange = Math.max(2000, radiusUnits * 80);
+              lightX = gx + sunDir[0] * lightRange;
+              lightY = gy + sunDir[1] * lightRange;
+              lightZ = gz + sunDir[2] * lightRange;
+
+              if (entry.cometTailPivot) {
+                // Point comet ion & dust tail directly away from the Sun
+                _antiSunVec.set(-sunDir[0], -sunDir[1], -sunDir[2]).normalize();
+                entry.cometTailPivot.quaternion.setFromUnitVectors(_negYAxis, _antiSunVec);
+                entry.cometTailPivot.scale.setScalar(radiusUnits);
+              }
+            }
+
+            entry.mat.uniforms.uTime.value = elapsedSec;
+            entry.mat.uniforms.uOpacity.value = opacity;
+            entry.mat.uniforms.uLightPos.value.set(lightX, lightY, lightZ);
+            if (entry.isStar && entry.mat.uniforms.uHighlight) {
+              entry.mat.uniforms.uHighlight.value = 0.72;
+            }
+
+            if (entry.atmoMat) {
+              entry.atmoMat.uniforms.uOpacity.value = entry.isStar
+                ? opacity * 1.25
+                : entry.hasCometTail
+                  ? opacity * 1.05
+                  : opacity * 0.9;
+              entry.atmoMat.uniforms.uLightPos.value.set(
+                entry.isStar ? gx : lightX,
+                entry.isStar ? gy : lightY,
+                entry.isStar ? gz : lightZ
+              );
+            }
+
+            if (entry.ringMat) {
+              entry.ringMat.uniforms.uOpacity.value = entry.isStar
+                ? opacity * 0.68
+                : opacity * 0.94;
+              entry.ringMat.uniforms.uPlanetRadius.value = radiusUnits;
+              entry.ringMat.uniforms.uLightPos.value.set(lightX, lightY, lightZ);
+            }
+
+            if (entry.coronaMesh && entry.coronaMat) {
+              entry.coronaMesh.lookAt(0, 0, 0);
+              const coronaMult = entry.isStar ? 6.0 : 4.2;
+              const coronaDiam = Math.max(
+                radiusUnits * coronaMult,
+                entry.isStar ? distUnits * 0.12 : radiusUnits * 4.2
+              );
+              entry.coronaMesh.scale.set(coronaDiam, coronaDiam, 1);
+              entry.coronaMat.uniforms.uTime.value = elapsedSec;
+              entry.coronaMat.uniforms.uOpacity.value = entry.isStar
+                ? opacity * 1.05
+                : opacity * 0.72;
+            }
+
+            if (entry.cometIonMat && entry.cometDustMat) {
+              entry.cometIonMat.uniforms.uTime.value = elapsedSec;
+              entry.cometIonMat.uniforms.uOpacity.value = opacity * 0.88;
+              entry.cometDustMat.uniforms.uTime.value = elapsedSec * 0.7;
+              entry.cometDustMat.uniforms.uOpacity.value = opacity * 0.52;
+            }
+          }
+
+          renderer.render(catalogScene, camera);
+        }
       }
 
       // =====================================================================
@@ -2607,6 +3337,11 @@ export default function UniverseCanvas({
           stageRef.current.dataset.finite = Number.isFinite(actualDistToTargetM) ? 'true' : 'false';
           stageRef.current.dataset.starsLoaded = String(ctrl.starsLoaded);
           stageRef.current.dataset.fps = String(ctrl.fps);
+          stageRef.current.dataset.catalogRendered = renderedCatalogId;
+          stageRef.current.dataset.trailsActive = showTrailsRef.current ? 'true' : 'false';
+          stageRef.current.dataset.clusteringActive = clusterModeRef.current ? 'true' : 'false';
+          stageRef.current.dataset.clusterCount = String(latestClusterMetrics.clusters.length);
+          stageRef.current.dataset.clusterCohesion = latestClusterMetrics.cohesionRatio.toFixed(2);
         }
 
         // Compute decluttered non-overlapping 3D projected labels
@@ -2662,6 +3397,47 @@ export default function UniverseCanvas({
                 accent: id === 'earth' ? '#54a8ff' : id === 'sun' ? '#fbbf24' : '#cbd5e1',
               });
             }
+
+            // Extra Solar System small bodies & comets (Eris, 4 Vesta, Bennu, Halley, 'Oumuamua)
+            for (const entry of catalogEntries.values()) {
+              if (!entry.isHeliocentric) continue;
+              const relM: Vec3d =
+                ctrl.targetId === entry.id
+                  ? [-camRelTargetM[0], -camRelTargetM[1], -camRelTargetM[2]]
+                  : computeRelativeMeters(entry.position, camPos, origins);
+              const dM = lengthVec3d(relM);
+              if (dM < entry.radiusM * 1.6) continue;
+              const loc = getLocalizedNode(entry.node, langRef.current);
+              candidates.push({
+                id: entry.id,
+                text: loc.title.split(' — ')[0],
+                relM,
+                priority: ctrl.targetId === entry.id ? 96 : 64,
+                accent: entry.accentColor,
+              });
+            }
+          }
+
+          // 1B. Active non-Solar-System catalog star / exoplanet / custom object label
+          if (renderedCatalogId) {
+            const activeCat = catalogEntries.get(renderedCatalogId);
+            if (activeCat && !activeCat.isHeliocentric) {
+              const relM: Vec3d =
+                ctrl.targetId === activeCat.id
+                  ? [-camRelTargetM[0], -camRelTargetM[1], -camRelTargetM[2]]
+                  : computeRelativeMeters(activeCat.position, camPos, origins);
+              const dM = lengthVec3d(relM);
+              if (dM > activeCat.radiusM * 1.6) {
+                const loc = getLocalizedNode(activeCat.node, langRef.current);
+                candidates.push({
+                  id: activeCat.id,
+                  text: loc.title.split(' — ')[0],
+                  relM,
+                  priority: 98,
+                  accent: activeCat.accentColor,
+                });
+              }
+            }
           }
 
           // 2. Named nearby Hipparcos / Gaia DR3 stars in stellar scale
@@ -2712,6 +3488,27 @@ export default function UniverseCanvas({
                 priority: 92,
                 accent: '#54a8ff',
               });
+
+              // 3B. Distinct Category Star Clusters (when Gravitational Clustering is ON)
+              if (clusterModeRef.current && latestClusterMetrics.clusters.length > 0) {
+                const catStrings = UI_STRINGS[langRef.current].categories;
+                for (const cl of latestClusterMetrics.clusters) {
+                  const catLabel = catStrings[cl.category]?.shortLabel || cl.category;
+                  const relM: Vec3d = [
+                    cl.centroidKpc[0] * KILOPARSEC_METERS - camGalacticM[0],
+                    cl.centroidKpc[1] * KILOPARSEC_METERS - camGalacticM[1],
+                    cl.centroidKpc[2] * KILOPARSEC_METERS - camGalacticM[2],
+                  ];
+                  candidates.push({
+                    id: `cluster:${cl.categoryIndex}`,
+                    text: catLabel,
+                    subtext: `${cl.memberCount}`,
+                    relM,
+                    priority: 76,
+                    accent: cl.colorHex,
+                  });
+                }
+              }
             }
           }
 
@@ -2840,6 +3637,10 @@ export default function UniverseCanvas({
         for (const entry of planetEntries.values()) {
           entry.ringMesh?.geometry.dispose();
         }
+        for (const entry of catalogEntries.values()) {
+          disposeCatalogEntry(entry);
+        }
+        catalogEntries.clear();
       } catch {
         // ignore
       }
@@ -2871,10 +3672,29 @@ export default function UniverseCanvas({
   const handleClickLabel = useCallback(
     (labelId: string) => {
       if (labelId.startsWith('star:')) return;
+      if (labelId.startsWith('cluster:')) {
+        const idx = Number(labelId.slice('cluster:'.length));
+        const cat = ALL_CATEGORIES[idx];
+        const leadNode = cat
+          ? memoriesRef.current.find((m) => m.category === cat)
+          : undefined;
+        if (leadNode) {
+          const resolved = resolveUniverseTarget(
+            leadNode.id,
+            camCtrlRef.current.ephemeris,
+            memoriesRef.current,
+            langRef.current
+          );
+          startFlyTo(resolved);
+          onSelectNodeRef.current(leadNode.id);
+        }
+        return;
+      }
       const resolved = resolveUniverseTarget(
         labelId,
         camCtrlRef.current.ephemeris,
-        memoriesRef.current
+        memoriesRef.current,
+        langRef.current
       );
       startFlyTo(resolved);
       const mappedMem = EPHEMERIS_ID_TO_MEMORY_ID[labelId];
@@ -2882,6 +3702,8 @@ export default function UniverseCanvas({
         onSelectNodeRef.current(mappedMem);
       } else if (labelId === 'BLACK_HOLE_CORE') {
         onSelectNodeRef.current('BLACK_HOLE_CORE');
+      } else if (memoriesRef.current.some((m) => m.id === labelId)) {
+        onSelectNodeRef.current(labelId);
       }
     },
     [startFlyTo]
@@ -2990,6 +3812,10 @@ export default function UniverseCanvas({
         onSelectPreset={handleSelectPreset}
         showOrbits={showOrbitRings}
         onToggleOrbits={onToggleOrbitRings}
+        showTrails={showTrails}
+        onToggleTrails={() => setShowTrails((v) => !v)}
+        clusterMode={clusterMode}
+        onToggleClusterMode={() => setClusterMode((v) => !v)}
         showLabels={showLabels}
         onToggleLabels={() => setShowLabels((v) => !v)}
         showGrid={showGrid}

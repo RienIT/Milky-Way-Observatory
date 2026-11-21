@@ -9,8 +9,8 @@ export interface LanguageOption {
 }
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
-  { code: 'vi', nativeLabel: 'Tiếng Việt', shortCode: 'VI' },
   { code: 'en', nativeLabel: 'English', shortCode: 'EN' },
+  { code: 'vi', nativeLabel: 'Tiếng Việt', shortCode: 'VI' },
   { code: 'ja', nativeLabel: '日本語', shortCode: 'JA' },
   { code: 'zh', nativeLabel: '中文', shortCode: 'ZH' },
   { code: 'ko', nativeLabel: '한국어', shortCode: 'KO' },

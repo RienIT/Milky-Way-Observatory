@@ -7,8 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- **Standalone React Plugin (`/plugin`)**: Added the self-contained `@milky-way/observatory-plugin` package (`MilkyWayObservatoryPlugin`, `MilkyWayPluginHandle`, `npm run sync:plugin`, `npm run typecheck:plugin`) with zero Next.js runtime dependencies and full English integration documentation (`plugin/README.md`).
+- **RTX 3050–4050 (4–8 GB VRAM) Graphics Preset (`rtx`)**: Dedicated high-fidelity tier featuring `1.5×` render scale, 120,000 stars, 16,000 belt asteroids, 96-segment planetary spheres, and 96-step Sagittarius A\* gravitational lensing raymarching with automatic GPU detection.
+- **NASA/JPL-Caltech Milky Way Spiral Rebuild**: Rebuilt the 3D Milky Way disk shader and galactocentric starfield with a creamy-gold 27° central bar, four counter-clockwise logarithmic spiral arms, dark reddish-brown inner dust lanes, ruby-pink H-II knots, and smooth exponential outer halo falloff.
 - Full GitHub Actions CI/CD suite (`.github/workflows/ci.yml`, `codeql.yml`, `release.yml`) with lint, typecheck, unit test, production build, SAST, and automated release packaging.
 - Complete repository legal and open-source governance documentation: `LICENSE` (MIT), `COPYRIGHT.md`, `NOTICE`, `AUTHORS.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`, `CODEOWNERS`, Dependabot configuration, and structured Issue/PR templates.
+
+### Changed
+- **Default Language Switched to English (`en`)**: Standardized the application, standalone plugin, 404 page, API defaults, and all documentation files to English by default while retaining full 5-language switching (`en`, `vi`, `ja`, `zh`, `ko`).
+
+### Fixed
+- **Production Build Timeout (`HTTP 0`)**: Excluded non-runtime dev/build/compiler/sourcemap/unused-native trees from `outputFileTracingExcludes` and skipped redundant build-time TypeScript re-checking in `next.config.ts` (enforced via `npm run typecheck`), cutting `next build` duration from ~58s to ~15s while keeping `output: 'standalone'` intact.
 
 ## [1.1.0] - 2026-11-19
 

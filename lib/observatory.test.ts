@@ -552,3 +552,124 @@ test('Schwarzschild gravitational lensing physics & black-hole plane occlusion s
   // Oblique foreground planet closer to camera than projected BH ray distance stays in foreground
   assert.equal(isPointBehindBlackHolePlane([0, 0, 50], [10, 2, 18]), false);
 });
+
+test('resolveUniverseTarget maps Catalog IDs (Sun, planets, Sgr A*, exoplanets) to distinct non-Earth targets with English labels', async () => {
+  const { computeSolarSystemEphemeris } = await import('./ephemeris');
+  const { resolveScalePreset, resolveUniverseTarget } = await import('./universe-targets');
+  const { AU_IN_METERS, SOLAR_RADIUS_M } = await import('./constants');
+
+  const ephem = computeSolarSystemEphemeris(new Date('2026-11-21T00:00:00Z'));
+
+  const sun = resolveUniverseTarget('star-sol', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(sun.id, 'sun');
+  assert.equal(sun.label, 'Sun');
+  assert.equal(sun.position.anchor, 'heliocentric');
+  assert.ok(sun.idealDistM < 0.05 * AU_IN_METERS && sun.idealDistM >= SOLAR_RADIUS_M * 4.0);
+
+  const solarPreset = resolveScalePreset('solar-system', ephem, INITIAL_MEMORIES);
+  assert.ok(solarPreset.idealDistM >= 10 * AU_IN_METERS);
+
+  const saturn = resolveUniverseTarget('astro-gas-02', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(saturn.id, 'saturn');
+  assert.equal(saturn.label, 'Saturn');
+  assert.equal(saturn.position.anchor, 'heliocentric');
+
+  const mars = resolveUniverseTarget('astro-ice-01', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(mars.id, 'mars');
+  assert.equal(mars.label, 'Mars');
+
+  const sgrA = resolveUniverseTarget('astro-bh-04', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(sgrA.id, 'BLACK_HOLE_CORE');
+
+  const kepler = resolveUniverseTarget('astro-ocean-02', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(kepler.id, 'astro-ocean-02');
+  assert.ok(!kepler.label.includes('Ngoại hành tinh'), `Expected English label, got: ${kepler.label}`);
+});
+
+test('all 48 catalog objects + custom AI worlds resolve to valid close-up 3D framing and non-overlapping coordinates', async () => {
+  const { computeSolarSystemEphemeris } = await import('./ephemeris');
+  const {
+    computeCatalogObjectPosition,
+    isCatalogDirectRenderedId,
+    resolveUniverseTarget,
+  } = await import('./universe-targets');
+  const { AU_IN_METERS, LIGHT_YEAR_METERS } = await import('./constants');
+
+  const ephem = computeSolarSystemEphemeris(new Date('2026-11-21T00:00:00Z'));
+
+  let directRenderedCount = 0;
+  for (const node of INITIAL_MEMORIES) {
+    const resolved = resolveUniverseTarget(node.id, ephem, INITIAL_MEMORIES, 'en');
+    assert.ok(resolved.label.length > 0, `Empty label for ${node.id}`);
+    assert.ok(Number.isFinite(resolved.radiusM) && resolved.radiusM > 0);
+    assert.ok(Number.isFinite(resolved.idealDistM) && resolved.idealDistM > resolved.radiusM);
+    assert.ok(
+      resolved.position.offsetM.every((v) => Number.isFinite(v)),
+      `Non-finite offsetM for ${node.id}`
+    );
+
+    if (node.id !== 'astro-ocean-01') {
+      assert.notEqual(resolved.id, 'earth', `${node.id} unexpectedly fell back to Earth`);
+    }
+
+    if (isCatalogDirectRenderedId(node.id)) {
+      directRenderedCount += 1;
+      // Must frame close-up relative to physical radius — NEVER 0.015 ly (~950 AU)!
+      assert.ok(
+        resolved.idealDistM < 0.001 * LIGHT_YEAR_METERS,
+        `${node.id} framed too far away: ${resolved.idealDistM} m`
+      );
+      assert.ok(
+        resolved.idealDistM <= Math.max(resolved.radiusM * 8.5, resolved.radiusM + 1000),
+        `${node.id} idealDistM (${resolved.idealDistM}) should hug physical radius (${resolved.radiusM})`
+      );
+    }
+  }
+
+  // Exactly 28 non-ephemeris catalog objects (8 stars + 15 exoplanets + 5 small bodies) have dedicated 3D models
+  assert.equal(directRenderedCount, 28);
+
+  // Rigel (β Orionis) frames at 4.8x radius (~263.5M km), NOT 0.015 ly!
+  const rigel = resolveUniverseTarget('star-rigel', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(rigel.id, 'star-rigel');
+  assert.ok(rigel.label.includes('Rigel'));
+  assert.ok(Math.abs(rigel.idealDistM / rigel.radiusM - 4.8) < 0.01);
+
+  // J1407b frames wide enough to showcase its massive 2.85x ring system
+  const j1407b = resolveUniverseTarget('astro-gas-01', ephem, INITIAL_MEMORIES, 'en');
+  assert.equal(j1407b.id, 'astro-gas-01');
+  assert.ok(j1407b.idealDistM >= j1407b.radiusM * 6.5);
+
+  // All 5 non-ephemeris Solar System small bodies sit at real heliocentric AU positions outside the Sun
+  for (const smallId of [
+    'small-eris',
+    'small-vesta',
+    'small-bennu',
+    'small-halley',
+    'small-oumuamua',
+  ]) {
+    const node = INITIAL_MEMORIES.find((m) => m.id === smallId)!;
+    const pos = computeCatalogObjectPosition(node);
+    assert.equal(pos.anchor, 'heliocentric', `${smallId} should use heliocentric anchor`);
+    const distAu = Math.hypot(...pos.offsetM) / AU_IN_METERS;
+    assert.ok(distAu >= 1.0 && distAu <= 75, `${smallId} heliocentric distance out of range: ${distAu} AU`);
+  }
+
+  // User-created custom AI-simulated worlds also resolve cleanly with direct 3D rendering
+  const customNode = {
+    ...INITIAL_MEMORIES[10],
+    id: 'custom-user-world-01',
+    title: 'Aurelia Prime — Custom Ocean World',
+  };
+  assert.equal(isCatalogDirectRenderedId(customNode.id), true);
+  const customResolved = resolveUniverseTarget(
+    customNode.id,
+    ephem,
+    [...INITIAL_MEMORIES, customNode],
+    'en'
+  );
+  assert.equal(customResolved.id, 'custom-user-world-01');
+  assert.ok(customResolved.idealDistM <= customResolved.radiusM * 5.0);
+});
+
+

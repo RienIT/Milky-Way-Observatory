@@ -38,6 +38,8 @@ export interface UniverseHudCopy {
   provenanceMixed: string;
   layerToggles: {
     orbits: string;
+    trails: string;
+    clusters: string;
     labels: string;
     grid: string;
     galaxies: string;
@@ -88,6 +90,8 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     provenanceMixed: 'Measured Positions · Illustrative Morphology',
     layerToggles: {
       orbits: 'Orbits',
+      trails: 'Trails',
+      clusters: 'Clusters',
       labels: 'Labels',
       grid: 'Galactic Grid',
       galaxies: 'Galaxies',
@@ -136,6 +140,8 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     provenanceMixed: 'Vị trí Đo đạc · Hình thái Minh họa',
     layerToggles: {
       orbits: 'Quỹ đạo',
+      trails: 'Vệt quỹ đạo',
+      clusters: 'Cụm sao',
       labels: 'Nhãn 3D',
       grid: 'Lưới Thiên hà',
       galaxies: 'Thiên hà',
@@ -184,6 +190,8 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     provenanceMixed: '実測位置・概念形態',
     layerToggles: {
       orbits: '軌道',
+      trails: '軌跡',
+      clusters: '星団',
       labels: 'ラベル',
       grid: '銀河グリッド',
       galaxies: '銀河群',
@@ -232,6 +240,8 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     provenanceMixed: '实测位置 · 示意形态',
     layerToggles: {
       orbits: '轨道',
+      trails: '轨迹尾迹',
+      clusters: '引力星团',
       labels: '标签',
       grid: '银道网格',
       galaxies: '河外星系',
@@ -280,6 +290,8 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     provenanceMixed: '실측 위치 · 예시 형태',
     layerToggles: {
       orbits: '궤도',
+      trails: '궤적',
+      clusters: '성단',
       labels: '라벨',
       grid: '은하 그리드',
       galaxies: '은하군',

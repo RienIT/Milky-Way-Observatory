@@ -38,7 +38,7 @@ import { INITIAL_MEMORIES } from '@/lib/mock-memories';
 import { SimulationScaleMode } from '@/lib/scientific-catalog';
 
 const STORAGE_MEMORIES_KEY = 'milky-way-nodes-v4';
-const STORAGE_LANG_KEY = 'milky-way-lang-v1';
+const STORAGE_LANG_KEY = 'milky-way-lang-v2';
 const STORAGE_GFX_KEY = 'milky-way-gfx-v1';
 
 const DEFAULT_HARDWARE_PROFILE: HardwareProfile = {
@@ -56,7 +56,7 @@ const DEFAULT_HARDWARE_PROFILE: HardwareProfile = {
 
 export default function MilkyWayObservatoryPage() {
   const [memories, setMemories] = useState<MemoryNode[]>(INITIAL_MEMORIES);
-  const [lang, setLang] = useState<LanguageCode>('vi');
+  const [lang, setLang] = useState<LanguageCode>('en');
   const [activeView, setActiveView] = useState<ActiveWebView>('explorer');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

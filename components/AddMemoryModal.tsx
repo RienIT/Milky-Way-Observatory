@@ -19,6 +19,7 @@ interface AddMemoryModalProps {
   onClose: () => void;
   onAddMemory: (node: MemoryNode) => void;
   lang: LanguageCode;
+  summarizeApiUrl?: string;
 }
 
 export default function AddMemoryModal({
@@ -27,6 +28,7 @@ export default function AddMemoryModal({
   onClose,
   onAddMemory,
   lang,
+  summarizeApiUrl = '/api/summarize',
 }: AddMemoryModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -80,8 +82,19 @@ export default function AddMemoryModal({
     }
 
     setIsLoading(true);
+    if (!summarizeApiUrl) {
+      createNodeFromSummary(
+        localFallbackSummarize(
+          trimmed,
+          title.trim(),
+          preferredCategory === 'AUTO' ? undefined : preferredCategory
+        )
+      );
+      setIsLoading(false);
+      return;
+    }
     try {
-      const res = await fetch('/api/summarize', {
+      const res = await fetch(summarizeApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

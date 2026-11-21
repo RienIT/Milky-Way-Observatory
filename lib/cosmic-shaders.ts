@@ -833,6 +833,7 @@ export function createRealisticPlanetMaterial(
           starCol += mix(uAtmoColor, vec3(1.0, 0.96, 0.84), 0.45) * (0.48 + uHighlight * 0.28);
 
           gl_FragColor = vec4(starCol, uOpacity);
+          #include <logdepthbuf_fragment>
           return;
         } else if (uArchetype < 10.5) {
           // ARCHETYPE 10: NASA JPL Cratered Rocky Asteroid / Dwarf Planet / Moon (Moon, Ganymede, Pluto, Ceres, 4 Vesta, Bennu, 'Oumuamua)
@@ -2052,7 +2053,10 @@ export function createSgrACoreGlowBillboardMaterial(): THREE.ShaderMaterial {
  * Radiant Volumetric Solar Corona & Starlight Halo Billboard for the Sun.
  * Ensures the Sun glows intensely from close-up solar orbits out across the entire Solar System.
  */
-export function createSolarCoronaBillboardMaterial(): THREE.ShaderMaterial {
+export function createSolarCoronaBillboardMaterial(
+  coronaColor?: THREE.Color
+): THREE.ShaderMaterial {
+  const baseColor = coronaColor ? coronaColor.clone() : new THREE.Color('#ffb838');
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -2061,6 +2065,7 @@ export function createSolarCoronaBillboardMaterial(): THREE.ShaderMaterial {
     uniforms: {
       uTime: { value: 0.0 },
       uOpacity: { value: 1.0 },
+      uCoronaColor: { value: baseColor },
     },
     vertexShader: `
       #include <common>
@@ -2078,6 +2083,7 @@ export function createSolarCoronaBillboardMaterial(): THREE.ShaderMaterial {
       #include <logdepthbuf_pars_fragment>
       uniform float uTime;
       uniform float uOpacity;
+      uniform vec3 uCoronaColor;
       varying vec2 vUv;
 
       void main() {
@@ -2085,24 +2091,24 @@ export function createSolarCoronaBillboardMaterial(): THREE.ShaderMaterial {
         if (r > 1.0 || uOpacity <= 0.005) discard;
 
         float angle = atan(vUv.y, vUv.x);
-        // Subtle animated solar corona streamers
+        // Subtle animated stellar corona streamers
         float rays =
           0.86 +
           0.14 * sin(angle * 7.0 + uTime * 0.35) * sin(angle * 13.0 - uTime * 0.22);
 
         float hotCore = exp(-r * r * 26.0) * 1.65;
         float innerCorona = exp(-r * 5.2) * 1.15 * rays;
-        float outerGlow = exp(-r * 2.3) * 0.38;
+        float outerGlow = exp(-r * 2.3) * 0.42;
         float edgeFade = smoothstep(1.0, 0.58, r);
 
-        vec3 whiteHot = vec3(1.0, 0.98, 0.90);
-        vec3 solarGold = vec3(1.0, 0.76, 0.28);
-        vec3 deepAmber = vec3(1.0, 0.44, 0.12);
+        vec3 whiteHot = mix(uCoronaColor, vec3(1.0, 0.99, 0.96), 0.78);
+        vec3 midCorona = mix(uCoronaColor, vec3(1.0), 0.14);
+        vec3 outerHalo = uCoronaColor * 0.78;
 
         vec3 col =
           whiteHot * hotCore +
-          solarGold * innerCorona +
-          deepAmber * outerGlow;
+          midCorona * innerCorona +
+          outerHalo * outerGlow;
 
         float alpha = clamp((hotCore + innerCorona + outerGlow) * edgeFade * uOpacity, 0.0, 1.0);
         gl_FragColor = vec4(col * edgeFade * uOpacity, alpha);
@@ -2111,5 +2117,254 @@ export function createSolarCoronaBillboardMaterial(): THREE.ShaderMaterial {
     `,
   });
 }
+
+/**
+ * Volumetric Additive Ion & Dust Comet Tail Shader (for 1P/Halley & active comets).
+ * Cone geometry extends along +Y from nucleus (vUv.y = 1 at tip -> 0 at base).
+ */
+export function createCometTailMaterial(
+  tailColor: THREE.Color = new THREE.Color('#38bdf8')
+): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uOpacity: { value: 0.85 },
+      uTailColor: { value: tailColor.clone() },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewDir;
+      void main() {
+        vUv = uv;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        vNormalView = normalize(normalMatrix * normal);
+        vViewDir = normalize(-mvPos.xyz);
+        gl_Position = projectionMatrix * mvPos;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uTime;
+      uniform float uOpacity;
+      uniform vec3 uTailColor;
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewDir;
+
+      void main() {
+        // vUv.y: 1.0 near coma nucleus -> 0.0 at distant tail tip
+        float along = clamp(vUv.y, 0.0, 1.0);
+        float tipFade = smoothstep(0.0, 0.35, along) * pow(along, 1.35) * smoothstep(1.0, 0.84, along);
+        float edgeSoft = pow(abs(dot(normalize(vNormalView), normalize(vViewDir))), 1.15);
+        float streamer =
+          0.74 +
+          0.18 * sin(vUv.x * 25.1327 + uTime * 1.4 - along * 6.0) +
+          0.08 * cos(vUv.x * 50.2654 - uTime * 2.1);
+
+        vec3 coreCyan = mix(uTailColor, vec3(0.92, 0.98, 1.0), along * 0.65);
+        float alpha = clamp(tipFade * edgeSoft * streamer * uOpacity * 0.85, 0.0, 0.92);
+        if (alpha <= 0.003) discard;
+
+        gl_FragColor = vec4(coreCyan * alpha, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Smooth Fading Orbital Trajectory Trail Shader (THREE.LineSegments).
+ * Renders per-vertex color + exponential alpha taper from 0.0 (tail) -> 1.0 (incandescent head)
+ * with full logarithmic depth buffer compatibility across planetary & galactic scales.
+ */
+export function createTrajectoryTrailMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      attribute vec3 aColor;
+      attribute float aProgress;
+      varying vec3 vColor;
+      varying float vProgress;
+      void main() {
+        vColor = aColor;
+        vProgress = aProgress;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uTime;
+      uniform float uOpacity;
+      varying vec3 vColor;
+      varying float vProgress;
+
+      void main() {
+        float p = clamp(vProgress, 0.0, 1.0);
+        // Smooth tail-to-head exponential fade with glowing leading tip
+        float fade = pow(p, 1.62) * smoothstep(0.0, 0.07, p);
+        float pulse = 0.90 + 0.10 * sin(p * 16.0 - uTime * 2.8);
+        float alpha = clamp(fade * pulse * uOpacity * 0.98, 0.0, 1.0);
+        if (alpha <= 0.004) discard;
+
+        // Hot white-tinted leading tip transitioning cleanly into category hue
+        vec3 tipColor = mix(vColor * 1.15, vec3(1.0, 0.99, 0.96), pow(p, 3.8) * 0.72);
+        gl_FragColor = vec4(tipColor * alpha, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Glowing Navigable Star-Node Shader for moving Memory Nodes in 3D Galactic Space.
+ * Renders crisp core + soft radial halo + subtle 4-point astronomical diffraction glint.
+ */
+export function createMemoryClusterNodeMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uPixelRatio: { value: 1.0 },
+      uOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      attribute vec3 aColor;
+      attribute float aSize;
+      attribute float aHighlight;
+      attribute float aAlpha;
+      uniform float uPixelRatio;
+      varying vec3 vColor;
+      varying float vHighlight;
+      varying float vAlpha;
+      void main() {
+        vColor = aColor;
+        vHighlight = aHighlight;
+        vAlpha = aAlpha;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        float dist = max(1.2, -mvPos.z);
+        float basePx = aSize * uPixelRatio * (52.0 / pow(dist, 0.42));
+        float selBoost = 1.0 + aHighlight * 0.65;
+        gl_PointSize = clamp(basePx * selBoost, 5.0 * uPixelRatio, 30.0 * uPixelRatio);
+        gl_Position = projectionMatrix * mvPos;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uTime;
+      uniform float uOpacity;
+      varying vec3 vColor;
+      varying float vHighlight;
+      varying float vAlpha;
+
+      void main() {
+        vec2 uv = gl_PointCoord * 2.0 - 1.0;
+        float r = length(uv);
+        if (r > 1.0 || uOpacity * vAlpha <= 0.005) discard;
+
+        float core = exp(-r * r * 18.0);
+        float halo = exp(-r * r * 3.8) * 0.58;
+        // Crisp 4-point Hubble-style diffraction spikes
+        float spikeX = exp(-abs(uv.y) * 14.0) * exp(-abs(uv.x) * 3.0);
+        float spikeY = exp(-abs(uv.x) * 14.0) * exp(-abs(uv.y) * 3.0);
+        float spikes = (spikeX + spikeY) * (0.28 + vHighlight * 0.25);
+
+        float ring = vHighlight > 0.5
+          ? exp(-pow((r - 0.62) * 11.0, 2.0)) * (0.55 + 0.15 * sin(uTime * 3.2))
+          : 0.0;
+
+        vec3 col = mix(vColor, vec3(1.0, 0.99, 0.96), clamp(core * 0.8 + spikes * 0.35, 0.0, 1.0));
+        float a = clamp((core + halo + spikes + ring) * uOpacity * vAlpha, 0.0, 1.0);
+        gl_FragColor = vec4(col * a, a);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Soft Volumetric Category Star-Cluster Nebula Halo Shader (THREE.Points).
+ * Subtly illuminates each category cluster's gravitational well in Galactic view.
+ */
+export function createClusterHaloMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uPixelRatio: { value: 1.0 },
+      uOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      attribute vec3 aColor;
+      attribute float aRadiusKpc;
+      uniform float uPixelRatio;
+      varying vec3 vColor;
+      void main() {
+        vColor = aColor;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        float dist = max(2.0, -mvPos.z);
+        float px = aRadiusKpc * uPixelRatio * (520.0 / dist);
+        gl_PointSize = clamp(px, 28.0 * uPixelRatio, 220.0 * uPixelRatio);
+        gl_Position = projectionMatrix * mvPos;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uOpacity;
+      varying vec3 vColor;
+
+      void main() {
+        vec2 uv = gl_PointCoord * 2.0 - 1.0;
+        float r = length(uv);
+        if (r > 1.0 || uOpacity <= 0.004) discard;
+        // Soft radial cluster mist + whisper-thin boundary ring
+        float mist = exp(-r * r * 3.8) * 0.36;
+        float rim = exp(-pow((r - 0.72) * 8.5, 2.0)) * 0.14;
+        float edgeFade = smoothstep(1.0, 0.84, r);
+        float a = clamp((mist + rim) * edgeFade * uOpacity, 0.0, 0.48);
+        gl_FragColor = vec4(vColor * a, a);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
 
 

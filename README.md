@@ -23,13 +23,17 @@ An interactive, continuous **multi-scale universe viewer** modeled after **NASA 
   - Full simulation time controls: play/pause, speed presets (`1x`, `1h/s`, `1d/s`, `1mo/s`, `1yr/s`), and **Reset to Now**.
 - **Measured Nearby Stars, Parametric Milky Way & Local Group / Clusters**:
   - Compact binary star tiles (`public/data/stars-tier0.bin` & `stars-tier1.bin`) decoded off-main-thread in a Web Worker (`public/workers/star-tile-worker.js`) combining measured Hipparcos/HYG/Gaia DR3 stars (`illustrative: false`) with Gaia-calibrated local neighborhood fill (`illustrative: true`).
-  - Double-sided parametric Milky Way barred spiral disk (Reid et al. 2019 4 arms + Orion Spur + Wegg et al. 2015 27° bar + interstellar dust lanes, flagged `illustrative: true`).
+  - Double-sided parametric Milky Way barred spiral disk modeled after the **NASA/JPL-Caltech (R. Hurt)** galactic visualization (Wegg et al. 2015 27° creamy-gold central bar, Reid et al. 2019 4 counter-clockwise spiral arms + Orion Spur, dark reddish-brown inner dust lanes, ruby-pink H-II star-forming knots, and smooth exponential outer halo fade, flagged `illustrative: true`).
   - Real Local Group galaxies (**M31 Andromeda**, **M33**, **LMC**, **SMC**, **M32**, **M110**, **NGC 6822**, **IC 1613**, **Leo I**, **Fornax**, **Sculptor**, **Draco**) and nearby galaxies & clusters (**M81**, **Centaurus A**, **Virgo / M87**, **Fornax**, **Perseus**, **Coma**).
 - **Preserved Sagittarius A\* Relativistic Gravitational Lensing**:
   - Identical 2nd-order **Velocity-Verlet** Schwarzschild null-geodesic raymarching shader (`r_s = 2GM/c^2` derived from `4.297e6 M_sun`, GRAVITY 2022) with two-pass live 3D background lensing capture and distance-based core-glow LOD.
-- **Data Provenance Transparency, 6-DOF Flight & 5 Languages**:
+- **Hardware Auto-Profiler & RTX 3050–4050 High-Fidelity Tier**:
+  - Six graphics presets (`Potato`, `Low`, `Medium`, `High`, **`RTX 3050–4050 (4–8 GB VRAM)`** with `1.5×` supersampling, 120,000 stars, 16,000 belt asteroids, 96-segment planetary spheres, and 96-step black hole raymarching, and `Ultra 4K`) with automatic GPU/CPU/RAM hardware detection.
+- **Data Provenance Transparency, 6-DOF Flight, English Default & 5 Languages**:
   - Live HUD badge clearly distinguishing **Measured Catalog / Ephemeris**, **Parametric / Illustrative**, and **Measured Positions + Procedural Shapes**.
-  - Distance-proportional `W / A / S / D / Q / E / Shift` flight controls, auto-unit scale bar (`m → km → AU → ly → pc → kpc → Mpc`), decluttered 3D labels, reduced-motion toggle, adaptive FPS quality governor, and full **English (`en`), Vietnamese (`vi`), Japanese (`ja`), Chinese (`zh`), and Korean (`ko`)** localization.
+  - Distance-proportional `W / A / S / D / Q / E / Shift` flight controls, right-click drag panning, auto-unit scale bar (`m → km → AU → ly → pc → kpc → Mpc`), decluttered 3D labels, reduced-motion toggle, adaptive FPS quality governor, and full localization defaulting to **English (`en`)** with support for `vi`, `ja`, `zh`, and `ko`.
+- **Drop-In Standalone React Plugin (`/plugin`)**:
+  - Self-contained `@milky-way/observatory-plugin` package with zero Next.js runtime dependencies and an imperative `ref` controller API (`flyToTarget`, `flyToPreset`, `setGraphicsTier`, `setLanguage`) ready to embed in any Next.js, Vite, or React project. See [`plugin/README.md`](./plugin/README.md).
 
 ---
 
@@ -59,10 +63,12 @@ npm run dev
 ### Verification Scripts
 
 ```bash
-npm run lint         # ESLint 9 flat config validation
-npm run typecheck    # Next.js route typegen + TypeScript strict check (tsc --noEmit)
-npm test             # Run all astrophysics, scale-engine, ephemeris & catalog unit tests
-npm run build        # Build production bundle
+npm run lint              # ESLint 9 flat config validation
+npm run typecheck         # Next.js route typegen + TypeScript strict check (tsc --noEmit)
+npm run typecheck:plugin  # Standalone TypeScript check for /plugin
+npm run sync:plugin       # Synchronize root source & assets into /plugin
+npm test                  # Run all astrophysics, scale-engine, ephemeris & catalog unit tests
+npm run build             # Build production bundle
 ```
 
 ---

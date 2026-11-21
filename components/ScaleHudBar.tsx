@@ -4,9 +4,11 @@ import React from 'react';
 import {
   Eye,
   Grid,
+  Network,
   Orbit,
   Sparkles,
   Tag,
+  Wind,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -33,6 +35,10 @@ export interface ScaleHudBarProps {
   onSelectPreset: (preset: ScalePresetId) => void;
   showOrbits: boolean;
   onToggleOrbits: () => void;
+  showTrails: boolean;
+  onToggleTrails: () => void;
+  clusterMode: boolean;
+  onToggleClusterMode: () => void;
   showLabels: boolean;
   onToggleLabels: () => void;
   showGrid: boolean;
@@ -69,6 +75,10 @@ export default function ScaleHudBar({
   onSelectPreset,
   showOrbits,
   onToggleOrbits,
+  showTrails,
+  onToggleTrails,
+  clusterMode,
+  onToggleClusterMode,
   showLabels,
   onToggleLabels,
   showGrid,
@@ -231,6 +241,38 @@ export default function ScaleHudBar({
           >
             <Orbit className="w-3 h-3" />
             <span className="hidden md:inline">{copy.layerToggles.orbits}</span>
+          </button>
+
+          <button
+            type="button"
+            data-testid="toggle-trails-btn"
+            aria-pressed={showTrails}
+            onClick={onToggleTrails}
+            title={copy.layerToggles.trails}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-[7px] text-[11px] font-medium transition-colors whitespace-nowrap ${
+              showTrails
+                ? 'bg-[#1f2430] text-[#38bdf8] border border-[#38bdf8]/35'
+                : 'text-[#9ca3af] hover:text-white hover:bg-[#181b22] border border-transparent'
+            }`}
+          >
+            <Wind className="w-3 h-3" />
+            <span className="hidden md:inline">{copy.layerToggles.trails}</span>
+          </button>
+
+          <button
+            type="button"
+            data-testid="toggle-clusters-btn"
+            aria-pressed={clusterMode}
+            onClick={onToggleClusterMode}
+            title={copy.layerToggles.clusters}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-[7px] text-[11px] font-medium transition-colors whitespace-nowrap ${
+              clusterMode
+                ? 'bg-[#1f2430] text-[#fbbf24] border border-[#fbbf24]/35'
+                : 'text-[#9ca3af] hover:text-white hover:bg-[#181b22] border border-transparent'
+            }`}
+          >
+            <Network className="w-3 h-3" />
+            <span className="hidden md:inline">{copy.layerToggles.clusters}</span>
           </button>
 
           <button
