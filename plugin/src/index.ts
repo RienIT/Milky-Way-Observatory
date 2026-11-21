@@ -12,6 +12,8 @@ export type {
 export { default as UniverseCanvas } from './components/UniverseCanvas';
 export type { UniverseCanvasProps } from './components/UniverseCanvas';
 export { default as GraphicsSettingsModal } from './components/GraphicsSettingsModal';
+export { default as ObservatoryBootOverlay } from './components/ObservatoryBootOverlay';
+export type { ObservatoryBootOverlayProps } from './components/ObservatoryBootOverlay';
 export { default as ObservatorySidebar } from './components/ObservatorySidebar';
 export { default as MemoryDetailDrawer } from './components/MemoryDetailDrawer';
 export { default as ScaleHudBar } from './components/ScaleHudBar';
@@ -54,3 +56,21 @@ export type {
   MemoryDynamicsStepOptions,
   SolarOrbitalWakeSpec,
 } from './lib/memory-dynamics';
+export {
+  BOOT_COPY,
+  BOOT_MILESTONES,
+  BOOT_STAGE_ORDER,
+  BOOT_STAGE_PROGRESS,
+  advanceBootState,
+  createInitialBootState,
+  getBootCopy,
+  getBootMilestoneStatus,
+  isBootReady,
+} from './lib/boot-sequence';
+export type {
+  BootCopyDictionary,
+  BootMilestoneId,
+  BootMilestoneStatus,
+  BootStageId,
+  BootState,
+} from './lib/boot-sequence';

@@ -6,17 +6,15 @@ import AddMemoryModal from '@/components/AddMemoryModal';
 import ExoplanetCatalogView from '@/components/ExoplanetCatalogView';
 import GraphicsSettingsModal from '@/components/GraphicsSettingsModal';
 import MemoryDetailDrawer from '@/components/MemoryDetailDrawer';
+import ObservatoryBootOverlay from '@/components/ObservatoryBootOverlay';
 import ObservatorySidebar from '@/components/ObservatorySidebar';
 import TopSearchBar, { ActiveWebView } from '@/components/TopSearchBar';
 
 const UniverseCanvas = dynamic(() => import('@/components/UniverseCanvas'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full bg-[#05060a] flex items-center justify-center">
-      <div className="flex items-center gap-2.5 px-4 py-2 rounded-[10px] bg-[#111318] border border-white/[0.08] text-xs font-mono text-[#9ca3af]">
-        <span className="w-2 h-2 rounded-full bg-[#0082fb] animate-pulse" />
-        <span>WebGL2 Multi-Scale Observatory</span>
-      </div>
+    <div className="relative w-full h-full bg-[#05060a]">
+      <ObservatoryBootOverlay stage="bundle" progress={12} lang="en" />
     </div>
   ),
 });

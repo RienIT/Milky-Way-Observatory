@@ -95,6 +95,14 @@ import {
   resolveUniverseTarget,
   SGRA_DISPLAY_METERS_PER_SHADER_UNIT,
 } from '@/lib/universe-targets';
+import {
+  advanceBootState,
+  BootStageId,
+  BootState,
+  createInitialBootState,
+  isBootReady,
+} from '@/lib/boot-sequence';
+import ObservatoryBootOverlay from './ObservatoryBootOverlay';
 import ScaleHudBar, { ProvenanceMode } from './ScaleHudBar';
 import TimeControlPanel from './TimeControlPanel';
 
@@ -119,6 +127,7 @@ export interface UniverseCanvasProps {
   onResetCamera: () => void;
   lang: LanguageCode;
   assetBasePath?: string;
+  onBootReady?: () => void;
 }
 
 interface ProjectedLabel {
@@ -423,7 +432,12 @@ export default function UniverseCanvas({
   cameraResetTrigger,
   lang,
   assetBasePath = '',
+  onBootReady,
 }: UniverseCanvasProps) {
+  const onBootReadyRef = useRef(onBootReady);
+  useEffect(() => {
+    onBootReadyRef.current = onBootReady;
+  }, [onBootReady]);
   const normalizedAssetBase = assetBasePath.replace(/\/+$/, '');
   const assetBaseRef = useRef(normalizedAssetBase);
   useEffect(() => {
@@ -464,6 +478,18 @@ export default function UniverseCanvas({
   const [tileLoadProgress, setTileLoadProgress] = useState<number>(0);
   const [tilesReady, setTilesReady] = useState<boolean>(false);
   const [contextLost, setContextLost] = useState<boolean>(false);
+  const [bootState, setBootState] = useState<BootState>(() => createInitialBootState('webgl'));
+  const [isBootOverlayMounted, setIsBootOverlayMounted] = useState<boolean>(true);
+
+  const bootReady = isBootReady(bootState);
+
+  useEffect(() => {
+    if (!bootReady) return;
+    const timer = window.setTimeout(() => {
+      setIsBootOverlayMounted(false);
+    }, 520);
+    return () => window.clearTimeout(timer);
+  }, [bootReady]);
 
   // Refs for zero-teardown render loop
   const memoriesRef = useRef(memories);
@@ -714,7 +740,7 @@ export default function UniverseCanvas({
     setTimeSpeedSecPerSec(1);
   }, []);
 
-  // Main WebGL2 4-Pass Floating-Origin Multi-Scale Engine
+  // Main WebGL2 4-Pass Floating-Origin Multi-Scale Engine (yielded across paint frames to prevent UI freeze)
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
@@ -723,21 +749,64 @@ export default function UniverseCanvas({
     let frameId = 0;
     let timeoutId = 0;
     let isTabHidden = document.visibilityState === 'hidden';
+    const cleanups: (() => void)[] = [];
+    const activeYieldCancels = new Set<() => void>();
 
-    const width = container.clientWidth || window.innerWidth || 1280;
-    const height = container.clientHeight || window.innerHeight || 720;
+    const reportBootStage = (stage: BootStageId) => {
+      if (isDisposed) return;
+      setBootState((prev) => advanceBootState(prev, stage));
+    };
 
-    // WebGL2 Renderer with logarithmic depth + autoClear=false for 4-pass depth-cleared scale layers
-    const renderer = new THREE.WebGLRenderer({
-      antialias: graphicsRef.current.antialias,
-      powerPreference: 'high-performance',
-      logarithmicDepthBuffer: true,
-    });
-    renderer.autoClear = false;
-    renderer.setSize(width, height);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
-    container.appendChild(renderer.domElement);
+    const yieldToPaint = (): Promise<void> =>
+      new Promise<void>((resolve) => {
+        if (isDisposed) {
+          resolve();
+          return;
+        }
+        let rId = 0;
+        let tId = 0;
+        const finish = () => {
+          activeYieldCancels.delete(cancel);
+          resolve();
+        };
+        const cancel = () => {
+          cancelAnimationFrame(rId);
+          clearTimeout(tId);
+          activeYieldCancels.delete(cancel);
+          resolve();
+        };
+        activeYieldCancels.add(cancel);
+        rId = requestAnimationFrame(() => {
+          tId = window.setTimeout(finish, 0);
+        });
+      });
+
+    const bootEngine = async () => {
+      // Yield 1 paint frame immediately so ObservatoryBootOverlay paints crisply before heavy WebGL2 setup
+      reportBootStage('webgl');
+      await yieldToPaint();
+      if (isDisposed) return;
+
+      const width = container.clientWidth || window.innerWidth || 1280;
+      const height = container.clientHeight || window.innerHeight || 720;
+
+      // WebGL2 Renderer with logarithmic depth + autoClear=false for 4-pass depth-cleared scale layers
+      const renderer = new THREE.WebGLRenderer({
+        antialias: graphicsRef.current.antialias,
+        powerPreference: 'high-performance',
+        logarithmicDepthBuffer: true,
+      });
+      renderer.autoClear = false;
+      renderer.setSize(width, height);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
+      container.appendChild(renderer.domElement);
+      cleanups.push(() => {
+        renderer.dispose();
+        if (renderer.domElement.parentNode === container) {
+          container.removeChild(renderer.domElement);
+        }
+      });
 
     // Detect software GL only to scale render pacing/budget (never scene content!)
     let isSoftwareGl = false;
@@ -787,6 +856,15 @@ export default function UniverseCanvas({
       disposables.push(item);
       return item;
     };
+    cleanups.push(() => {
+      for (const d of disposables) {
+        try {
+          d.dispose();
+        } catch {
+          // ignore
+        }
+      }
+    });
 
     // =========================================================================
     // PASS 1: Deep Sky & Extragalactic Scene (1 unit = 1 Mpc)
@@ -869,6 +947,18 @@ export default function UniverseCanvas({
       galaxyGroup.add(mesh);
       galaxyMeshes.push({ entry, posM, radiusMpc, mesh, mat });
     }
+    cleanups.push(() => {
+      try {
+        bgGeo.dispose();
+      } catch {
+        // ignore
+      }
+    });
+
+    // Yield before heavy Pass 2 Milky Way starfield & gravitational cluster simulation
+    reportBootStage('milky-way');
+    await yieldToPaint();
+    if (isDisposed) return;
 
     // =========================================================================
     // PASS 2: Galactic Scene (1 unit = 1 kpc)
@@ -1273,6 +1363,22 @@ export default function UniverseCanvas({
         if (!isDisposed) setTilesReady(true);
       });
     }
+    cleanups.push(() => {
+      if (starWorker) {
+        starWorker.terminate();
+        starWorker = null;
+      }
+      try {
+        mwStarsGeo.dispose();
+      } catch {
+        // ignore
+      }
+    });
+
+    // Yield before Pass 4A Solar System ephemeris, planets & belts
+    reportBootStage('ephemeris');
+    await yieldToPaint();
+    if (isDisposed) return;
 
     // =========================================================================
     // PASS 4A: Planetary / Solar System Scene (1 unit = 1,000 km = 1e6 m)
@@ -1551,6 +1657,22 @@ export default function UniverseCanvas({
     solarTrailLines.renderOrder = 2;
     solarTrailLines.frustumCulled = false;
     planetaryScene.add(solarTrailLines);
+    cleanups.push(() => {
+      try {
+        unitSphereGeo.dispose();
+        solarBeltGeo.dispose();
+        for (const entry of planetEntries.values()) {
+          entry.ringMesh?.geometry.dispose();
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    // Yield before Pass 4A-2 catalog models, Pass 4B relativistic black hole & first frame shader compile
+    reportBootStage('shaders');
+    await yieldToPaint();
+    if (isDisposed) return;
 
     // =========================================================================
     // PASS 4A-2: Full 3D Procedural Models for ALL Catalog Objects
@@ -1788,6 +1910,16 @@ export default function UniverseCanvas({
     };
 
     syncCatalogEntries(memoriesRef.current);
+    cleanups.push(() => {
+      try {
+        for (const entry of catalogEntries.values()) {
+          disposeCatalogEntry(entry);
+        }
+        catalogEntries.clear();
+      } catch {
+        // ignore
+      }
+    });
 
     // =========================================================================
     // PASS 4B: Sagittarius A* Relativistic Black Hole Scene (100% UNTOUCHED SHADER!)
@@ -2107,6 +2239,23 @@ export default function UniverseCanvas({
       resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(container);
     }
+    cleanups.push(() => {
+      delete window.__OBSERVATORY_API__;
+      if (resizeObserver) resizeObserver.disconnect();
+      renderer.domElement.removeEventListener('contextmenu', onContextMenu);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerup', onPointerUp);
+      renderer.domElement.removeEventListener('pointercancel', onPointerUp);
+      renderer.domElement.removeEventListener('wheel', onWheel);
+      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
+      renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onWindowBlur);
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    });
 
     const frameWaiters: (() => void)[] = [];
     let forceHudSync = true;
@@ -2213,6 +2362,7 @@ export default function UniverseCanvas({
     let lastEphemerisMs = 0;
     let adaptiveResFactor = 1.0;
     let lastAppliedGfxSig = '';
+    let firstFrameCommitted = false;
     const fpsSamples: number[] = [];
 
     function afterDraw(cb: (ts: number) => void) {
@@ -3583,6 +3733,13 @@ export default function UniverseCanvas({
         }
       }
 
+      // Mark observatory ready immediately after the very first WebGL2 frame finishes rendering
+      if (!firstFrameCommitted) {
+        firstFrameCommitted = true;
+        reportBootStage('ready');
+        onBootReadyRef.current?.();
+      }
+
       // Resolve any pending awaitNextFrame() waiters after render & HUD sync complete
       if (frameWaiters.length > 0) {
         const pending = frameWaiters.splice(0, frameWaiters.length);
@@ -3604,56 +3761,25 @@ export default function UniverseCanvas({
     }
 
     frameId = requestAnimationFrame(tick);
+    };
+
+    void bootEngine();
 
     return () => {
       isDisposed = true;
       cancelAnimationFrame(frameId);
       clearTimeout(timeoutId);
-      delete window.__OBSERVATORY_API__;
-      if (starWorker) {
-        starWorker.terminate();
-        starWorker = null;
+      for (const cancelYield of Array.from(activeYieldCancels)) {
+        cancelYield();
       }
-      if (resizeObserver) resizeObserver.disconnect();
-      renderer.domElement.removeEventListener('contextmenu', onContextMenu);
-      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-      renderer.domElement.removeEventListener('pointermove', onPointerMove);
-      renderer.domElement.removeEventListener('pointerup', onPointerUp);
-      renderer.domElement.removeEventListener('pointercancel', onPointerUp);
-      renderer.domElement.removeEventListener('wheel', onWheel);
-      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
-      renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('blur', onWindowBlur);
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-
-      try {
-        unitSphereGeo.dispose();
-        mwStarsGeo.dispose();
-        bgGeo.dispose();
-        solarBeltGeo.dispose();
-        for (const entry of planetEntries.values()) {
-          entry.ringMesh?.geometry.dispose();
-        }
-        for (const entry of catalogEntries.values()) {
-          disposeCatalogEntry(entry);
-        }
-        catalogEntries.clear();
-      } catch {
-        // ignore
-      }
-      for (const d of disposables) {
+      activeYieldCancels.clear();
+      // Dispose in reverse order of creation so listeners & geometries release before renderer
+      for (let i = cleanups.length - 1; i >= 0; i -= 1) {
         try {
-          d.dispose();
+          cleanups[i]();
         } catch {
           // ignore
         }
-      }
-      renderer.dispose();
-      if (renderer.domElement.parentNode === container) {
-        container.removeChild(renderer.domElement);
       }
     };
   }, [startFlyTo]);
@@ -3713,6 +3839,8 @@ export default function UniverseCanvas({
     <div
       ref={stageRef}
       data-testid="universe-stage"
+      data-boot-stage={bootState.stage}
+      data-boot-ready={bootReady ? 'true' : 'false'}
       className="relative w-full h-full overflow-hidden bg-[#05060a] select-none"
     >
       {/* WebGL2 Canvas Mount */}
@@ -3721,8 +3849,18 @@ export default function UniverseCanvas({
         className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
       />
 
-      {/* Asset Streaming Loading Progress Bar */}
-      {!tilesReady && (
+      {/* Non-Blocking Staged Startup Loading Overlay (fades out after first WebGL2 frame renders) */}
+      {isBootOverlayMounted && (
+        <ObservatoryBootOverlay
+          stage={bootState.stage}
+          progress={bootState.progress}
+          lang={lang}
+          isFadingOut={bootReady}
+        />
+      )}
+
+      {/* Asset Streaming Loading Progress Bar (shown only if star tiles continue loading after boot) */}
+      {bootReady && !tilesReady && (
         <div
           data-testid="tile-loading-banner"
           className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 rounded-[8px] bg-[#111318]/95 border border-white/[0.10] px-3 py-1.5 flex items-center gap-2.5 shadow-xl"
