@@ -198,6 +198,7 @@ declare global {
       jumpToEclipse: (presetId?: string) => void;
       triggerPhotonPulse: (active?: boolean) => void;
       setCinemaMode: (enabled: boolean) => void;
+      captureSnapshot: () => Promise<string | null>;
       awaitNextFrame: () => Promise<void>;
       getState: () => {
         targetId: string;
@@ -531,7 +532,7 @@ export default function UniverseCanvas({
   // Simulation ephemeris time state (starts at real current UTC time or deep-linked timestamp)
   const [simDateMs, setSimDateMs] = useState<number>(() => initialSimDateMs ?? Date.now());
   const [isTimePlaying, setIsTimePlaying] = useState<boolean>(true);
-  const [timeSpeedSecPerSec, setTimeSpeedSecPerSec] = useState<number>(86_400); // 1 day/sec default so orbits & rotation feel alive
+  const [timeSpeedSecPerSec, setTimeSpeedSecPerSec] = useState<number>(3_600); // 1 hour/sec default so Earth rotation & orbits feel smooth and natural
 
   // HUD telemetry state (throttled ~8Hz)
   const [activePreset, setActivePreset] = useState<ScalePresetId | null>('earth');
@@ -2537,6 +2538,7 @@ export default function UniverseCanvas({
     });
 
     const frameWaiters: (() => void)[] = [];
+    const snapshotWaiters: ((dataUrl: string | null) => void)[] = [];
     let forceHudSync = true;
 
     // Expose deterministic test/inspection API for Playwright smoke & baseline black hole verification
@@ -2627,6 +2629,10 @@ export default function UniverseCanvas({
         setCinemaDirectRef.current(enabled);
         forceHudSync = true;
       },
+      captureSnapshot: () =>
+        new Promise<string | null>((resolve) => {
+          snapshotWaiters.push(resolve);
+        }),
       awaitNextFrame: () =>
         new Promise<void>((resolve) => {
           frameWaiters.push(resolve);
@@ -2643,12 +2649,17 @@ export default function UniverseCanvas({
           ])
         );
         const weights = computeScaleLayerWeights(actualDistM);
+        const activeFly = ctrl.flyTo && ctrl.flyTo.active ? ctrl.flyTo : null;
+        const reportedTargetId = activeFly ? activeFly.targetId : ctrl.targetId;
+        const reportedLogDistM = activeFly
+          ? Math.log10(Math.max(1, activeFly.endDistM))
+          : Math.log10(Math.max(1, actualDistM));
         return {
-          targetId: ctrl.targetId,
+          targetId: reportedTargetId,
           dominantLayer: weights.dominant,
           distM: actualDistM,
           altitudeM: Math.max(0, actualDistM - ctrl.targetRadiusM),
-          logDistM: Math.log10(Math.max(1, actualDistM)),
+          logDistM: reportedLogDistM,
           freeFlightOffsetM: ctrl.freeFlightOffsetM,
           camFinite:
             Number.isFinite(actualDistM) &&
@@ -4148,6 +4159,18 @@ export default function UniverseCanvas({
         firstFrameCommitted = true;
         reportBootStage('ready');
         onBootReadyRef.current?.();
+      }
+
+      // Capture clean HUD-free WebGL2 PNG before the drawing buffer swaps
+      if (snapshotWaiters.length > 0) {
+        let dataUrl: string | null = null;
+        try {
+          dataUrl = renderer.domElement.toDataURL('image/png');
+        } catch {
+          dataUrl = null;
+        }
+        const pendingSnaps = snapshotWaiters.splice(0, snapshotWaiters.length);
+        for (const resolve of pendingSnaps) resolve(dataUrl);
       }
 
       // Resolve any pending awaitNextFrame() waiters after render & HUD sync complete

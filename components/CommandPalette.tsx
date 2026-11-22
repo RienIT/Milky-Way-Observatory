@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleDot,
+  Compass,
   CornerDownLeft,
   Eclipse,
   Globe2,
@@ -21,6 +22,7 @@ import {
 } from '@/lib/astrophysics-science';
 import { getLocalizedNode } from '@/lib/celestial-translations';
 import { EXTRAGALACTIC_CATALOG } from '@/lib/extragalactic-catalog';
+import { GUIDED_TOURS, GuidedTourId } from '@/lib/guided-tours';
 import { LanguageCode } from '@/lib/i18n';
 import { MemoryNode } from '@/lib/memory-types';
 import { ScalePresetId, UNIVERSE_HUD_COPY } from '@/lib/universe-i18n';
@@ -35,6 +37,7 @@ export interface CommandPaletteProps {
   onSelectWavelength: (band: WavelengthBandId) => void;
   onTriggerPhotonPulse: () => void;
   onSelectScalePreset: (preset: ScalePresetId) => void;
+  onStartTour?: (tourId: GuidedTourId) => void;
 }
 
 type FilterTab = 'all' | 'events' | 'catalog' | 'galaxies';
@@ -45,11 +48,12 @@ interface PaletteEntry {
   subtitle: string;
   meta: string;
   group: FilterTab;
-  kind: 'object' | 'eclipse' | 'spectral' | 'photon' | 'preset';
+  kind: 'object' | 'eclipse' | 'spectral' | 'photon' | 'preset' | 'tour';
   objectId?: string;
   eclipse?: SolarEclipsePreset;
   band?: WavelengthBandId;
   preset?: ScalePresetId;
+  tourId?: GuidedTourId;
 }
 
 const PALETTE_COPY: Record<
@@ -164,6 +168,7 @@ export default function CommandPalette({
   onSelectWavelength,
   onTriggerPhotonPulse,
   onSelectScalePreset,
+  onStartTour,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -206,6 +211,15 @@ export default function CommandPalette({
           eclipse: preset,
         };
       }),
+      ...GUIDED_TOURS.map((tour) => ({
+        id: `tour-${tour.id}`,
+        title: tour.title[lang],
+        subtitle: tour.subtitle[lang],
+        meta: `${tour.stops.length} stops · ${tour.badgeMetric}`,
+        group: 'events' as const,
+        kind: 'tour' as const,
+        tourId: tour.id,
+      })),
       {
         id: 'cmd-fermi-bubbles',
         title: copy.fermiTitle,
@@ -280,6 +294,8 @@ export default function CommandPalette({
       onSelectScalePreset('milky-way');
     } else if (entry.kind === 'photon') {
       onTriggerPhotonPulse();
+    } else if (entry.kind === 'tour' && entry.tourId) {
+      onStartTour?.(entry.tourId);
     } else if (entry.kind === 'preset' && entry.preset) {
       onSelectScalePreset(entry.preset);
     }
@@ -389,7 +405,9 @@ export default function CommandPalette({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="shrink-0 text-[#E88B38]">
-                      {entry.kind === 'eclipse' ? (
+                      {entry.kind === 'tour' ? (
+                        <Compass className="w-3.5 h-3.5" />
+                      ) : entry.kind === 'eclipse' ? (
                         <Eclipse className="w-3.5 h-3.5" />
                       ) : entry.kind === 'spectral' ? (
                         <Radio className="w-3.5 h-3.5" />

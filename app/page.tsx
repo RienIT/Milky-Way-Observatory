@@ -3,13 +3,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
+  Camera,
+  Check,
   ChevronDown,
   CircleDot,
+  Compass,
   Globe,
+  HelpCircle,
   LayoutGrid,
   Plus,
   Scaling,
   Search,
+  Share2,
   SlidersHorizontal,
   Telescope,
 } from 'lucide-react';
@@ -17,15 +22,26 @@ import AddMemoryModal from '@/components/AddMemoryModal';
 import CommandPalette from '@/components/CommandPalette';
 import ExoplanetCatalogView from '@/components/ExoplanetCatalogView';
 import GraphicsSettingsModal from '@/components/GraphicsSettingsModal';
+import GuidedTourBar from '@/components/GuidedTourBar';
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal';
 import MemoryDetailDrawer from '@/components/MemoryDetailDrawer';
 import ObservatoryBootOverlay from '@/components/ObservatoryBootOverlay';
 import TopSearchBar, { ActiveWebView } from '@/components/TopSearchBar';
 import {
   parseObservatoryHash,
   serializeObservatoryHash,
+  SOLAR_ECLIPSE_PRESETS,
   SolarEclipsePreset,
   WavelengthBandId,
 } from '@/lib/astrophysics-science';
+import {
+  getGuidedTourById,
+  getNextTourStopIndex,
+  getPrevTourStopIndex,
+  GUIDED_TOURS,
+  GuidedTourId,
+  GuidedTourStop,
+} from '@/lib/guided-tours';
 import {
   detectClientHardwareProfile,
   GRAPHICS_PRESETS,
@@ -102,6 +118,15 @@ export default function MilkyWayObservatoryPage() {
     seq: number;
   } | null>(null);
   const hashHydratedRef = useRef(false);
+
+  // Phase 3 state: Guided Expeditions, Share Deep-Link, Capture PNG, Shortcuts Reference
+  const [activeTourId, setActiveTourId] = useState<GuidedTourId | null>(null);
+  const [tourStopIndex, setTourStopIndex] = useState<number>(0);
+  const [tourAutoPlay, setTourAutoPlay] = useState<boolean>(true);
+  const [tourMenuOpen, setTourMenuOpen] = useState<boolean>(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+  const [shareCopied, setShareCopied] = useState<boolean>(false);
+  const [isCapturingPng, setIsCapturingPng] = useState<boolean>(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isGraphicsOpen, setIsGraphicsOpen] = useState<boolean>(false);
@@ -195,6 +220,11 @@ export default function MilkyWayObservatoryPage() {
       if (!isEditing && !e.metaKey && !e.ctrlKey && !e.altKey && e.key === '/') {
         e.preventDefault();
         setIsPaletteOpen(true);
+        return;
+      }
+      if (!isEditing && !e.metaKey && !e.ctrlKey && !e.altKey && e.key === '?') {
+        e.preventDefault();
+        setIsShortcutsOpen((v) => !v);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -280,6 +310,145 @@ export default function MilkyWayObservatoryPage() {
     setSelectedCategory('ALL');
     setActiveView('catalog');
   }, []);
+
+  const activeTour = useMemo(
+    () => (activeTourId ? getGuidedTourById(activeTourId) : null),
+    [activeTourId]
+  );
+
+  const applyTourStop = useCallback(
+    (stop: GuidedTourStop, prevStop?: GuidedTourStop | null) => {
+      setActiveView('explorer');
+      setWavelengthBand(stop.wavelengthBand);
+      if (stop.eclipsePresetId) {
+        const preset =
+          SOLAR_ECLIPSE_PRESETS.find((p) => p.id === stop.eclipsePresetId) ??
+          SOLAR_ECLIPSE_PRESETS[0];
+        setSelectedId(null);
+        setEclipseRequest((prev) => ({ preset, seq: (prev?.seq ?? 0) + 1 }));
+      } else if (stop.targetId) {
+        if (stop.openInspector) {
+          setSelectedId(stop.targetId);
+        } else {
+          setSelectedId(null);
+          window.__OBSERVATORY_API__?.flyToTarget(stop.targetId);
+        }
+      } else if (stop.presetId) {
+        setSelectedId(null);
+        const samePresetAsPrev =
+          prevStop &&
+          !prevStop.eclipsePresetId &&
+          !prevStop.targetId &&
+          prevStop.presetId === stop.presetId;
+        if (!samePresetAsPrev) {
+          const preset = stop.presetId;
+          setScalePresetRequest((prev) => ({ preset, seq: (prev?.seq ?? 0) + 1 }));
+        }
+      }
+
+      if (stop.photonPulse) {
+        setPhotonTrigger((n) => n + 1);
+      } else {
+        window.__OBSERVATORY_API__?.triggerPhotonPulse(false);
+      }
+    },
+    []
+  );
+
+  const handleStartTour = useCallback(
+    (tourId: GuidedTourId) => {
+      const tour = getGuidedTourById(tourId);
+      if (!tour || tour.stops.length === 0) return;
+      setTourMenuOpen(false);
+      setActiveTourId(tourId);
+      setTourStopIndex(0);
+      setTourAutoPlay(true);
+      applyTourStop(tour.stops[0], null);
+    },
+    [applyTourStop]
+  );
+
+  const handleJumpTourStop = useCallback(
+    (index: number) => {
+      if (!activeTour) return;
+      const safe = Math.max(0, Math.min(activeTour.stops.length - 1, index));
+      const prevStop = activeTour.stops[tourStopIndex] ?? null;
+      setTourStopIndex(safe);
+      applyTourStop(activeTour.stops[safe], prevStop);
+    },
+    [activeTour, applyTourStop, tourStopIndex]
+  );
+
+  const handleCloseTour = useCallback(() => {
+    setActiveTourId(null);
+    setTourAutoPlay(false);
+    window.__OBSERVATORY_API__?.triggerPhotonPulse(false);
+  }, []);
+
+  // Auto-advance guided tour stops smoothly when enabled
+  useEffect(() => {
+    if (!activeTour || !tourAutoPlay) return;
+    const currentStop = activeTour.stops[tourStopIndex];
+    if (!currentStop) return;
+    const timer = window.setTimeout(() => {
+      const nextIdx = getNextTourStopIndex(activeTour, tourStopIndex, false);
+      if (nextIdx === tourStopIndex) {
+        setTourAutoPlay(false);
+        return;
+      }
+      setTourStopIndex(nextIdx);
+      applyTourStop(activeTour.stops[nextIdx], currentStop);
+    }, currentStop.durationSec * 1000);
+    return () => window.clearTimeout(timer);
+  }, [activeTour, applyTourStop, tourAutoPlay, tourStopIndex]);
+
+  const handleShareView = useCallback(async () => {
+    const live = window.__OBSERVATORY_API__?.getState();
+    const fullHash = serializeObservatoryHash({
+      target: selectedId ?? live?.targetId ?? undefined,
+      band: wavelengthBand !== 'optical' ? wavelengthBand : undefined,
+      dateIso: live?.simDateIso,
+      logDist: live?.logDistM,
+    });
+    const base = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+    const shareUrl = fullHash ? `${base}${fullHash}` : base;
+    try {
+      window.history.replaceState(null, '', fullHash ? `${window.location.pathname}${window.location.search}${fullHash}` : `${window.location.pathname}${window.location.search}`);
+    } catch {
+      // Ignore sandboxed history errors
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+    } catch {
+      // Clipboard may be restricted in sandboxed iframes; URL hash is still updated
+    }
+    setShareCopied(true);
+    window.setTimeout(() => setShareCopied(false), 2200);
+  }, [selectedId, wavelengthBand]);
+
+  const handleCapturePng = useCallback(async () => {
+    if (isCapturingPng) return;
+    setIsCapturingPng(true);
+    try {
+      const dataUrl = await window.__OBSERVATORY_API__?.captureSnapshot();
+      if (dataUrl) {
+        const live = window.__OBSERVATORY_API__?.getState();
+        const targetSlug = (selectedId || live?.targetId || 'milky-way')
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]+/g, '-');
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `milky-way-observatory-${targetSlug}-${wavelengthBand}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } finally {
+      setIsCapturingPng(false);
+    }
+  }, [isCapturingPng, selectedId, wavelengthBand]);
 
   const t = UI_STRINGS[lang];
   const hud = UNIVERSE_HUD_COPY[lang];
@@ -443,8 +612,65 @@ export default function MilkyWayObservatoryPage() {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
               >
                 <Plus className="w-3 h-3 text-[#E88B38] shrink-0" />
-                <span className="hidden lg:inline">{hud.worldLabLabel}</span>
+                <span className="hidden xl:inline">{hud.worldLabLabel}</span>
               </button>
+
+              {/* Guided Expeditions Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  data-testid="guided-tours-trigger"
+                  aria-expanded={tourMenuOpen}
+                  onClick={() => setTourMenuOpen((v) => !v)}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium transition-colors whitespace-nowrap ${
+                    activeTour || tourMenuOpen
+                      ? 'bg-[#E88B38]/15 text-[#E88B38]'
+                      : 'text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <Compass className="w-3 h-3 shrink-0 text-[#E88B38]" />
+                  <span>Tours</span>
+                  <ChevronDown className="w-2.5 h-2.5 text-[#6B707B]" />
+                </button>
+
+                {tourMenuOpen && (
+                  <div
+                    data-testid="guided-tours-menu"
+                    className="absolute left-0 top-full mt-1.5 w-80 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl divide-y divide-white/[0.06] z-50"
+                  >
+                    {GUIDED_TOURS.map((tour) => {
+                      const isCurrent = activeTourId === tour.id;
+                      return (
+                        <button
+                          key={tour.id}
+                          type="button"
+                          data-testid={`tour-option-${tour.id}`}
+                          onClick={() => handleStartTour(tour.id)}
+                          className={`w-full text-left px-3 py-2.5 transition-colors space-y-0.5 ${
+                            isCurrent ? 'bg-[#E88B38]/12' : 'hover:bg-white/[0.06]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-[12px] font-medium ${
+                                isCurrent ? 'text-[#E88B38]' : 'text-[#ECEAE4]'
+                              }`}
+                            >
+                              {tour.title[lang]}
+                            </span>
+                            <span className="font-mono text-[9px] text-[#E88B38] shrink-0">
+                              {tour.stops.length} stops
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#8A8D96] leading-snug">
+                            {tour.subtitle[lang]}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               <span className="mx-0.5 h-3.5 w-px bg-white/[0.09]" aria-hidden="true" />
 
@@ -475,6 +701,51 @@ export default function MilkyWayObservatoryPage() {
               >
                 <SlidersHorizontal className="w-3 h-3 text-[#E88B38] shrink-0" />
                 <span>{graphicsSettings.resolutionScale}x</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="share-view-btn"
+                onClick={handleShareView}
+                title="Copy shareable cosmic coordinate link"
+                aria-label="Share current observatory view"
+                className={`inline-flex items-center gap-1 px-1.5 py-1 rounded-[2px] text-[10px] font-mono transition-colors whitespace-nowrap ${
+                  shareCopied
+                    ? 'bg-[#E88B38]/18 text-[#E88B38]'
+                    : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
+                }`}
+              >
+                {shareCopied ? (
+                  <>
+                    <Check className="w-3 h-3 shrink-0" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <Share2 className="w-3 h-3 shrink-0" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                data-testid="capture-png-btn"
+                onClick={handleCapturePng}
+                disabled={isCapturingPng}
+                title="Save clean HUD-free WebGL2 PNG"
+                aria-label="Capture clean PNG snapshot"
+                className="inline-flex items-center justify-center p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
+              >
+                <Camera className="w-3 h-3 shrink-0" />
+              </button>
+
+              <button
+                type="button"
+                data-testid="open-shortcuts-btn"
+                onClick={() => setIsShortcutsOpen(true)}
+                title="Keyboard shortcuts (?)"
+                aria-label="Keyboard shortcuts"
+                className="inline-flex items-center justify-center p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors"
+              >
+                <HelpCircle className="w-3 h-3 shrink-0" />
               </button>
 
               {/* Compact 5-Language Switcher */}
@@ -522,6 +793,26 @@ export default function MilkyWayObservatoryPage() {
             </div>
           </header>
 
+          {/* Interactive Guided Expedition Bar (Phase 3) */}
+          {activeTour && (
+            <GuidedTourBar
+              tour={activeTour}
+              stopIndex={tourStopIndex}
+              isAutoPlaying={tourAutoPlay}
+              lang={lang}
+              hiddenInCinemaMode={cinemaMode}
+              onPrev={() =>
+                handleJumpTourStop(getPrevTourStopIndex(activeTour, tourStopIndex))
+              }
+              onNext={() =>
+                handleJumpTourStop(getNextTourStopIndex(activeTour, tourStopIndex, false))
+              }
+              onJumpToStop={handleJumpTourStop}
+              onToggleAutoPlay={() => setTourAutoPlay((v) => !v)}
+              onClose={handleCloseTour}
+            />
+          )}
+
           {/* Floating Right Precision Inspector Drawer */}
           <MemoryDetailDrawer
             selectedId={selectedId}
@@ -564,6 +855,14 @@ export default function MilkyWayObservatoryPage() {
           setActiveView('explorer');
           setScalePresetRequest((prev) => ({ preset, seq: (prev?.seq ?? 0) + 1 }));
         }}
+        onStartTour={handleStartTour}
+      />
+
+      {/* Keyboard Shortcuts Reference (?) */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+        lang={lang}
       />
 
       {/* World Lab / Add Celestial Body Modal */}

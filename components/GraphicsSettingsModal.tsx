@@ -371,18 +371,18 @@ export default function GraphicsSettingsModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-[780px] max-h-[90vh] rounded-[16px] bg-[#111318] border border-white/[0.10] shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-[780px] max-h-[90vh] rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/[0.08] flex items-start justify-between gap-4 bg-[#14171f]">
+        <div className="px-6 py-4 border-b border-white/[0.08] flex items-start justify-between gap-4 bg-[#07090d]">
           <div className="flex items-start gap-3">
-            <span className="w-9 h-9 rounded-[10px] bg-[#0082fb]/15 border border-[#0082fb]/35 text-[#54a8ff] inline-flex items-center justify-center shrink-0 mt-0.5">
+            <span className="w-9 h-9 rounded-[2px] bg-[#E88B38]/15 border border-[#E88B38]/35 text-[#E88B38] inline-flex items-center justify-center shrink-0 mt-0.5">
               <SlidersHorizontal className="w-4 h-4" />
             </span>
             <div>
-              <h2 className="text-[16px] font-semibold tracking-[-0.015em] text-[#f3f4f6]">
+              <h2 className="text-[16px] font-semibold tracking-[-0.015em] text-[#ECEAE4]">
                 {copy.title}
               </h2>
-              <p className="text-xs text-[#9ca3af] mt-0.5">{copy.subtitle}</p>
+              <p className="text-xs text-[#8A8D96] mt-0.5">{copy.subtitle}</p>
             </div>
           </div>
 
@@ -390,7 +390,7 @@ export default function GraphicsSettingsModal({
             type="button"
             onClick={onClose}
             aria-label={copy.closeBtn}
-            className="p-1.5 rounded-[8px] text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#1f2430] transition-colors shrink-0"
+            className="p-1.5 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -401,18 +401,18 @@ export default function GraphicsSettingsModal({
           {/* 1. Hardware Auto-Detection & Recommendation Banner */}
           <section
             data-testid="hardware-recommendation-card"
-            className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-4 space-y-3.5"
+            className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-4 space-y-3.5"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-[#54a8ff] shrink-0" />
-                <h3 className="text-xs font-semibold text-[#f3f4f6]">
+                <Cpu className="w-4 h-4 text-[#E88B38] shrink-0" />
+                <h3 className="text-xs font-semibold text-[#ECEAE4]">
                   {copy.hardwareHeading}
                 </h3>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#0082fb]/15 border border-[#0082fb]/35 text-[11px] font-semibold text-[#54a8ff]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] bg-[#E88B38]/12 border border-[#E88B38]/35 text-[11px] font-mono font-semibold text-[#E88B38]">
                   <Sparkles className="w-3 h-3" />
                   <span>
                     {copy.recommendedBadge}:{' '}
@@ -423,7 +423,7 @@ export default function GraphicsSettingsModal({
                   type="button"
                   data-testid="apply-recommended-graphics-btn"
                   onClick={applyRecommended}
-                  className="px-3 py-1 rounded-[8px] bg-[#0082fb] hover:bg-[#0073e0] text-white text-xs font-semibold transition-colors"
+                  className="px-3 py-1 rounded-[2px] bg-[#E88B38] hover:bg-[#f09b4e] text-[#050608] text-xs font-semibold transition-colors"
                 >
                   {copy.applyRecommended}
                 </button>
@@ -432,43 +432,43 @@ export default function GraphicsSettingsModal({
 
             {/* Hardware Specs Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
-              <div className="col-span-2 sm:col-span-3 lg:col-span-2 rounded-[8px] bg-[#111318] border border-white/[0.06] px-3 py-2">
-                <span className="text-[11px] text-[#6b7280] block">
+              <div className="col-span-2 sm:col-span-3 lg:col-span-2 rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
+                <span className="text-[11px] text-[#6B707B] block">
                   {copy.gpuLabel}
                 </span>
                 <span
                   data-testid="detected-gpu-name"
-                  className="font-mono text-[11px] text-[#f3f4f6] break-words line-clamp-2"
+                  className="font-mono text-[11px] text-[#ECEAE4] break-words line-clamp-2"
                 >
                   {hardwareProfile.gpuRenderer}
                 </span>
               </div>
 
-              <div className="rounded-[8px] bg-[#111318] border border-white/[0.06] px-3 py-2">
-                <span className="text-[11px] text-[#6b7280] block">
+              <div className="rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
+                <span className="text-[11px] text-[#6B707B] block">
                   {copy.cpuLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#f3f4f6] font-semibold">
+                <span className="font-mono tabular-nums text-[#ECEAE4] font-semibold">
                   {hardwareProfile.cpuCores} threads
                 </span>
               </div>
 
-              <div className="rounded-[8px] bg-[#111318] border border-white/[0.06] px-3 py-2">
-                <span className="text-[11px] text-[#6b7280] block">
+              <div className="rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
+                <span className="text-[11px] text-[#6B707B] block">
                   {copy.ramLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#f3f4f6] font-semibold">
+                <span className="font-mono tabular-nums text-[#ECEAE4] font-semibold">
                   {hardwareProfile.deviceMemoryGb
                     ? `${hardwareProfile.deviceMemoryGb} GB`
                     : 'Auto'}
                 </span>
               </div>
 
-              <div className="rounded-[8px] bg-[#111318] border border-white/[0.06] px-3 py-2">
-                <span className="text-[11px] text-[#6b7280] block">
+              <div className="rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
+                <span className="text-[11px] text-[#6B707B] block">
                   {copy.displayLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#d1d5db]">
+                <span className="font-mono tabular-nums text-[#C8C6C0]">
                   {hardwareProfile.screenWidth}×{hardwareProfile.screenHeight} ·{' '}
                   {hardwareProfile.devicePixelRatio.toFixed(1)}x
                 </span>
@@ -478,24 +478,24 @@ export default function GraphicsSettingsModal({
             {/* Score Bar + Localized Explanation */}
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#9ca3af] inline-flex items-center gap-1.5">
-                  <Gauge className="w-3.5 h-3.5 text-[#54a8ff]" />
+                <span className="text-[#8A8D96] inline-flex items-center gap-1.5">
+                  <Gauge className="w-3.5 h-3.5 text-[#E88B38]" />
                   <span>{copy.scoreLabel}</span>
                 </span>
                 <span
                   data-testid="hardware-score-value"
-                  className="font-mono tabular-nums font-semibold text-[#f3f4f6]"
+                  className="font-mono tabular-nums font-semibold text-[#ECEAE4]"
                 >
                   {recommendation.score} / 100
                 </span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-[#0c0e13] overflow-hidden border border-white/[0.06]">
+              <div className="h-1.5 w-full rounded-[2px] bg-[#07090d] overflow-hidden border border-white/[0.06]">
                 <div
-                  className="h-full rounded-full bg-[#0082fb] transition-all duration-300"
+                  className="h-full bg-[#E88B38] transition-all duration-300"
                   style={{ width: `${recommendation.score}%` }}
                 />
               </div>
-              <p className="text-xs text-[#9ca3af] leading-relaxed">
+              <p className="text-xs text-[#8A8D96] leading-relaxed">
                 {recommendation.summaryByLang[lang]}
               </p>
             </div>
@@ -504,11 +504,11 @@ export default function GraphicsSettingsModal({
           {/* 2. Quick Quality Tier Selector */}
           <section className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-[#9ca3af]">
+              <h3 className="text-xs font-semibold text-[#8A8D96]">
                 {copy.presetsHeading}
               </h3>
               {settings.tier === 'custom' && (
-                <span className="text-[11px] font-mono text-[#54a8ff]">
+                <span className="text-[11px] font-mono text-[#E88B38]">
                   {copy.customActive}
                 </span>
               )}
@@ -525,38 +525,32 @@ export default function GraphicsSettingsModal({
                     type="button"
                     data-testid={`preset-tier-${tierId}`}
                     onClick={() => applyPreset(tierId)}
-                    className={`rounded-[10px] p-2.5 text-left border transition-colors relative ${
+                    className={`rounded-[4px] p-2.5 text-left border transition-colors relative ${
                       isSelected
-                        ? isRtxTier
-                          ? 'bg-[#10b981]/15 border-[#10b981] text-white'
-                          : 'bg-[#0082fb]/15 border-[#0082fb] text-white'
+                        ? 'bg-[#E88B38]/15 border-[#E88B38] text-[#ECEAE4]'
                         : isRtxTier
-                          ? 'bg-[#131c1a] hover:bg-[#192623] border-[#10b981]/35 text-[#e5e7eb]'
-                          : 'bg-[#161922] hover:bg-[#1c202b] border-white/[0.08] text-[#d1d5db]'
+                          ? 'bg-[#12151c] hover:bg-[#191d26] border-[#E88B38]/30 text-[#ECEAE4]'
+                          : 'bg-[#12151c] hover:bg-[#191d26] border-white/[0.08] text-[#C8C6C0]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-semibold flex items-center gap-1.5">
                         <span>{copy.tierNames[tierId]}</span>
                         {isRtxTier && (
-                          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#10b981]/20 text-[#34d399] font-mono text-[9px] font-semibold">
+                          <span className="px-1.5 py-0.5 rounded-[2px] bg-[#E88B38]/15 text-[#E88B38] font-mono text-[9px] font-semibold">
                             4–8GB
                           </span>
                         )}
                       </span>
                       {isSelected && (
-                        <Check
-                          className={`w-3.5 h-3.5 shrink-0 ${
-                            isRtxTier ? 'text-[#34d399]' : 'text-[#54a8ff]'
-                          }`}
-                        />
+                        <Check className="w-3.5 h-3.5 shrink-0 text-[#E88B38]" />
                       )}
                     </div>
-                    <p className="text-[10px] font-mono text-[#9ca3af] mt-1 leading-snug">
+                    <p className="text-[10px] font-mono text-[#8A8D96] mt-1 leading-snug">
                       {copy.tierDescs[tierId]}
                     </p>
                     {isRecommended && (
-                      <span className="inline-block mt-1.5 text-[10px] font-medium text-[#54a8ff]">
+                      <span className="inline-block mt-1.5 text-[10px] font-mono font-medium text-[#E88B38]">
                         ★ Auto
                       </span>
                     )}
@@ -567,15 +561,15 @@ export default function GraphicsSettingsModal({
           </section>
 
           {/* 3. Render Resolution Scale */}
-          <section className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-4 space-y-3">
+          <section className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#f3f4f6]">
-                <Monitor className="w-3.5 h-3.5 text-[#54a8ff]" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#ECEAE4]">
+                <Monitor className="w-3.5 h-3.5 text-[#E88B38]" />
                 <span>{copy.resolutionLabel}</span>
               </div>
               <span
                 data-testid="live-render-resolution"
-                className="font-mono tabular-nums text-xs text-[#54a8ff] font-semibold"
+                className="font-mono tabular-nums text-xs text-[#E88B38] font-semibold"
               >
                 {copy.liveRenderSize}: {renderPxW} × {renderPxH} px (
                 {settings.resolutionScale}x)
@@ -596,10 +590,10 @@ export default function GraphicsSettingsModal({
                         opt.scale as ResolutionScaleOption
                       )
                     }
-                    className={`px-2 py-2 rounded-[8px] text-center font-mono text-[11px] border transition-colors ${
+                    className={`px-2 py-2 rounded-[2px] text-center font-mono text-[11px] border transition-colors ${
                       active
-                        ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-                        : 'bg-[#111318] hover:bg-[#1c202b] border-white/[0.08] text-[#d1d5db]'
+                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#C8C6C0]'
                     }`}
                   >
                     {opt.badge}
@@ -612,12 +606,12 @@ export default function GraphicsSettingsModal({
           {/* 4. Granular GPU & Scene Complexity Controls */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Milky Way Star Count */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 space-y-2">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#f3f4f6]">
+                <span className="font-medium text-[#ECEAE4]">
                   {copy.starCountLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#54a8ff]">
+                <span className="font-mono tabular-nums text-[#E88B38]">
                   {(settings.starfieldCount / 1000).toFixed(0)}k
                 </span>
               </div>
@@ -627,10 +621,10 @@ export default function GraphicsSettingsModal({
                     key={cnt}
                     type="button"
                     onClick={() => updateField('starfieldCount', cnt)}
-                    className={`py-1.5 rounded-[6px] font-mono text-[11px] border transition-colors ${
+                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
                       settings.starfieldCount === cnt
-                        ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-                        : 'bg-[#111318] hover:bg-[#1c202b] border-white/[0.08] text-[#9ca3af]'
+                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
                     }`}
                   >
                     {cnt / 1000}k
@@ -640,12 +634,12 @@ export default function GraphicsSettingsModal({
             </div>
 
             {/* Asteroid & Kuiper Belt Particle Count */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 space-y-2">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#f3f4f6]">
+                <span className="font-medium text-[#ECEAE4]">
                   {copy.asteroidCountLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#54a8ff]">
+                <span className="font-mono tabular-nums text-[#E88B38]">
                   {settings.asteroidBeltCount === 0
                     ? copy.disabled
                     : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
@@ -657,10 +651,10 @@ export default function GraphicsSettingsModal({
                     key={cnt}
                     type="button"
                     onClick={() => updateField('asteroidBeltCount', cnt)}
-                    className={`py-1.5 rounded-[6px] font-mono text-[11px] border transition-colors ${
+                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
                       settings.asteroidBeltCount === cnt
-                        ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-                        : 'bg-[#111318] hover:bg-[#1c202b] border-white/[0.08] text-[#9ca3af]'
+                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
                     }`}
                   >
                     {cnt === 0 ? '0' : `${cnt / 1000}k`}
@@ -670,12 +664,12 @@ export default function GraphicsSettingsModal({
             </div>
 
             {/* Planet Tessellation */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 space-y-2">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#f3f4f6]">
+                <span className="font-medium text-[#ECEAE4]">
                   {copy.tessellationLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#54a8ff]">
+                <span className="font-mono tabular-nums text-[#E88B38]">
                   {settings.planetSegments} seg
                 </span>
               </div>
@@ -685,10 +679,10 @@ export default function GraphicsSettingsModal({
                     key={seg}
                     type="button"
                     onClick={() => updateField('planetSegments', seg)}
-                    className={`py-1.5 rounded-[6px] font-mono text-[11px] border transition-colors ${
+                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
                       settings.planetSegments === seg
-                        ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-                        : 'bg-[#111318] hover:bg-[#1c202b] border-white/[0.08] text-[#9ca3af]'
+                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
                     }`}
                   >
                     {seg}
@@ -698,12 +692,12 @@ export default function GraphicsSettingsModal({
             </div>
 
             {/* Black Hole Raymarch Steps */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 space-y-2">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#f3f4f6]">
+                <span className="font-medium text-[#ECEAE4]">
                   {copy.rayStepsLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#54a8ff]">
+                <span className="font-mono tabular-nums text-[#E88B38]">
                   {settings.blackHoleRaySteps} steps
                 </span>
               </div>
@@ -713,10 +707,10 @@ export default function GraphicsSettingsModal({
                     key={steps}
                     type="button"
                     onClick={() => updateField('blackHoleRaySteps', steps)}
-                    className={`py-1.5 rounded-[6px] font-mono text-[11px] border transition-colors ${
+                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
                       settings.blackHoleRaySteps === steps
-                        ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-                        : 'bg-[#111318] hover:bg-[#1c202b] border-white/[0.08] text-[#9ca3af]'
+                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
                     }`}
                   >
                     {steps}
@@ -729,8 +723,8 @@ export default function GraphicsSettingsModal({
           {/* 5. Toggles & FPS Cap */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* FPS Cap */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 space-y-2">
-              <span className="text-xs font-medium text-[#f3f4f6] block">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
+              <span className="text-xs font-medium text-[#ECEAE4] block">
                 {copy.fpsCapLabel}
               </span>
               <div className="grid grid-cols-3 gap-1">
@@ -739,10 +733,10 @@ export default function GraphicsSettingsModal({
                     key={fps}
                     type="button"
                     onClick={() => updateField('fpsCap', fps)}
-                    className={`py-1.5 rounded-[6px] font-mono text-[11px] border transition-colors ${
+                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
                       settings.fpsCap === fps
-                        ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-                        : 'bg-[#111318] hover:bg-[#1c202b] border-white/[0.08] text-[#9ca3af]'
+                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
                     }`}
                   >
                     {fps === 0 ? copy.fpsUncapped : `${fps}`}
@@ -752,12 +746,12 @@ export default function GraphicsSettingsModal({
             </div>
 
             {/* Antialiasing Toggle */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 flex items-center justify-between gap-2">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-medium text-[#f3f4f6]">
+                <p className="text-xs font-medium text-[#ECEAE4]">
                   {copy.antialiasLabel}
                 </p>
-                <p className="text-[10px] text-[#6b7280] leading-snug mt-0.5">
+                <p className="text-[10px] text-[#6B707B] leading-snug mt-0.5">
                   {copy.antialiasHint}
                 </p>
               </div>
@@ -765,10 +759,10 @@ export default function GraphicsSettingsModal({
                 type="button"
                 aria-pressed={settings.antialias}
                 onClick={() => updateField('antialias', !settings.antialias)}
-                className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold shrink-0 transition-colors ${
+                className={`px-3 py-1.5 rounded-[2px] text-xs font-semibold shrink-0 transition-colors ${
                   settings.antialias
-                    ? 'bg-[#0082fb] text-white'
-                    : 'bg-[#111318] border border-white/[0.10] text-[#9ca3af]'
+                    ? 'bg-[#E88B38] text-[#050608]'
+                    : 'bg-[#0a0c10] border border-white/[0.10] text-[#8A8D96]'
                 }`}
               >
                 {settings.antialias ? copy.enabled : copy.disabled}
@@ -776,12 +770,12 @@ export default function GraphicsSettingsModal({
             </div>
 
             {/* Atmosphere & Nebulae Toggle */}
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 flex items-center justify-between gap-2">
+            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-medium text-[#f3f4f6]">
+                <p className="text-xs font-medium text-[#ECEAE4]">
                   {copy.atmosphereLabel}
                 </p>
-                <p className="text-[10px] text-[#6b7280] leading-snug mt-0.5">
+                <p className="text-[10px] text-[#6B707B] leading-snug mt-0.5">
                   {copy.atmosphereHint}
                 </p>
               </div>
@@ -794,10 +788,10 @@ export default function GraphicsSettingsModal({
                     !settings.showAtmosphereAndNebulae
                   )
                 }
-                className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold shrink-0 transition-colors ${
+                className={`px-3 py-1.5 rounded-[2px] text-xs font-semibold shrink-0 transition-colors ${
                   settings.showAtmosphereAndNebulae
-                    ? 'bg-[#0082fb] text-white'
-                    : 'bg-[#111318] border border-white/[0.10] text-[#9ca3af]'
+                    ? 'bg-[#E88B38] text-[#050608]'
+                    : 'bg-[#0a0c10] border border-white/[0.10] text-[#8A8D96]'
                 }`}
               >
                 {settings.showAtmosphereAndNebulae
@@ -809,8 +803,8 @@ export default function GraphicsSettingsModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-white/[0.08] bg-[#0e1015] flex items-center justify-between">
-          <span className="text-[11px] font-mono text-[#6b7280]">
+        <div className="px-6 py-3.5 border-t border-white/[0.08] bg-[#07090d] flex items-center justify-between">
+          <span className="text-[11px] font-mono text-[#6B707B]">
             WebGL{hardwareProfile.webgl2Supported ? '2' : '1'} · MaxTex{' '}
             {hardwareProfile.maxTextureSize}px
           </span>
@@ -818,7 +812,7 @@ export default function GraphicsSettingsModal({
             type="button"
             data-testid="close-graphics-settings-btn"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-[8px] bg-[#0082fb] hover:bg-[#0073e0] text-white text-xs font-semibold transition-colors"
+            className="px-4 py-1.5 rounded-[2px] bg-[#E88B38] hover:bg-[#f09b4e] text-[#050608] text-xs font-semibold transition-colors"
           >
             {copy.closeBtn}
           </button>

@@ -1,4 +1,6 @@
-# Milky Way Observatory — Multi-Scale Universe Viewer
+# Milky Way Observatory
+
+**A real-time, continuous multi-scale WebGL2 universe observatory spanning 23+ orders of magnitude — from 600 m above Earth's surface to the Coma Galaxy Cluster — built on peer-reviewed NASA/JPL, ESA Gaia DR3, GRAVITY Collaboration, and McConnachie/NED datasets.**
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](./.github/workflows/ci.yml)
 [![CodeQL](https://img.shields.io/badge/Security-CodeQL-2ea44f?logo=github&logoColor=white)](./.github/workflows/codeql.yml)
@@ -6,44 +8,66 @@
 [![Next.js 15](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org)
 [![Three.js WebGL2](https://img.shields.io/badge/Three.js-WebGL2%20GLSL-049EF4?logo=threedotjs)](https://threejs.org)
 
-An interactive, continuous **multi-scale universe viewer** modeled after **NASA / JPL**, **ESA Gaia DR3**, **GRAVITY Collaboration**, and **McConnachie / NED** astronomical datasets. Smoothly zoom continuously across **23+ orders of magnitude** — from **< 1 km above Earth's surface** → **Moon** → **Solar System** → **Nearby Stars** → **Milky Way** → **Sagittarius A\*** → **Local Group** → **Virgo & Coma Galaxy Clusters** — with float64 camera-relative precision, real ephemerides, and transparent data provenance.
+---
+
+## Preview
+
+<!-- Drop your recorded demo video, GIF, or screenshots here -->
+<!-- Example: ![Milky Way Observatory Demo](./docs/media/demo.gif) -->
+
+> *Interactive full-bleed WebGL2 observatory viewport featuring precision aerospace telemetry, multi-wavelength Galactic imaging, real-time lunar eclipse umbra projection, Schwarzschild black-hole lensing, and interactive scientific guided expeditions.*
 
 ---
 
-## Key Features
+## Key Capabilities
 
-- **Continuous Multi-Scale Precision Architecture (`1 m` to `10^26 m`)**:
-  - **Float64 SI Meters & Hierarchical Floating Origin**: All celestial positions are computed in IEEE-754 float64 meters relative to dynamic precision anchors (`earth`, `heliocentric`, `galactic`), subtracting camera position on CPU (`objAbs - camAbs`) before casting to GPU float32 — eliminating vertex jitter even at 600 m altitude above Earth while 8.178 kpc from Sagittarius A\*.
-  - **4-Pass Depth-Cleared Scale Hierarchy**: Independent scale layers (`planetary`, `stellar`, `galactic`, `extragalactic`) with dynamic per-layer near/far clip planes, logarithmic depth buffer, and smooth crossfades.
-  - **Logarithmic Zoom & Log-Space Fly-To**: Mouse wheel, pinch gestures, zoom slider, and 6 scale presets traverse decades smoothly.
-- **Real-Time Solar System Ephemerides & Earth Fidelity**:
-  - Live heliocentric/geocentric coordinates for the **Sun**, **8 planets**, **Moon** (with real illumination phase), and **Pluto** via `astronomy-engine` (VSOP87 / ELP2000), plus NASA JPL Keplerian elements for **Ceres** and 7 major moons (Io, Europa, Ganymede, Callisto, Titan, Enceladus, Triton).
-  - Exact IAU Hipparcos J2000 Equatorial → Galactic transformation (`~60.19°` ecliptic–galactic tilt) placing the Solar System at **8.178 kpc** from Sagittarius A\* (GRAVITY 2019/2022).
-  - High-detail Earth with continents, bathymetry, solar specular glint, twilight terminator, night-side city lights, animated cloud layer, and Rayleigh atmospheric scattering.
-  - Full simulation time controls: play/pause, speed presets (`1x`, `1h/s`, `1d/s`, `1mo/s`, `1yr/s`), and **Reset to Now**.
-- **Measured Nearby Stars, Parametric Milky Way & Local Group / Clusters**:
-  - Compact binary star tiles (`public/data/stars-tier0.bin` & `stars-tier1.bin`) decoded off-main-thread in a Web Worker (`public/workers/star-tile-worker.js`) combining measured Hipparcos/HYG/Gaia DR3 stars (`illustrative: false`) with Gaia-calibrated local neighborhood fill (`illustrative: true`).
-  - Double-sided parametric Milky Way barred spiral disk modeled after the **NASA/JPL-Caltech (R. Hurt)** galactic visualization (Wegg et al. 2015 27° creamy-gold central bar, Reid et al. 2019 4 counter-clockwise spiral arms + Orion Spur, dark reddish-brown inner dust lanes, ruby-pink H-II star-forming knots, and smooth exponential outer halo fade, flagged `illustrative: true`).
-  - Real Local Group galaxies (**M31 Andromeda**, **M33**, **LMC**, **SMC**, **M32**, **M110**, **NGC 6822**, **IC 1613**, **Leo I**, **Fornax**, **Sculptor**, **Draco**) and nearby galaxies & clusters (**M81**, **Centaurus A**, **Virgo / M87**, **Fornax**, **Perseus**, **Coma**).
-- **Preserved Sagittarius A\* Relativistic Gravitational Lensing**:
-  - Identical 2nd-order **Velocity-Verlet** Schwarzschild null-geodesic raymarching shader (`r_s = 2GM/c^2` derived from `4.297e6 M_sun`, GRAVITY 2022) with two-pass live 3D background lensing capture and distance-based core-glow LOD.
-- **Hardware Auto-Profiler & RTX 3050–4050 High-Fidelity Tier**:
-  - Six graphics presets (`Potato`, `Low`, `Medium`, `High`, **`RTX 3050–4050 (4–8 GB VRAM)`** with `1.5×` supersampling, 120,000 stars, 16,000 belt asteroids, 96-segment planetary spheres, and 96-step black hole raymarching, and `Ultra 4K`) with automatic GPU/CPU/RAM hardware detection.
-- **Data Provenance Transparency, 6-DOF Flight, English Default & 5 Languages**:
-  - Live HUD badge clearly distinguishing **Measured Catalog / Ephemeris**, **Parametric / Illustrative**, and **Measured Positions + Procedural Shapes**.
-  - Distance-proportional `W / A / S / D / Q / E / Shift` flight controls, right-click drag panning, auto-unit scale bar (`m → km → AU → ly → pc → kpc → Mpc`), decluttered 3D labels, reduced-motion toggle, adaptive FPS quality governor, and full localization defaulting to **English (`en`)** with support for `vi`, `ja`, `zh`, and `ko`.
-- **Drop-In Standalone React Plugin (`/plugin`)**:
-  - Self-contained `@milky-way/observatory-plugin` package with zero Next.js runtime dependencies and an imperative `ref` controller API (`flyToTarget`, `flyToPreset`, `setGraphicsTier`, `setLanguage`) ready to embed in any Next.js, Vite, or React project. See [`plugin/README.md`](./plugin/README.md).
+### 1. Continuous Float64 Multi-Scale Architecture (`1 m` → `10²⁶ m`)
+- **Float64 SI Meters & Floating Origin**: Every celestial position is computed in IEEE-754 float64 meters relative to hierarchical precision anchors (`earth`, `heliocentric`, `galactic`), subtracting camera coordinates on CPU (`objAbs - camAbs`) before casting to GPU float32 — eliminating vertex jitter even at 600 m altitude above Earth while 8.178 kpc from Sagittarius A\*.
+- **4-Pass Depth-Cleared Scale Hierarchy**: Independent scale layers (`planetary`, `stellar`, `galactic`, `extragalactic`) with dynamic per-layer frustums, logarithmic depth buffer, and smooth decade crossfades.
+- **Logarithmic Zoom & 6-DOF Flight**: Seamless wheel/pinch/slider logarithmic zoom, log-space camera fly-to, and distance-proportional `W / A / S / D / Q / E / Shift` galactic flight.
+
+### 2. Timeless Evergreen Astrophysics (Zero External Live-Feed Decay)
+- **4-Band Multi-Wavelength Galactic Observation (`OPT` | `IR` | `HI` | `X/γ`)**: Real-time shader blending across Optical (Gaia DR3 · `380–750 nm`), Infrared (2MASS/Spitzer · `1.2–24 µm`), Neutral Hydrogen 21 cm Radio (HI4PI · `1.42 GHz`), and X-Ray / Gamma-Ray (Fermi-LAT / eROSITA · `0.5–100 GeV`).
+- **3D Volumetric Fermi Bubbles**: Bipolar `±8.5 kpc` gamma-ray / X-ray plasma lobes emerging above and below Sagittarius A\* in high-energy observation mode.
+- **Real Total Solar Eclipse Lunar Umbra & Penumbra**: Live `astronomy-engine` Sun–Moon–Earth geometry casting analytical umbral darkening and warm bronze penumbral twilight onto both Earth's surface and cloud layers, with one-click jumps to major eclipses (`2026-08-12`, `2027-08-02`, `2024-04-08`).
+- **Speed-of-Light Photon Pulse ($c = 299{,}792{,}458\text{ m/s}$)**: Expanding translucent spherical wavefront and ecliptic reference ring leaving the Sun with real-time light-travel milestones (`Mercury 3.2m`, `Earth 8m 20s`, `Jupiter 43m`, `Saturn 1h 19m`).
+- **Real-Time Schwarzschild Gravitational Lensing (Sagittarius A\*)**: 2nd-order Velocity-Verlet null-geodesic raymarching shader ($r_s = 2GM/c^2$ derived from $4.297 \times 10^6 M_\odot$, GRAVITY 2022) with two-pass 3D background lensing capture and exact per-fragment logarithmic `gl_FragDepth`.
+- **Orbital Wakes & Gravitational Star Clustering**: Fading historical orbital trails and toggleable category-based gravitational clustering dynamics across the 48+ catalog objects.
+
+### 3. Precision Observatory Instrument Interface
+- **Full-Bleed Viewport & Minimal Floating HUD**: Unobstructed `100vw × 100vh` 3D viewport framed by a compact top-left instrument strip, top-right ephemeris clock, and bottom telemetry dock using `IBM Plex Sans` + `IBM Plex Mono` (`tabular-nums`).
+- **Keyboard-Driven Command Palette (`/` or `⌘K` / `Ctrl+K`)**: Instant fuzzy jump across all 48+ stars/planets/exoplanets, Local Group galaxies, Sagittarius A\*, Total Solar Eclipses, spectral bands, photon pulse, and Guided Expeditions.
+- **Scientific Astrophysics Charts**: Built-in SVG **Hertzsprung–Russell (H-R) Diagram** (Stefan–Boltzmann locus + 10 benchmark stars), **Planck Blackbody Radiation Spectrum** (visible `380–750 nm` band + Wien $\lambda_{\max}$), and **Interior Cross-Section & Logarithmic Radius Comparator**.
+- **Interactive Guided Expeditions (`Tours`)**: Three choreographed multi-chapter scientific tours (*Powers of Ten*, *The Multi-Wavelength Milky Way*, and *Gravity, Shadows & Event Horizons*) with automated camera/spectrum/epoch transitions and chapter narration in 5 languages.
+- **Telescope Reticle, Cinema Mode (`H`), Deep-Linking & Clean PNG Capture**: Live 3D-projected optical corner-bracket reticle, single-key HUD hide (`H`), shareable `#target=...&band=...&date=...&logd=...` URL coordinates, and one-click HUD-free WebGL2 PNG export.
+- **Hardware Auto-Profiler & 5-Language Localization**: Six graphics presets (`Potato`, `Low`, `Medium`, `High`, `RTX 3050–4050`, `Ultra 4K`) with automatic GPU/CPU/RAM detection; defaults to **English (`en`)** with instant switching to `vi`, `ja`, `zh`, and `ko`.
+
+### 4. Drop-In Standalone React Plugin (`/plugin`)
+- Self-contained `@milky-way/observatory-plugin` package with zero Next.js runtime dependencies and an imperative `ref` controller (`flyToTarget`, `flyToPreset`, `setWavelengthBand`, `jumpToEclipse`, `triggerPhotonPulse`, `setCinemaMode`, `startTour`, `stopTour`, `captureSnapshot`, `setGraphicsTier`, `setLanguage`). See [`plugin/README.md`](./plugin/README.md).
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| `/` or `⌘K` / `Ctrl+K` | Open Command Palette (objects, galaxies, eclipses, spectra, tours) |
+| `H` | Toggle Cinema / Telescope Mode (hide/restore all HUD elements) |
+| `W` `A` `S` `D` | 6-DOF free-flight horizontal movement |
+| `Q` / `E` + `Shift` | Ascend / Descend vertically (`Shift` for `3.2×` boost) |
+| `Scroll` / `Drag` | Continuous logarithmic zoom (`1 m → 100 Mpc`) / Orbit & right-drag pan |
+| `←` / `→` | Previous / Next chapter during an active Guided Expedition |
+| `?` | Open Keyboard Shortcuts reference |
 
 ---
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router) + React 19 + TypeScript 5
-- **3D & Shaders**: Three.js (WebGL2, custom GLSL volumetric Schwarzschild lensing & planetary/galactic shaders, logarithmic depth buffer)
-- **Astronomy & Ephemeris**: `astronomy-engine` (VSOP87 / ELP2000), Web Worker binary star tile loader
-- **Styling & Motion**: Tailwind CSS v4, Lucide React, Motion
-- **Testing & CI/CD**: Node built-in `node:test` (`tsx`), ESLint 9 (flat config), GitHub Actions CI/CD, CodeQL, Dependabot
+- **Framework**: Next.js 15 (App Router) · React 19 · TypeScript 5
+- **3D & Shaders**: Three.js WebGL2 · Custom GLSL shaders (Schwarzschild geodesic lensing, 4-band multi-wavelength disk, Fermi Bubbles, Earth eclipse umbra/penumbra, photon wavefront) · Logarithmic depth buffer
+- **Ephemeris & Catalogs**: `astronomy-engine` (VSOP87 / ELP2000) · Off-main-thread Web Worker binary star tiles (`Float32Array`)
+- **Styling & Icons**: Tailwind CSS v4 · `IBM Plex Sans` / `IBM Plex Mono` · Lucide React · Motion
+- **Testing & CI/CD**: Node built-in `node:test` (`tsx`) · ESLint 9 · GitHub Actions CI · CodeQL · Dependabot
 
 ---
 
@@ -53,7 +77,7 @@ An interactive, continuous **multi-scale universe viewer** modeled after **NASA 
 # 1. Install dependencies (standardized on npm)
 npm install
 
-# 2. (Optional) Regenerate binary star catalog tiles from source catalog builder
+# 2. (Optional) Regenerate binary star catalog tiles
 node scripts/build-star-tiles.mjs
 
 # 3. Start local development server at http://localhost:3000
@@ -63,44 +87,55 @@ npm run dev
 ### Verification Scripts
 
 ```bash
-npm run lint              # ESLint 9 flat config validation
-npm run typecheck         # Next.js route typegen + TypeScript strict check (tsc --noEmit)
+npm run lint              # ESLint 9 flat-config validation
+npm run typecheck         # Next.js route typegen + strict TypeScript check
 npm run typecheck:plugin  # Standalone TypeScript check for /plugin
 npm run sync:plugin       # Synchronize root source & assets into /plugin
-npm test                  # Run all astrophysics, scale-engine, ephemeris & catalog unit tests
-npm run build             # Build production bundle
+npm test                  # Run all astrophysics, scale, ephemeris, dynamics & tour tests
+npm run build             # Build standalone production bundle
 ```
 
 ---
 
-## Architecture & Data Provenance
+## Scientific Data Provenance
 
-All physical constants live in [`lib/constants.ts`](./lib/constants.ts) with peer-reviewed citations (CODATA 2018, IAU 2012/2015, GRAVITY 2019/2022, EHT 2022, Reid et al. 2019, Wegg et al. 2015, NASA JPL 2024). Procedural or parametric layers are explicitly flagged `illustrative: true` and surfaced in the HUD. See [`docs/ROADMAP.md`](./docs/ROADMAP.md) and [`public/data/README.md`](./public/data/README.md) for the complete dataset registry and multi-scale design notes.
+All physical constants are defined in [`lib/constants.ts`](./lib/constants.ts) with peer-reviewed citations, and every procedural or parametric layer is explicitly tagged `illustrative: true` and surfaced in the HUD:
+
+| Layer / Dataset | Source Citation | Provenance |
+| :--- | :--- | :--- |
+| Physical & IAU Constants | CODATA 2018 · IAU 2012 / 2015 | Measured |
+| Solar System Ephemeris & Eclipses | `astronomy-engine` (VSOP87 / ELP2000) | Measured |
+| Planetary Radii, Axial Tilts & Moons | NASA JPL Planetary Fact Sheets (2024) | Measured |
+| Sun–Sgr A\* Distance (`8.178 kpc`) & Mass (`4.297×10⁶ M☉`) | GRAVITY Collaboration (2019, 2022) · EHT (2022) | Measured |
+| Nearby Bright & Gaia Stars (`stars-tier0.bin`) | ESA Hipparcos · HYG v3.8 · ESA Gaia DR3 | Measured |
+| Local Group & Galaxy Clusters | McConnachie (2012) · NED · 2MRS | Measured positions; procedural morphology |
+| Milky Way Disk, Multi-Wavelength & Fermi Bubbles | Reid et al. (2019) · Wegg et al. (2015) · Fermi-LAT / eROSITA | Parametric / Illustrative |
+
+See [`docs/ROADMAP.md`](./docs/ROADMAP.md) and [`public/data/README.md`](./public/data/README.md) for the complete dataset layout and architectural notes.
 
 ---
 
-## CI/CD & Repository Governance
+## Repository Governance
 
 | File / Workflow | Description |
 | :--- | :--- |
-| [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) | Automated governance check, ESLint, TypeScript (`npm run typecheck`), unit tests (`npm test`) & production build |
-| [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml) | Scheduled & PR-triggered CodeQL Static Application Security Testing (SAST) |
-| [`.github/workflows/release.yml`](./.github/workflows/release.yml) | Automated quality gate, production build packaging, SHA-256 checksums & GitHub Release publishing on `v*.*.*` tags |
-| [`.github/dependabot.yml`](./.github/dependabot.yml) | Automated weekly security & dependency update PRs for `npm` and GitHub Actions |
-| [`.github/CODEOWNERS`](./.github/CODEOWNERS) | Enforces repository code ownership review by `@DanGuangLT` and `@LienThuan04` |
+| [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) | Automated lint, typecheck, unit tests, and production build validation |
+| [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml) | Scheduled and PR-triggered CodeQL static security analysis (SAST) |
+| [`.github/workflows/release.yml`](./.github/workflows/release.yml) | Quality gate, standalone build packaging, SHA-256 checksums, and GitHub Release publishing |
+| [`.github/dependabot.yml`](./.github/dependabot.yml) | Weekly automated security and dependency update PRs |
 | [`LICENSE`](./LICENSE) | Open-source **MIT License** |
-| [`COPYRIGHT.md`](./COPYRIGHT.md) | **Digital Copyright & Intellectual Property Notice** |
+| [`COPYRIGHT.md`](./COPYRIGHT.md) | Digital Copyright & Intellectual Property Notice |
 | [`NOTICE`](./NOTICE) | Third-party open-source software & astronomical dataset attributions |
-| [`AUTHORS.md`](./AUTHORS.md) | Project authors, core maintainers & collaborative development credits |
-| [`SECURITY.md`](./SECURITY.md) | Security policy & coordinated vulnerability disclosure instructions |
-| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | Community Code of Conduct (Contributor Covenant v2.1) |
+| [`AUTHORS.md`](./AUTHORS.md) | Project authors & core maintainers |
+| [`SECURITY.md`](./SECURITY.md) | Coordinated vulnerability disclosure policy |
+| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | Contributor Covenant v2.1 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines, branching workflow & commit conventions |
-| [`CHANGELOG.md`](./CHANGELOG.md) | Structured release history following Keep a Changelog |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Keep a Changelog structured release history |
 
 ---
 
-## Authors & Digital Copyright
+## Authors & License
 
 Copyright © 2026 **DanGuangLT** (`phatmcpack@gmail.com`) & **LienThuan04** (`lienthuan2004@gmail.com`).
 
-Co-created and owned by **DanGuangLT** and **LienThuan04**, built with AI-assisted software engineering tools, and released under the [MIT License](./LICENSE).
+Co-created and maintained by **DanGuangLT** and **LienThuan04**, released under the [MIT License](./LICENSE).

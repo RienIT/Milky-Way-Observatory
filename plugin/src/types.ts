@@ -1,6 +1,7 @@
 import type React from 'react';
 import type { WavelengthBandId } from './lib/astrophysics-science';
 import type { GraphicsSettings, QualityTierId } from './lib/graphics-settings';
+import type { GuidedTourId } from './lib/guided-tours';
 import type { LanguageCode } from './lib/i18n';
 import type { MemoryNode } from './lib/memory-types';
 import type { SimulationScaleMode } from './lib/scientific-catalog';
@@ -63,12 +64,18 @@ export interface MilkyWayPluginHandle {
   flyToPreset: (preset: ScalePresetId) => void;
   /** Switch electromagnetic observation band (`'optical' | 'infrared' | 'radio' | 'xray'`). */
   setWavelengthBand: (band: WavelengthBandId) => void;
-  /** Jump ephemeris clock and camera directly to a real Total Solar Eclipse (`'eclipse-2026-08-12'`, `'eclipse-2027-08-02'`, `'eclipse-2024-04-08'`). */
+  /** Jump ephemeris clock and camera directly to a real Total Solar Eclipse (`'eclipse-2026'`, `'eclipse-2027'`, `'eclipse-2024'`). */
   jumpToEclipse: (presetId?: string) => void;
   /** Toggle or emit the Speed-of-Light Photon Pulse wavefront (`c = 299,792,458 m/s`). */
   triggerPhotonPulse: (active?: boolean) => void;
   /** Toggle distraction-free Cinema / Telescope Mode (`H`). */
   setCinemaMode: (enabled: boolean) => void;
+  /** Launch an interactive scientific Guided Expedition (`'powers-of-ten' | 'multi-wavelength-galaxy' | 'gravity-and-shadows'`). */
+  startTour: (tourId: GuidedTourId) => void;
+  /** Exit the currently running Guided Expedition. */
+  stopTour: () => void;
+  /** Capture a clean HUD-free WebGL2 PNG data URL of the live canvas. */
+  captureSnapshot: () => Promise<string | null>;
   /** Switch UI language programmatically. */
   setLanguage: (lang: LanguageCode) => void;
   /** Switch graphics preset programmatically (e.g. `'rtx'` for RTX 3050-4050 4-8GB VRAM). */

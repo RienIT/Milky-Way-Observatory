@@ -1,8 +1,19 @@
 # @milky-way/observatory-plugin
 
-A self-contained React + Three.js WebGL2 plugin package for **Milky Way Observatory** — a continuous multi-scale 3D universe viewer spanning **Earth -> Solar System -> Nearby Gaia DR3 Stars -> NASA/JPL-Caltech Milky Way -> Sagittarius A\* -> Local Group & Galaxy Clusters**.
+A self-contained React + Three.js WebGL2 plugin package for **Milky Way Observatory** — a continuous multi-scale 3D universe observatory spanning **Earth → Solar System → Nearby Gaia DR3 Stars → Multi-Wavelength Milky Way & Fermi Bubbles → Sagittarius A\* → Local Group & Galaxy Clusters**.
 
-The `plugin/` directory is **fully self-contained**: it has zero Next.js runtime dependencies and zero `@/` path aliases, so it can be embedded directly into any **Next.js**, **Vite + React**, **Remix**, or **Webpack** application.
+The `plugin/` directory is **completely self-contained**: it has zero Next.js runtime dependencies and zero `@/` path aliases, so it can be embedded directly into any **Next.js**, **Vite + React**, **Remix**, or **Webpack** application.
+
+---
+
+## Included Capabilities
+
+- **Full-Bleed Precision Observatory UI**: Floating top-left instrument strip, bottom telemetry HUD, keyboard-driven **Command Palette** (`/` or `⌘K`), **Cinema Mode (`H`)**, **Telescope Targeting Reticle**, and **Keyboard Shortcuts (`?`)**.
+- **Astrophysics Inspection Diagrams**: SVG **Hertzsprung–Russell (H-R) Diagram**, **Planck Blackbody Radiation Spectrum**, and **Interior Cross-Section & Logarithmic Size Comparator**.
+- **4-Band Multi-Wavelength Galactic Mode**: Real-time Optical (`OPT`), Infrared (`IR`), Neutral Hydrogen 21 cm Radio (`HI`), and X-Ray / Gamma (`X/γ`) switching with 3D volumetric **Fermi Bubbles**.
+- **Real Total Solar Eclipse Shadows & Speed-of-Light Pulse**: Live lunar umbra/penumbra projection onto Earth (`eclipse-2026`, `eclipse-2027`, `eclipse-2024`) and expanding photon wavefront ($c = 299{,}792{,}458\text{ m/s}$).
+- **Interactive Scientific Guided Expeditions**: Three choreographed multi-chapter tours (*Powers of Ten*, *The Multi-Wavelength Milky Way*, *Gravity, Shadows & Event Horizons*) localized in 5 languages (`en`, `vi`, `ja`, `zh`, `ko`).
+- **HUD-Free WebGL2 PNG Snapshot**: Programmatic and one-click PNG export via `captureSnapshot()`.
 
 ---
 
@@ -24,8 +35,8 @@ plugin/
     ├── index.ts                      # Primary barrel exports
     ├── types.ts                      # MilkyWayPluginProps & MilkyWayPluginHandle
     ├── MilkyWayObservatoryPlugin.tsx # Drop-in React component
-    ├── components/                   # Complete UI & WebGL2 engine (relative imports only)
-    └── lib/                          # Orbital physics, GLSL cosmic shaders, NASA model, i18n
+    ├── components/                   # Complete UI, Guided Tours, Charts & WebGL2 engine
+    └── lib/                          # Float64 scale engine, ephemeris, GLSL shaders, tours, i18n
 ```
 
 ---
@@ -34,7 +45,7 @@ plugin/
 
 ### Step 1: Copy `plugin/` & Install Dependencies
 
-Copy the entire `plugin/` directory into your host project (for example `./plugins/milky-way-observatory`), then add the package and peer/runtime dependencies to your host `package.json`:
+Copy the entire `plugin/` directory into your host project (for example `./plugins/milky-way-observatory`), then add the package and runtime dependencies to your host `package.json`:
 
 ```json
 {
@@ -50,14 +61,14 @@ Copy the entire `plugin/` directory into your host project (for example `./plugi
 }
 ```
 
-> **Tailwind CSS v4 Note:** The plugin UI uses Tailwind CSS utility classes. If your host project uses Tailwind v4, include `@source "../plugins/milky-way-observatory/src";` in your global stylesheet (`globals.css` or `index.css`) so utility classes inside the plugin are scanned.
+> **Tailwind CSS v4 Note:** The plugin UI uses Tailwind CSS utility classes. In a Tailwind v4 host project, include `@source "../plugins/milky-way-observatory/src";` in your global stylesheet (`globals.css` or `index.css`) so utility classes inside the plugin are scanned.
 
 ### Step 2: Copy Star Catalog Tiles & Web Worker into Host `public/`
 
 Copy `plugin/public/data` and `plugin/public/workers` into your host application's `public/` directory:
 
-- **Placed at the root of `public/`** (`public/data/...`, `public/workers/...`) -> leave `assetBasePath` empty (default `""`).
-- **Placed in a subdirectory** (e.g. `public/observatory/data/...`, `public/observatory/workers/...`) -> pass `assetBasePath="/observatory"`.
+- **Placed at the root of `public/`** (`public/data/...`, `public/workers/...`) → leave `assetBasePath` empty (default `""`).
+- **Placed in a subdirectory** (e.g. `public/observatory/data/...`, `public/observatory/workers/...`) → pass `assetBasePath="/observatory"`.
 
 ### Step 3: Mount the Component
 
@@ -82,6 +93,7 @@ export default function ObservatoryPage() {
       <MilkyWayObservatoryPlugin
         ref={obsRef}
         initialLanguage="en"
+        initialWavelengthBand="optical"
         initialGraphicsTier="rtx"
         assetBasePath=""
         onSelectObject={(id, obj) => {
@@ -103,7 +115,7 @@ export function App() {
     <section style={{ width: '100%', height: '800px' }}>
       <MilkyWayObservatoryPlugin
         initialLanguage="en"
-        showTopBar={false}
+        showTopBar={true}
         showSidebar={false}
         assetBasePath="/observatory"
       />
@@ -117,41 +129,50 @@ export function App() {
 ## Props & Imperative `ref` API
 
 | Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `className` / `style` | `string` / `CSSProperties` | `""` | Container sizing & styling (defaults to filling its parent `100% × 100%`) |
+| :--- | :--- | :--- | :--- |
+| `className` / `style` | `string` / `CSSProperties` | `""` | Container sizing & styling (fills parent `100% × 100%` by default) |
 | `initialLanguage` | `'en' \| 'vi' \| 'ja' \| 'zh' \| 'ko'` | `'en'` | Initial UI language (defaults to English) |
 | `initialGraphicsTier` | `'potato' \| 'low' \| 'medium' \| 'high' \| 'rtx' \| 'ultra'` | Auto-detect | Optional graphics tier override (`'rtx'` targets RTX 3050–4050 4–8 GB VRAM) |
-| `initialTarget` | `string \| null` | `null` | Initial celestial body to inspect (`'earth'`, `'saturn'`, `'BLACK_HOLE_CORE'`, etc.) |
+| `initialTarget` | `string \| null` | `null` | Initial celestial body to inspect (`'earth'`, `'saturn'`, `'star-rigel'`, `'BLACK_HOLE_CORE'`, etc.) |
+| `initialWavelengthBand` | `'optical' \| 'infrared' \| 'radio' \| 'xray'` | `'optical'` | Initial Galactic electromagnetic observation band |
 | `initialScaleMode` | `'true-1to1' \| 'atlas'` | `'true-1to1'` | Initial astronomical scale mode |
-| `initialSidebarOpen` | `boolean` | `true` | Initial expanded state of the celestial catalog sidebar on desktop |
-| `showTopBar` | `boolean` | `true` | Show or hide the top navigation bar |
-| `showSidebar` | `boolean` | `true` | Show or hide the left celestial directory sidebar |
+| `initialSidebarOpen` | `boolean` | `false` | Initial expanded state when `showSidebar` is enabled |
+| `showTopBar` | `boolean` | `true` | Show or hide the floating instrument strip |
+| `showSidebar` | `boolean` | `false` | Show or hide the optional left catalog sidebar (Command Palette `/` is always available) |
 | `assetBasePath` | `string` | `""` | Public URL prefix for `data/` and `workers/` assets |
-| `summarizeApiUrl` | `string` | `""` | Optional AI summary API endpoint (when empty, uses the built-in offline generator with zero backend required) |
+| `summarizeApiUrl` | `string` | `""` | Optional summary endpoint URL (empty uses the built-in offline generator) |
 | `persistState` | `boolean` | `true` | Persist language, custom objects, and graphics settings in `localStorage` |
-| `storageKeyPrefix` | `string` | `'mw-plugin'` | Prefix for `localStorage` keys to prevent collisions with host app storage |
+| `storageKeyPrefix` | `string` | `'mw-plugin'` | Prefix for `localStorage` keys to prevent host storage collisions |
 | `initialObjects` | `MemoryNode[]` | Built-in catalog | Optional custom initial catalog replacing the default 48 NASA/Gaia objects |
 | `onSelectObject` | `(id, obj) => void` | — | Fired when the user selects or clears a celestial object |
 | `onLanguageChange` | `(lang) => void` | — | Fired when UI language changes |
 | `onGraphicsChange` | `(settings) => void` | — | Fired when graphics settings or preset tier changes |
+| `onReady` | `() => void` | — | Fired once the WebGL2 engine completes startup and commits the first frame |
 
 ### Imperative Controller Methods (`MilkyWayPluginHandle`)
 
 ```ts
-obsRef.current?.flyToPreset('milky-way');        // Fly to the NASA Milky Way overview
-obsRef.current?.flyToTarget('BLACK_HOLE_CORE');  // Fly directly to Sagittarius A*
-obsRef.current?.flyToTarget('saturn');           // Fly to Saturn
-obsRef.current?.setGraphicsTier('rtx');          // Enable RTX 3050-4050 preset (1.5x SSAA, 120k stars)
-obsRef.current?.setLanguage('en');               // Switch UI language programmatically
-obsRef.current?.openGraphicsSettings();          // Open the Graphics & Hardware Settings modal
-obsRef.current?.resetCamera();                   // Reset camera view and clear selection
+obsRef.current?.flyToPreset('milky-way');                // Fly to the Milky Way overview
+obsRef.current?.flyToTarget('BLACK_HOLE_CORE');          // Fly directly to Sagittarius A*
+obsRef.current?.flyToTarget('star-rigel');               // Fly to Rigel (β Orionis)
+obsRef.current?.setWavelengthBand('xray');               // Switch to X-Ray / Gamma + Fermi Bubbles
+obsRef.current?.jumpToEclipse('eclipse-2026');           // Jump to 2026-08-12 Total Solar Eclipse
+obsRef.current?.triggerPhotonPulse(true);                // Emit Speed-of-Light Photon Pulse (c)
+obsRef.current?.setCinemaMode(true);                     // Hide all HUD overlays (Telescope Mode)
+obsRef.current?.startTour('multi-wavelength-galaxy');    // Launch an interactive Guided Expedition
+obsRef.current?.stopTour();                              // Exit the active Guided Expedition
+const png = await obsRef.current?.captureSnapshot();     // Export clean HUD-free WebGL2 PNG data URL
+obsRef.current?.setGraphicsTier('rtx');                  // Enable RTX 3050–4050 high-fidelity tier
+obsRef.current?.setLanguage('en');                       // Switch UI language programmatically
+obsRef.current?.openGraphicsSettings();                  // Open the Graphics & Hardware modal
+obsRef.current?.resetCamera();                           // Reset camera view and clear selection
 ```
 
 ---
 
 ## Synchronizing the Plugin from the Root Project
 
-Whenever source files in the root application (`components/`, `lib/`, `public/`) are updated, synchronize and verify the standalone plugin package from the repository root:
+Whenever source files in the root application (`components/`, `lib/`, `public/`) are updated, synchronize and validate the standalone plugin package from the repository root:
 
 ```bash
 npm run sync:plugin

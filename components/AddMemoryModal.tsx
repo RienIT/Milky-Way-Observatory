@@ -140,21 +140,21 @@ export default function AddMemoryModal({
       aria-labelledby="add-memory-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75"
     >
-      <div className="w-full max-w-2xl rounded-[14px] bg-[#111318] border border-white/[0.12] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-2xl rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="w-8 h-8 rounded-[8px] bg-[#0082fb]/15 text-[#54a8ff] inline-flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-[2px] bg-[#E88B38]/15 border border-[#E88B38]/35 text-[#E88B38] inline-flex items-center justify-center shrink-0">
               <Telescope className="w-4 h-4" />
             </span>
             <div className="min-w-0">
               <h2
                 id="add-memory-modal-title"
-                className="text-[15px] font-semibold tracking-[-0.015em] text-[#f3f4f6] truncate"
+                className="text-[15px] font-semibold tracking-[-0.015em] text-[#ECEAE4] truncate"
               >
                 {t.modalTitle}
               </h2>
-              <p className="text-xs text-[#9ca3af] truncate mt-0.5">
+              <p className="text-xs text-[#8A8D96] truncate mt-0.5">
                 {t.modalSubtitle}
               </p>
             </div>
@@ -164,7 +164,7 @@ export default function AddMemoryModal({
             type="button"
             onClick={onClose}
             aria-label={t.closeInspector}
-            className="p-1.5 rounded-[8px] text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] transition-colors shrink-0"
+            className="p-1.5 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -178,7 +178,7 @@ export default function AddMemoryModal({
         >
           {/* Quick Presets */}
           <div className="space-y-2">
-            <span className="text-xs font-medium text-[#9ca3af]">
+            <span className="text-xs font-medium text-[#8A8D96]">
               {t.modalPresetsLabel}
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -192,7 +192,7 @@ export default function AddMemoryModal({
                     setPreferredCategory(preset.category);
                     setErrorMsg(null);
                   }}
-                  className="px-3 py-1.5 rounded-[8px] bg-[#181b22] hover:bg-[#222631] border border-white/[0.08] text-xs font-medium text-[#54a8ff] transition-colors"
+                  className="px-3 py-1.5 rounded-[2px] bg-white/[0.04] hover:bg-[#E88B38]/14 border border-white/[0.09] hover:border-[#E88B38]/40 text-xs font-medium text-[#E88B38] transition-colors"
                 >
                   {preset.label}
                 </button>
@@ -205,7 +205,7 @@ export default function AddMemoryModal({
             <div className="space-y-1.5">
               <label
                 htmlFor="memory-title-input"
-                className="block text-xs font-medium text-[#d1d5db]"
+                className="block text-xs font-medium text-[#C8C6C0]"
               >
                 {t.modalNameLabel}
               </label>
@@ -217,14 +217,14 @@ export default function AddMemoryModal({
                 placeholder={t.modalNamePlaceholder}
                 autoComplete="off"
                 suppressHydrationWarning
-                className="w-full rounded-[8px] bg-[#181b22] border border-white/[0.10] px-3.5 py-2 text-sm text-[#f3f4f6] placeholder:text-[#6b7280] focus:outline-none focus:border-[#0082fb] transition-colors"
+                className="w-full rounded-[2px] bg-[#12151c] border border-white/[0.10] px-3.5 py-2 text-sm text-[#ECEAE4] placeholder:text-[#6B707B] focus:outline-none focus:border-[#E88B38] transition-colors"
               />
             </div>
 
             <div className="space-y-1.5">
               <label
                 htmlFor="memory-category-select"
-                className="block text-xs font-medium text-[#d1d5db]"
+                className="block text-xs font-medium text-[#C8C6C0]"
               >
                 {t.modalCategoryLabel}
               </label>
@@ -237,7 +237,7 @@ export default function AddMemoryModal({
                   )
                 }
                 suppressHydrationWarning
-                className="w-full rounded-[8px] bg-[#181b22] border border-white/[0.10] px-3.5 py-2 text-sm text-[#f3f4f6] focus:outline-none focus:border-[#0082fb] transition-colors"
+                className="w-full rounded-[2px] bg-[#12151c] border border-white/[0.10] px-3.5 py-2 text-sm text-[#ECEAE4] focus:outline-none focus:border-[#E88B38] transition-colors"
               >
                 <option value="AUTO">AI Auto-Detect</option>
                 {ALL_CATEGORIES.map((cat) => (
@@ -254,11 +254,11 @@ export default function AddMemoryModal({
             <div className="flex items-center justify-between">
               <label
                 htmlFor="memory-content-textarea"
-                className="block text-xs font-medium text-[#d1d5db]"
+                className="block text-xs font-medium text-[#C8C6C0]"
               >
                 {t.modalDescLabel}
               </label>
-              <span className="text-xs font-mono tabular-nums text-[#6b7280]">
+              <span className="text-xs font-mono tabular-nums text-[#6B707B]">
                 {content.trim().length} {t.modalCharCount}
               </span>
             </div>
@@ -272,32 +272,32 @@ export default function AddMemoryModal({
               }}
               placeholder={t.modalDescPlaceholder}
               suppressHydrationWarning
-              className="w-full rounded-[8px] bg-[#181b22] border border-white/[0.10] px-3.5 py-2.5 text-sm text-[#f3f4f6] placeholder:text-[#6b7280] focus:outline-none focus:border-[#0082fb] transition-colors resize-none leading-relaxed"
+              className="w-full rounded-[2px] bg-[#12151c] border border-white/[0.10] px-3.5 py-2.5 text-sm text-[#ECEAE4] placeholder:text-[#6B707B] focus:outline-none focus:border-[#E88B38] transition-colors resize-none leading-relaxed"
             />
           </div>
 
           {errorMsg && (
-            <div className="rounded-[8px] bg-rose-500/10 border border-rose-500/40 px-4 py-2.5 text-xs text-rose-300">
+            <div className="rounded-[2px] bg-rose-500/10 border border-rose-500/40 px-4 py-2.5 text-xs text-rose-300">
               {errorMsg}
             </div>
           )}
 
           {/* Actions */}
           <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-white/[0.08]">
-            <p className="text-[11px] text-[#6b7280]">{t.modalFooterNote}</p>
+            <p className="text-[11px] text-[#6B707B]">{t.modalFooterNote}</p>
 
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-[8px] bg-[#181b22] hover:bg-[#222631] border border-white/[0.08] text-xs font-medium text-[#d1d5db] transition-colors"
+                className="px-4 py-2 rounded-[2px] bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] text-xs font-medium text-[#C8C6C0] transition-colors"
               >
                 {t.modalCancelBtn}
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-[8px] bg-[#0082fb] hover:bg-[#1a91ff] disabled:opacity-60 text-white font-semibold text-xs sm:text-sm transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] bg-[#E88B38] hover:bg-[#f09b4e] disabled:opacity-60 text-[#050608] font-semibold text-xs sm:text-sm transition-colors"
               >
                 {isLoading ? (
                   <>

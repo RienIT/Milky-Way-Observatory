@@ -15,6 +15,10 @@ export { default as CommandPalette } from './components/CommandPalette';
 export type { CommandPaletteProps } from './components/CommandPalette';
 export { default as AstrophysicsCharts } from './components/AstrophysicsCharts';
 export type { AstrophysicsChartsProps } from './components/AstrophysicsCharts';
+export { default as GuidedTourBar } from './components/GuidedTourBar';
+export type { GuidedTourBarProps } from './components/GuidedTourBar';
+export { default as KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+export type { KeyboardShortcutsModalProps } from './components/KeyboardShortcutsModal';
 export { default as GraphicsSettingsModal } from './components/GraphicsSettingsModal';
 export { default as ObservatoryBootOverlay } from './components/ObservatoryBootOverlay';
 export type { ObservatoryBootOverlayProps } from './components/ObservatoryBootOverlay';
@@ -108,3 +112,15 @@ export type {
   WavelengthBandId,
   WavelengthBandSpec,
 } from './lib/astrophysics-science';
+export {
+  GUIDED_TOURS,
+  clampTourStopIndex,
+  getGuidedTourById,
+  getNextTourStopIndex,
+  getPrevTourStopIndex,
+} from './lib/guided-tours';
+export type {
+  GuidedTourDefinition,
+  GuidedTourId,
+  GuidedTourStop,
+} from './lib/guided-tours';

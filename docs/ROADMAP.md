@@ -67,6 +67,18 @@
   - [x] Off-main-thread Web Worker star tile streaming with progress banner & fallback
   - [x] Playwright multi-scale visual verification (`Earth`, `600 m` altitude, `Solar System`, `Nearby Stars`, `Milky Way`, `Sgr A*` 3-pose baseline parity, `Local Group`, mobile `390×844`) + updated `README.md`, `NOTICE`, and `docs/ROADMAP.md`
   - [x] Dedicated **RTX 3050–4050 (4–8 GB VRAM)** preset, NASA/JPL-Caltech R. Hurt Milky Way visual fidelity rebuild, standalone `/plugin/` (`@milky-way/observatory-plugin`) package, English default localization across app/docs, and optimized standalone Next.js build tracing
+- [x] **Observatory Overhaul — Phase 1 (Precision Aerospace Instrument UI)**
+  - [x] Full-bleed `100vw × 100vh` 3D viewport with compact floating top-left instrument strip (`#030406` vacuum black, `#0a0c10` matte surface, `#ECEAE4` ivory text, `#E88B38` optical amber accent, `IBM Plex Sans` + `IBM Plex Mono`)
+  - [x] Keyboard-driven **Command Palette** (`/` or `⌘K` / `Ctrl+K`) searching all 48+ catalog objects, Local Group galaxies, Sgr A\*, eclipses, wavelengths, and guided tours
+  - [x] **Cinema / Telescope Mode (`H`)**, live 3D-projected **Telescope Targeting Reticle**, URL hash deep-linking (`#target=...&band=...&date=...&logd=...`), and **AstrophysicsCharts** (SVG H-R Diagram, Planck Blackbody Spectrum, Interior Cross-Section)
+- [x] **Observatory Overhaul — Phase 2 (Timeless Evergreen Astrophysics)**
+  - [x] 4-band multi-wavelength Galactic observation switcher (`optical` | `infrared` | `radio` | `xray`) + 3D volumetric bipolar **Fermi Bubbles** (`±8.5 kpc`) above and below Sagittarius A\*
+  - [x] Real analytical lunar umbra & penumbra shadow projection onto Earth's surface and clouds from live `astronomy-engine` geometry + Total Solar Eclipse quick-jump presets (`2026-08-12`, `2027-08-02`, `2024-04-08`)
+  - [x] Expanding **Speed-of-Light Photon Pulse** ($c = 299{,}792{,}458\text{ m/s}$) spherical wavefront with live light-travel milestones
+- [x] **Observatory Overhaul — Phase 3 (Guided Expeditions, Share/Snapshot & Flagship English Docs)**
+  - [x] Three 5-language interactive scientific **Guided Expeditions** (*Powers of Ten*, *The Multi-Wavelength Milky Way*, *Gravity, Shadows & Event Horizons*) with automated camera/spectrum/epoch choreography and `GuidedTourBar` controls
+  - [x] One-click **Share View** coordinate URL copy, HUD-free WebGL2 **PNG Snapshot** capture, and **Keyboard Shortcuts (`?`)** modal
+  - [x] Full standalone `/plugin/` synchronization and standard-English flagship documentation (`README.md`, `plugin/README.md`, `CHANGELOG.md`, `docs/ROADMAP.md`)
 
 ---
 
@@ -75,10 +87,11 @@
 | Layer / Feature | Source | Status |
 | :--- | :--- | :--- |
 | Physical & IAU Constants | CODATA 2018 / IAU 2012 & 2015 | **Measured** (`illustrative: false`) |
-| Solar System Positions & Moon Phase | `astronomy-engine` (VSOP87 / ELP2000) | **Measured** (`illustrative: false`) |
+| Solar System Positions, Moon Phase & Eclipses | `astronomy-engine` (VSOP87 / ELP2000) | **Measured** (`illustrative: false`) |
 | Planetary Radii, Tilts, Rotation | NASA JPL Planetary Fact Sheets (2024) | **Measured** (`illustrative: false`) |
 | Sun–Sgr A\* Distance & Mass | GRAVITY Collaboration (2019, 2022) | **Measured** (`illustrative: false`) |
 | Nearby Bright & Gaia DR3 Stars | HYG v3.8 / ESA Gaia DR3 / Hipparcos | **Measured** (`illustrative: false`) |
+| Stellar H-R Loci & Planck Spectra | Stefan–Boltzmann & Planck Laws | **Analytical Physics** (`illustrative: false`) |
 | Local Group & Galaxy Clusters | McConnachie (2012) / NED / 2MRS | **Measured** positions & distances; procedural disc shapes (`illustrative: true`) |
-| Milky Way Beyond Gaia Reach | Reid et al. (2019) / Spitzer GLIMPSE | **Parametric Model** (`illustrative: true`) |
+| Milky Way Multi-Wavelength Disk & Fermi Bubbles | Reid et al. (2019) / Spitzer GLIMPSE / Fermi-LAT / eROSITA | **Parametric Model** (`illustrative: true`) |
 | Deep Background Starfield Fill | Procedural deterministic PRNG | **Illustrative** (`illustrative: true`) |
