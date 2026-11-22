@@ -10,6 +10,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import AstrophysicsCharts from '@/components/AstrophysicsCharts';
 import {
   CATEGORY_CONFIG,
   ConstellationLink,
@@ -31,6 +32,7 @@ interface MemoryDetailDrawerProps {
   onSelectTag: (tag: string) => void;
   onDeleteNode: (id: string) => void;
   lang: LanguageCode;
+  hiddenInCinemaMode?: boolean;
 }
 
 const DIAMETER_LABEL: Record<LanguageCode, string> = {
@@ -116,10 +118,13 @@ export default function MemoryDetailDrawer({
   onSelectTag,
   onDeleteNode,
   lang,
+  hiddenInCinemaMode = false,
 }: MemoryDetailDrawerProps) {
   const [activeBhId, setActiveBhId] = useState<string>('sgr-a');
   const t = UI_STRINGS[lang];
   const mw = MILKY_WAY_I18N[lang];
+
+  if (hiddenInCinemaMode) return null;
 
   // ===========================================================================
   // MODE 1: NASA MILKY WAY & SAGITTARIUS A* GALACTIC CORE INSPECTOR
@@ -136,16 +141,16 @@ export default function MemoryDetailDrawer({
       <aside
         aria-label={t.bhHeadline}
         data-testid="memory-detail-drawer"
-        className="relative z-20 w-full md:w-[412px] shrink-0 h-full bg-[#111318] border-l border-white/[0.08] flex flex-col overflow-hidden"
+        className="absolute top-[84px] right-3 bottom-[96px] z-30 w-[calc(100%-24px)] md:w-[396px] rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.11] flex flex-col overflow-hidden shadow-2xl"
       >
-        {/* Astryx Drawer Header */}
-        <div className="px-5 pt-4 pb-3.5 border-b border-white/[0.08] flex items-start justify-between gap-3">
+        {/* Header */}
+        <div className="px-4 pt-3.5 pb-3 border-b border-white/[0.09] flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-xs text-[#54a8ff]">
-              <CircleDot className="w-3.5 h-3.5 text-[#f59e0b] shrink-0" />
-              <span className="font-semibold truncate">{t.bhBadge}</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.06em] text-[#E88B38]">
+              <CircleDot className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{t.bhBadge}</span>
             </div>
-            <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-[#f3f4f6] leading-snug">
+            <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-[#ECEAE4] leading-snug">
               {t.bhHeadline}
             </h2>
           </div>
@@ -154,104 +159,95 @@ export default function MemoryDetailDrawer({
             type="button"
             onClick={onClose}
             aria-label={t.closeInspector}
-            className="p-1.5 rounded-[8px] text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] transition-colors shrink-0"
+            className="p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* NASA Milky Way Barred Spiral Architecture Section */}
-          <section className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-4 space-y-3">
-            <div className="space-y-1">
-              <p className="text-[11px] font-medium text-[#54a8ff]">
+        <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-4">
+          {/* NASA Milky Way Barred Spiral Architecture */}
+          <section className="space-y-2.5">
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#E88B38]">
                 {mw.nasaBadge}
               </p>
-              <h3 className="text-sm font-semibold text-[#f3f4f6]">
+              <h3 className="text-[13px] font-semibold text-[#ECEAE4]">
                 {mw.structureHeading}
               </h3>
-              <p className="text-xs text-[#9ca3af] leading-relaxed">
+              <p className="text-xs text-[#8A8D96] leading-relaxed">
                 {mw.structureSubtitle}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/[0.08] text-xs">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-2.5 border-t border-white/[0.08] text-xs">
               <div>
-                <span className="text-[#6b7280] block text-[11px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                   {mw.typeLabel}
                 </span>
-                <span className="text-[#f3f4f6] font-medium">
-                  {mw.typeValue}
-                </span>
+                <span className="text-[#ECEAE4] font-medium">{mw.typeValue}</span>
               </div>
               <div>
-                <span className="text-[#6b7280] block text-[11px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                   {mw.diameterLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#f3f4f6] font-semibold">
+                <span className="font-mono tabular-nums text-[#ECEAE4] font-semibold">
                   {mw.diameterValue}
                 </span>
               </div>
               <div>
-                <span className="text-[#6b7280] block text-[11px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                   {mw.starsLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#d1d5db]">
+                <span className="font-mono tabular-nums text-[#C8C6C0]">
                   {mw.starsValue}
                 </span>
               </div>
               <div>
-                <span className="text-[#6b7280] block text-[11px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                   {mw.barLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#d1d5db]">
+                <span className="font-mono tabular-nums text-[#C8C6C0]">
                   {mw.barValue}
                 </span>
               </div>
               <div>
-                <span className="text-[#6b7280] block text-[11px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                   {mw.sunDistanceLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#54a8ff] font-medium">
+                <span className="font-mono tabular-nums text-[#E88B38] font-medium">
                   {mw.sunDistanceValue}
                 </span>
               </div>
               <div>
-                <span className="text-[#6b7280] block text-[11px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                   {mw.galacticYearLabel}
                 </span>
-                <span className="font-mono tabular-nums text-[#d1d5db]">
+                <span className="font-mono tabular-nums text-[#C8C6C0]">
                   {mw.galacticYearValue}
                 </span>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-white/[0.08] space-y-2">
-              <p className="text-[11px] font-semibold text-[#9ca3af]">
+            <div className="pt-2.5 border-t border-white/[0.08] space-y-1.5">
+              <p className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
                 {mw.armsHeading}
               </p>
-              <div className="space-y-1.5">
+              <div className="divide-y divide-white/[0.06] border-y border-white/[0.06]">
                 {mw.arms.map((arm) => (
-                  <div
-                    key={arm.id}
-                    className="rounded-[8px] bg-[#111318] border border-white/[0.06] px-3 py-2 space-y-0.5"
-                  >
+                  <div key={arm.id} className="py-2 space-y-0.5">
                     <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-semibold text-[#f3f4f6]">
-                        {arm.name}
-                      </span>
+                      <span className="font-semibold text-[#ECEAE4]">{arm.name}</span>
                       <span
-                        className={`text-[10px] font-medium shrink-0 ${
-                          arm.id === 'orion-spur'
-                            ? 'text-[#f59e0b]'
-                            : 'text-[#54a8ff]'
+                        className={`text-[10px] font-mono shrink-0 ${
+                          arm.id === 'orion-spur' ? 'text-[#E88B38]' : 'text-[#8A8D96]'
                         }`}
                       >
                         {arm.role}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#9ca3af] leading-relaxed">
+                    <p className="text-[11px] text-[#8A8D96] leading-relaxed">
                       {arm.detail}
                     </p>
                   </div>
@@ -259,17 +255,15 @@ export default function MemoryDetailDrawer({
               </div>
             </div>
 
-            <p className="text-[11px] text-[#6b7280] pt-2 border-t border-white/[0.08]">
-              {mw.zeroEnvNote}
-            </p>
+            <p className="text-[11px] text-[#6B707B]">{mw.zeroEnvNote}</p>
           </section>
 
           {/* Interactive Real Black Hole Comparison Switcher */}
-          <section className="space-y-2.5">
-            <h3 className="text-xs font-semibold text-[#9ca3af]">
+          <section className="pt-3 border-t border-white/[0.08] space-y-2.5">
+            <h3 className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
               {t.bhCompareLabel}
             </h3>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-1">
               {t.famousBlackHoles.map((bh) => {
                 const isActive = bh.id === activeBh.id;
                 return (
@@ -277,10 +271,10 @@ export default function MemoryDetailDrawer({
                     key={bh.id}
                     type="button"
                     onClick={() => setActiveBhId(bh.id)}
-                    className={`px-3 py-2 rounded-[8px] text-left text-xs font-medium border transition-colors truncate ${
+                    className={`px-2.5 py-1.5 rounded-[2px] text-left text-xs font-medium border transition-colors truncate ${
                       isActive
-                        ? 'bg-[#0082fb]/15 border-[#0082fb]/50 text-[#54a8ff] font-semibold'
-                        : 'bg-[#161922] hover:bg-[#1c202b] border-white/[0.08] text-[#d1d5db]'
+                        ? 'bg-[#E88B38]/15 border-[#E88B38]/50 text-[#E88B38] font-semibold'
+                        : 'bg-[#07090d] hover:bg-white/[0.05] border-white/[0.08] text-[#C8C6C0]'
                     }`}
                   >
                     {bh.name.split(' (')[0]}
@@ -289,84 +283,75 @@ export default function MemoryDetailDrawer({
               })}
             </div>
 
-            <div className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-3.5 space-y-2.5">
+            <div className="rounded-[4px] bg-[#06080c] border border-white/[0.08] p-3 space-y-2.5">
               <div>
-                <p className="text-sm font-semibold text-[#f3f4f6]">
-                  {activeBh.name}
-                </p>
-                <p className="text-xs text-[#9ca3af]">{activeBh.galaxy}</p>
+                <p className="text-[13px] font-semibold text-[#ECEAE4]">{activeBh.name}</p>
+                <p className="text-[11px] font-mono text-[#8A8D96]">{activeBh.galaxy}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-white/[0.08] text-xs">
+              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/[0.07] text-xs">
                 <div>
-                  <span className="text-[#6b7280] block text-[11px]">
+                  <span className="text-[#6B707B] block text-[10px] font-mono">
                     {t.bhMassLabel}
                   </span>
-                  <span className="font-mono tabular-nums text-[#f3f4f6] font-semibold">
+                  <span className="font-mono tabular-nums text-[#ECEAE4] font-semibold">
                     {activeBh.massSolar}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[#6b7280] block text-[11px]">
+                  <span className="text-[#6B707B] block text-[10px] font-mono">
                     {t.bhHorizonLabel}
                   </span>
-                  <span className="font-mono tabular-nums text-[#d1d5db] font-medium">
+                  <span className="font-mono tabular-nums text-[#C8C6C0]">
                     {activeBh.eventHorizonRadius}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[#6b7280] block text-[11px]">
+                  <span className="text-[#6B707B] block text-[10px] font-mono">
                     {t.bhSpinLabel}
                   </span>
-                  <span className="font-mono tabular-nums text-[#54a8ff]">
+                  <span className="font-mono tabular-nums text-[#E88B38]">
                     {activeBh.spinParameter}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[#6b7280] block text-[11px]">
+                  <span className="text-[#6B707B] block text-[10px] font-mono">
                     {t.bhDistanceLabel}
                   </span>
-                  <span className="font-mono tabular-nums text-[#d1d5db]">
+                  <span className="font-mono tabular-nums text-[#C8C6C0]">
                     {activeBh.distanceFromEarth}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-[#9ca3af] leading-relaxed pt-2.5 border-t border-white/[0.08]">
+              <p className="text-xs text-[#8A8D96] leading-relaxed pt-2 border-t border-white/[0.07]">
                 {activeBh.highlightFact}
               </p>
             </div>
           </section>
 
           {/* 4-Layer Optical Anatomy */}
-          <section className="space-y-2.5">
-            <h3 className="text-xs font-semibold text-[#9ca3af]">
+          <section className="pt-3 border-t border-white/[0.08] space-y-2">
+            <h3 className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
               {t.bhAnatomyHeading}
             </h3>
-            <div className="space-y-1.5">
+            <div className="divide-y divide-white/[0.06] border-y border-white/[0.06]">
               {t.blackHoleAnatomy.map((part) => (
-                <div
-                  key={part.code}
-                  className="rounded-[10px] bg-[#161922] border border-white/[0.08] p-3 space-y-1"
-                >
-                  <p className="text-xs font-semibold text-[#f3f4f6]">
-                    <span className="font-mono text-[#54a8ff] mr-1.5">
-                      {part.code}.
-                    </span>
+                <div key={part.code} className="py-2 space-y-0.5">
+                  <p className="text-xs font-semibold text-[#ECEAE4]">
+                    <span className="font-mono text-[#E88B38] mr-1.5">{part.code}.</span>
                     {part.title}
                   </p>
-                  <p className="text-xs text-[#9ca3af] leading-relaxed">
-                    {part.detail}
-                  </p>
+                  <p className="text-xs text-[#8A8D96] leading-relaxed">{part.detail}</p>
                 </div>
               ))}
             </div>
           </section>
 
           {/* Closest Orbiting Worlds */}
-          <section className="space-y-2">
-            <h3 className="text-xs font-semibold text-[#9ca3af]">
+          <section className="pt-3 border-t border-white/[0.08] space-y-2">
+            <h3 className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
               {t.bhInnerPlanetsHeading}
             </h3>
-            <div className="space-y-1">
+            <div className="divide-y divide-white/[0.06] border-y border-white/[0.06]">
               {innerOrbitPlanets.map((rawPlanet) => {
                 const planet = getLocalizedNode(rawPlanet, lang);
                 const meta =
@@ -377,18 +362,17 @@ export default function MemoryDetailDrawer({
                     key={rawPlanet.id}
                     type="button"
                     onClick={() => onSelectNode(rawPlanet.id)}
-                    className="w-full text-left rounded-[8px] bg-[#161922] hover:bg-[#1c202b] border border-white/[0.08] px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+                    className="w-full text-left py-2 hover:bg-white/[0.04] px-1.5 flex items-center justify-between gap-2 transition-colors"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-[#f3f4f6] truncate">
+                      <p className="text-xs font-medium text-[#ECEAE4] truncate">
                         {planet.title}
                       </p>
-                      <p className={`text-[11px] truncate ${meta.textColorClass}`}>
-                        {t.categories[rawPlanet.category]?.shortLabel ||
-                          meta.shortLabel}
+                      <p className="text-[10px] font-mono text-[#8A8D96] truncate">
+                        {t.categories[rawPlanet.category]?.shortLabel || meta.shortLabel}
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono tabular-nums text-[#54a8ff] shrink-0">
+                    <span className="text-[11px] font-mono tabular-nums text-[#E88B38] shrink-0">
                       {rawPlanet.orbitRadius.toFixed(1)} AU →
                     </span>
                   </button>
@@ -402,7 +386,7 @@ export default function MemoryDetailDrawer({
   }
 
   // ===========================================================================
-  // MODE 2: NASA PLANET / EXOPLANET ASTROPHYSICAL INSPECTOR
+  // MODE 2: NASA PLANET / STAR / EXOPLANET ASTROPHYSICAL INSPECTOR
   // ===========================================================================
   if (!memory) return null;
 
@@ -410,14 +394,10 @@ export default function MemoryDetailDrawer({
   const catMeta =
     CATEGORY_CONFIG[memory.category] ||
     CATEGORY_CONFIG['Hố đen & Hiện tượng Thiên hà'];
-  const catLabel =
-    t.categories[memory.category]?.label || catMeta.label;
+  const catLabel = t.categories[memory.category]?.label || catMeta.label;
   const planetSpec = getPlanetSpecForNode(memory);
   const specOverride = t.planetSpecOverrides[planetSpec.designation];
-  const astrometry = getScientificAstrometry(
-    memory.id,
-    planetSpec.earthRadiusRatio
-  );
+  const astrometry = getScientificAstrometry(memory.id, planetSpec.earthRadiusRatio);
   const astroCopy = ASTRO_LABELS[lang];
 
   const connectedNodes = links
@@ -428,8 +408,7 @@ export default function MemoryDetailDrawer({
       return otherNode ? { node: otherNode, sharedTags: l.sharedTags } : null;
     })
     .filter(
-      (item): item is { node: MemoryNode; sharedTags: string[] } =>
-        item !== null
+      (item): item is { node: MemoryNode; sharedTags: string[] } => item !== null
     )
     .slice(0, 6);
 
@@ -437,21 +416,17 @@ export default function MemoryDetailDrawer({
     <aside
       aria-label={localized.title}
       data-testid="memory-detail-drawer"
-      className="relative z-20 w-full md:w-[412px] shrink-0 h-full bg-[#111318] border-l border-white/[0.08] flex flex-col overflow-hidden"
+      className="absolute top-[84px] right-3 bottom-[96px] z-30 w-[calc(100%-24px)] md:w-[396px] rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.11] flex flex-col overflow-hidden shadow-2xl"
     >
       {/* Header */}
-      <div className="px-5 pt-4 pb-3.5 border-b border-white/[0.08] flex items-start justify-between gap-3">
+      <div className="px-4 pt-3.5 pb-3 border-b border-white/[0.09] flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 text-xs text-[#6b7280]">
-            <span className={`font-semibold truncate ${catMeta.textColorClass}`}>
-              {catLabel}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="font-mono text-[11px] shrink-0">
-              {localized.createdAt}
-            </span>
+          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.05em] text-[#8A8D96]">
+            <span className="text-[#E88B38] truncate">{catLabel}</span>
+            <span aria-hidden="true">/</span>
+            <span className="shrink-0">{specOverride?.designation || planetSpec.designation}</span>
           </div>
-          <h2 className="text-[16px] font-semibold tracking-[-0.015em] text-[#f3f4f6] leading-snug">
+          <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-[#ECEAE4] leading-snug">
             {localized.title}
           </h2>
         </div>
@@ -460,99 +435,87 @@ export default function MemoryDetailDrawer({
           type="button"
           onClick={onClose}
           aria-label={t.closeInspector}
-          className="p-1.5 rounded-[8px] text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] transition-colors shrink-0"
+          className="p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors shrink-0"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-        {/* NASA Astrophysical Telemetry Card */}
-        <section className="rounded-[12px] bg-[#161922] border border-white/[0.08] p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/[0.08]">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#f3f4f6]">
-              <Globe2 className="w-4 h-4 text-[#54a8ff] shrink-0" />
+      <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-4">
+        {/* Physical Telemetry Grid (flat instrument readout, hairline dividers) */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.06em] text-[#ECEAE4]">
+              <Globe2 className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
               <span>{t.planetSpecsHeading}</span>
             </div>
-            <span className="text-[11px] font-mono text-[#9ca3af] truncate">
-              {specOverride?.designation || planetSpec.designation}
-            </span>
+            <span className="text-[10px] font-mono text-[#6B707B]">{localized.createdAt}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-xs">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-xs border-t border-white/[0.08] pt-2.5">
             <div className="col-span-2">
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {DIAMETER_LABEL[lang]}
               </span>
               <span
                 data-testid="planet-diameter-value"
-                className="font-mono tabular-nums text-[13px] font-semibold text-[#54a8ff]"
+                className="font-mono tabular-nums text-[13px] font-semibold text-[#E88B38]"
               >
                 {planetSpec.diameterKm}
               </span>
             </div>
 
             <div className="col-span-2">
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {t.planetClassLabel}
               </span>
-              <span className="text-[#f3f4f6] font-medium">
+              <span className="text-[#ECEAE4] font-medium">
                 {specOverride?.planetType || planetSpec.planetTypeVi}
               </span>
             </div>
 
-            <div className="col-span-2">
-              <span className="text-[#6b7280] block text-[11px]">
-                {t.planetInspirationLabel}
-              </span>
-              <span className="text-[#d1d5db]">
-                {specOverride?.realInspiration || planetSpec.realInspiration}
-              </span>
-            </div>
-
             <div>
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {t.planetTempLabel}
               </span>
-              <span className="font-mono tabular-nums text-[#f3f4f6] font-medium">
+              <span className="font-mono tabular-nums text-[#ECEAE4] font-medium">
                 {planetSpec.surfaceTemp}
               </span>
             </div>
 
             <div>
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {t.planetGravityLabel}
               </span>
-              <span className="font-mono tabular-nums text-[#f3f4f6] font-medium">
+              <span className="font-mono tabular-nums text-[#ECEAE4] font-medium">
                 {planetSpec.surfaceGravity}
               </span>
             </div>
 
             <div className="col-span-2">
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {t.planetAtmoLabel}
               </span>
-              <span className="text-[#d1d5db]">
-                {specOverride?.atmosphereComposition ||
-                  planetSpec.atmosphereComposition}
+              <span className="text-[#C8C6C0]">
+                {specOverride?.atmosphereComposition || planetSpec.atmosphereComposition}
               </span>
             </div>
 
             <div>
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {t.planetRingsLabel}
               </span>
-              <span className="text-[#d1d5db]">
+              <span className="text-[#C8C6C0]">
                 {planetSpec.hasRings ? t.planetRingsYes : t.planetRingsNo}
               </span>
             </div>
 
             <div>
-              <span className="text-[#6b7280] block text-[11px]">
+              <span className="text-[#6B707B] block text-[10px] font-mono uppercase">
                 {t.planetOrbitLabel}
               </span>
-              <span className="font-mono tabular-nums text-[#d1d5db]">
+              <span className="font-mono tabular-nums text-[#C8C6C0]">
                 {astrometry.semiMajorAxisAu
                   ? `${astrometry.semiMajorAxisAu} AU`
                   : `${memory.orbitRadius.toFixed(1)} AU`}
@@ -563,17 +526,17 @@ export default function MemoryDetailDrawer({
           {/* ESA Gaia DR3 & NASA JPL Astrometry Sub-Block */}
           <div
             data-testid="scientific-astrometry-card"
-            className="pt-3 border-t border-white/[0.08] space-y-2.5"
+            className="pt-3 border-t border-white/[0.08] space-y-2"
           >
-            <p className="text-[11px] font-semibold text-[#54a8ff]">
+            <p className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#E88B38]">
               {astroCopy.heading}
             </p>
             <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
               <div>
-                <span className="text-[#6b7280] block text-[10px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono">
                   {astroCopy.gaiaCoords}
                 </span>
-                <span className="font-mono tabular-nums text-[#f3f4f6]">
+                <span className="font-mono tabular-nums text-[#ECEAE4]">
                   l {astrometry.galacticLonDeg.toFixed(2)}° · b{' '}
                   {astrometry.galacticLatDeg >= 0 ? '+' : ''}
                   {astrometry.galacticLatDeg.toFixed(2)}°
@@ -581,10 +544,10 @@ export default function MemoryDetailDrawer({
               </div>
 
               <div>
-                <span className="text-[#6b7280] block text-[10px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono">
                   {astroCopy.distSun}
                 </span>
-                <span className="font-mono tabular-nums text-[#f3f4f6]">
+                <span className="font-mono tabular-nums text-[#ECEAE4]">
                   {astrometry.distanceFromSunLy >= 0.01
                     ? `${astrometry.distanceFromSunLy.toLocaleString()} ly`
                     : astrometry.semiMajorAxisAu
@@ -593,53 +556,38 @@ export default function MemoryDetailDrawer({
                 </span>
               </div>
 
-              {astrometry.semiMajorAxisAu !== undefined && (
-                <div className="col-span-2">
-                  <span className="text-[#6b7280] block text-[10px]">
-                    {astroCopy.heliocentricAu}
-                  </span>
-                  <span className="font-mono tabular-nums text-[#d1d5db]">
-                    a = {astrometry.semiMajorAxisAu} AU
-                    {astrometry.perihelionAu !== undefined &&
-                    astrometry.aphelionAu !== undefined
-                      ? ` (${astrometry.perihelionAu} – ${astrometry.aphelionAu} AU)`
-                      : ''}
-                  </span>
-                </div>
-              )}
-
               <div>
-                <span className="text-[#6b7280] block text-[10px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono">
                   {astroCopy.mass}
                 </span>
-                <span className="font-mono tabular-nums text-[#d1d5db]">
+                <span className="font-mono tabular-nums text-[#C8C6C0]">
                   {astrometry.massLabel}
                 </span>
               </div>
 
               <div>
-                <span className="text-[#6b7280] block text-[10px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono">
                   {astroCopy.period}
                 </span>
-                <span className="font-mono text-[#d1d5db]">
+                <span className="font-mono text-[#C8C6C0]">
                   {astrometry.orbitalPeriodLabel}
                 </span>
               </div>
 
               <div className="col-span-2">
-                <span className="text-[#6b7280] block text-[10px]">
+                <span className="text-[#6B707B] block text-[10px] font-mono">
                   {astroCopy.spectral}
                 </span>
-                <span className="text-[#e5e7eb] font-medium">
+                <span className="text-[#ECEAE4] font-medium">
                   {astrometry.spectralOrType}
                 </span>
               </div>
 
-              <div className="col-span-2 pt-1.5 border-t border-white/[0.06]">
-                <span className="text-[10px] text-[#6b7280]">
+              <div className="col-span-2 pt-1 border-t border-white/[0.06]">
+                <span className="text-[10px] font-mono text-[#6B707B]">
                   {astroCopy.source}:{' '}
                 </span>
-                <span className="text-[11px] font-mono text-[#9ca3af]">
+                <span className="text-[10px] font-mono text-[#8A8D96]">
                   {astrometry.sourceCitation}
                 </span>
               </div>
@@ -647,19 +595,28 @@ export default function MemoryDetailDrawer({
           </div>
         </section>
 
+        {/* Precision Astrophysics Diagrams: H-R Diagram, Planck Blackbody Spectrum, Interior Cross-Section */}
+        <AstrophysicsCharts
+          nodeId={memory.id}
+          title={localized.title}
+          planetSpec={planetSpec}
+          astrometry={astrometry}
+          lang={lang}
+        />
+
         {/* 3 Core Scientific Highlights */}
-        <section className="space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#f3f4f6]">
-            <Sparkles className="w-3.5 h-3.5 text-[#54a8ff]" />
+        <section className="space-y-2 pt-3 border-t border-white/[0.08]">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.06em] text-[#ECEAE4]">
+            <Sparkles className="w-3.5 h-3.5 text-[#E88B38]" />
             <span>{t.planetKeyFindings}</span>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {localized.summary.map((bullet, idx) => (
               <li
                 key={idx}
-                className="flex items-start gap-2.5 text-[13px] text-[#d1d5db] leading-relaxed"
+                className="flex items-start gap-2.5 text-[12px] text-[#C8C6C0] leading-relaxed"
               >
-                <span className="font-mono text-xs text-[#54a8ff] mt-0.5 shrink-0">
+                <span className="font-mono text-[11px] text-[#E88B38] mt-0.5 shrink-0">
                   0{idx + 1}.
                 </span>
                 <span>{bullet}</span>
@@ -670,18 +627,18 @@ export default function MemoryDetailDrawer({
 
         {/* Detailed Scientific Overview */}
         <section className="space-y-1.5 pt-3 border-t border-white/[0.08]">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#9ca3af]">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
             <Compass className="w-3.5 h-3.5" />
             <span>{t.planetOverviewHeading}</span>
           </div>
-          <p className="text-[13px] text-[#9ca3af] leading-relaxed whitespace-pre-line">
+          <p className="text-[12px] text-[#9A9DA6] leading-relaxed whitespace-pre-line">
             {localized.content}
           </p>
         </section>
 
         {/* Spectral Tags */}
         <section className="space-y-2 pt-3 border-t border-white/[0.08]">
-          <h3 className="text-xs font-semibold text-[#9ca3af]">
+          <h3 className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
             {t.planetTagsHeading}
           </h3>
           <div className="flex flex-wrap gap-1.5">
@@ -690,7 +647,7 @@ export default function MemoryDetailDrawer({
                 key={tag}
                 type="button"
                 onClick={() => onSelectTag(tag)}
-                className="px-2.5 py-1 rounded-[6px] bg-[#161922] hover:bg-[#1f232c] border border-white/[0.08] text-xs font-mono text-[#54a8ff] transition-colors"
+                className="px-2 py-0.5 rounded-[2px] bg-[#06080c] hover:bg-white/[0.07] border border-white/[0.09] text-[11px] font-mono text-[#C8C6C0] hover:text-[#E88B38] transition-colors"
               >
                 #{tag}
               </button>
@@ -701,13 +658,13 @@ export default function MemoryDetailDrawer({
         {/* Related Celestial Objects */}
         {connectedNodes.length > 0 && (
           <section className="space-y-2 pt-3 border-t border-white/[0.08]">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#9ca3af]">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
               <Orbit className="w-3.5 h-3.5" />
               <span>
                 {t.planetRelatedHeading} ({connectedNodes.length})
               </span>
             </div>
-            <div className="space-y-1">
+            <div className="divide-y divide-white/[0.06] border-y border-white/[0.06]">
               {connectedNodes.map(({ node: rawNode }) => {
                 const rel = getLocalizedNode(rawNode, lang);
                 const meta =
@@ -718,18 +675,17 @@ export default function MemoryDetailDrawer({
                     key={rawNode.id}
                     type="button"
                     onClick={() => onSelectNode(rawNode.id)}
-                    className="w-full text-left rounded-[8px] bg-[#161922] hover:bg-[#1c202b] border border-white/[0.08] px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+                    className="w-full text-left py-2 px-1.5 hover:bg-white/[0.04] flex items-center justify-between gap-2 transition-colors"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-[#f3f4f6] truncate">
+                      <p className="text-xs font-medium text-[#ECEAE4] truncate">
                         {rel.title}
                       </p>
-                      <p className={`text-[11px] truncate ${meta.textColorClass}`}>
-                        {t.categories[rawNode.category]?.shortLabel ||
-                          meta.shortLabel}
+                      <p className="text-[10px] font-mono text-[#8A8D96] truncate">
+                        {t.categories[rawNode.category]?.shortLabel || meta.shortLabel}
                       </p>
                     </div>
-                    <span className="text-xs text-[#54a8ff] shrink-0">→</span>
+                    <span className="text-xs font-mono text-[#E88B38] shrink-0">→</span>
                   </button>
                 );
               })}
@@ -739,20 +695,20 @@ export default function MemoryDetailDrawer({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-white/[0.08] flex items-center justify-between bg-[#0e1015]">
+      <div className="px-4 py-2.5 border-t border-white/[0.09] flex items-center justify-between bg-[#07090d]">
         <button
           type="button"
           onClick={() => onDeleteNode(memory.id)}
-          className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 transition-colors"
+          className="inline-flex items-center gap-1.5 text-[11px] font-mono text-rose-400/90 hover:text-rose-300 transition-colors"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-3 h-3" />
           <span>{t.deleteObjectBtn}</span>
         </button>
 
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 rounded-[8px] bg-[#181b22] hover:bg-[#222631] border border-white/[0.08] text-xs font-medium text-[#f3f4f6] transition-colors"
+          className="px-2.5 py-1 rounded-[2px] bg-white/[0.06] hover:bg-white/[0.11] border border-white/[0.09] text-[11px] font-mono text-[#ECEAE4] transition-colors"
         >
           {t.closeInspector}
         </button>

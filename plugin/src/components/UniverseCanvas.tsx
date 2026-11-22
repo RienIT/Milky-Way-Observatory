@@ -31,10 +31,12 @@ import {
   createDeepSpaceDomeMaterial,
   createEarthCloudsMaterial,
   createEarthHighResMaterial,
+  createFermiBubblesMaterial,
   createGalaxySpriteMaterial,
   createMemoryClusterNodeMaterial,
   createMilkyWayParametricDiskMaterial,
   createMilkyWayStarfieldMaterial,
+  createPhotonPulseMaterial,
   createPlanetAtmosphereMaterial,
   createPlanetRingMaterial,
   createRealisticPlanetMaterial,
@@ -43,6 +45,13 @@ import {
   createTrajectoryTrailMaterial,
   createVolumetricBlackHoleMaterial,
 } from '../lib/cosmic-shaders';
+import {
+  computeLunarShadowOnEarth,
+  computePhotonPulseRadiusM,
+  SOLAR_ECLIPSE_PRESETS,
+  SolarEclipsePreset,
+  WavelengthBandId,
+} from '../lib/astrophysics-science';
 import { getLocalizedNode } from '../lib/celestial-translations';
 import { GraphicsSettings } from '../lib/graphics-settings';
 import { LanguageCode, UI_STRINGS } from '../lib/i18n';
@@ -128,6 +137,15 @@ export interface UniverseCanvasProps {
   lang: LanguageCode;
   assetBasePath?: string;
   onBootReady?: () => void;
+  wavelengthBand?: WavelengthBandId;
+  onChangeWavelengthBand?: (band: WavelengthBandId) => void;
+  cinemaMode?: boolean;
+  onToggleCinemaMode?: () => void;
+  initialSimDateMs?: number;
+  initialLogDistM?: number;
+  externalEclipseRequest?: { preset: SolarEclipsePreset; seq: number } | null;
+  externalPhotonTrigger?: number;
+  externalScalePresetRequest?: { preset: ScalePresetId; seq: number } | null;
 }
 
 interface ProjectedLabel {
@@ -176,6 +194,10 @@ declare global {
       setSgrABaselinePose: (pose: 1 | 2 | 3) => void;
       setAltitudeAboveEarthM: (altM: number) => void;
       setLogDistM: (logDistM: number) => void;
+      setWavelengthBand: (band: WavelengthBandId) => void;
+      jumpToEclipse: (presetId?: string) => void;
+      triggerPhotonPulse: (active?: boolean) => void;
+      setCinemaMode: (enabled: boolean) => void;
       awaitNextFrame: () => Promise<void>;
       getState: () => {
         targetId: string;
@@ -188,6 +210,10 @@ declare global {
         simDateIso: string;
         starsLoaded: number;
         fps: number;
+        wavelengthBand: WavelengthBandId;
+        eclipseActive: boolean;
+        photonPulseActive: boolean;
+        cinemaMode: boolean;
       };
     };
   }
@@ -433,6 +459,15 @@ export default function UniverseCanvas({
   lang,
   assetBasePath = '',
   onBootReady,
+  wavelengthBand: controlledWavelengthBand,
+  onChangeWavelengthBand,
+  cinemaMode: controlledCinemaMode,
+  onToggleCinemaMode,
+  initialSimDateMs,
+  initialLogDistM,
+  externalEclipseRequest,
+  externalPhotonTrigger,
+  externalScalePresetRequest,
 }: UniverseCanvasProps) {
   const onBootReadyRef = useRef(onBootReady);
   useEffect(() => {
@@ -454,8 +489,47 @@ export default function UniverseCanvas({
   const [showGalaxies, setShowGalaxies] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
 
-  // Simulation ephemeris time state (starts at real current UTC time)
-  const [simDateMs, setSimDateMs] = useState<number>(() => Date.now());
+  // Phase 1 & 2 state: Multi-Wavelength, Cinema Mode, Lunar Eclipse, Photon Pulse, Targeting Reticle
+  const [internalWavelengthBand, setInternalWavelengthBand] = useState<WavelengthBandId>('optical');
+  const wavelengthBand = controlledWavelengthBand ?? internalWavelengthBand;
+  const setWavelengthBandState = useCallback(
+    (next: WavelengthBandId) => {
+      setInternalWavelengthBand(next);
+      onChangeWavelengthBand?.(next);
+    },
+    [onChangeWavelengthBand]
+  );
+
+  const [internalCinemaMode, setInternalCinemaMode] = useState(false);
+  const cinemaMode = controlledCinemaMode ?? internalCinemaMode;
+  const toggleCinemaModeState = useCallback(() => {
+    if (onToggleCinemaMode) {
+      onToggleCinemaMode();
+    } else {
+      setInternalCinemaMode((v) => !v);
+    }
+  }, [onToggleCinemaMode]);
+  const setCinemaModeDirect = useCallback(
+    (enabled: boolean) => {
+      if (onToggleCinemaMode) {
+        if ((controlledCinemaMode ?? false) !== enabled) {
+          onToggleCinemaMode();
+        }
+      } else {
+        setInternalCinemaMode(enabled);
+      }
+    },
+    [controlledCinemaMode, onToggleCinemaMode]
+  );
+
+  const [eclipseActive, setEclipseActive] = useState(false);
+  const [photonPulseActive, setPhotonPulseActive] = useState(false);
+  const [photonElapsedSec, setPhotonElapsedSec] = useState(0);
+  const [photonRadiusM, setPhotonRadiusM] = useState(0);
+  const [reticlePos, setReticlePos] = useState<{ x: number; y: number } | null>(null);
+
+  // Simulation ephemeris time state (starts at real current UTC time or deep-linked timestamp)
+  const [simDateMs, setSimDateMs] = useState<number>(() => initialSimDateMs ?? Date.now());
   const [isTimePlaying, setIsTimePlaying] = useState<boolean>(true);
   const [timeSpeedSecPerSec, setTimeSpeedSecPerSec] = useState<number>(86_400); // 1 day/sec default so orbits & rotation feel alive
 
@@ -513,6 +587,14 @@ export default function UniverseCanvas({
   const isTimePlayingRef = useRef(isTimePlaying);
   const timeSpeedRef = useRef(timeSpeedSecPerSec);
   const simDateMsRef = useRef(simDateMs);
+  const wavelengthBandRef = useRef<WavelengthBandId>(wavelengthBand);
+  const cinemaModeRef = useRef<boolean>(cinemaMode);
+  const toggleCinemaRef = useRef(toggleCinemaModeState);
+  const setCinemaDirectRef = useRef(setCinemaModeDirect);
+  const setWavelengthRef = useRef(setWavelengthBandState);
+  const photonPulseActiveRef = useRef(photonPulseActive);
+  const photonElapsedSecRef = useRef(0);
+  const eclipseActiveRef = useRef(false);
 
   useEffect(() => {
     memoriesRef.current = memories;
@@ -568,6 +650,24 @@ export default function UniverseCanvas({
   useEffect(() => {
     timeSpeedRef.current = timeSpeedSecPerSec;
   }, [timeSpeedSecPerSec]);
+  useEffect(() => {
+    wavelengthBandRef.current = wavelengthBand;
+  }, [wavelengthBand]);
+  useEffect(() => {
+    cinemaModeRef.current = cinemaMode;
+  }, [cinemaMode]);
+  useEffect(() => {
+    toggleCinemaRef.current = toggleCinemaModeState;
+  }, [toggleCinemaModeState]);
+  useEffect(() => {
+    setCinemaDirectRef.current = setCinemaModeDirect;
+  }, [setCinemaModeDirect]);
+  useEffect(() => {
+    setWavelengthRef.current = setWavelengthBandState;
+  }, [setWavelengthBandState]);
+  useEffect(() => {
+    photonPulseActiveRef.current = photonPulseActive;
+  }, [photonPulseActive]);
 
   // Mutable camera controller ref (pure float64 meters!)
   const camCtrlRef = useRef<{
@@ -739,6 +839,126 @@ export default function UniverseCanvas({
     setSimDateMs(now);
     setTimeSpeedSecPerSec(1);
   }, []);
+
+  const handleJumpToEclipse = useCallback(
+    (preset: SolarEclipsePreset, instant = false) => {
+      simDateMsRef.current = preset.dateMs;
+      setSimDateMs(preset.dateMs);
+      setIsTimePlaying(true);
+      setTimeSpeedSecPerSec(1);
+
+      const ephemNow = computeSolarSystemEphemeris(new Date(preset.dateMs));
+      camCtrlRef.current.ephemeris = ephemNow;
+      const earthPos = ephemNow.bodies.earth?.helioPosM;
+      const moonPos = ephemNow.bodies.moon?.helioPosM;
+      const sunDir = earthPos
+        ? computeSunDirectionFromBody(earthPos)
+        : ([1, 0.2, 0.3] as Vec3d);
+
+      // Compute exact lunar umbral strike vector on Earth's surface so the shadow sits prominently in view
+      let aimDir: Vec3d = sunDir;
+      if (earthPos && moonPos) {
+        const shadow = computeLunarShadowOnEarth(earthPos, moonPos);
+        const mRel = shadow.moonRelEarthRadii;
+        const proj = mRel[0] * sunDir[0] + mRel[1] * sunDir[1] + mRel[2] * sunDir[2];
+        const px = mRel[0] - sunDir[0] * proj;
+        const py = mRel[1] - sunDir[1] * proj;
+        const pz = mRel[2] - sunDir[2] * proj;
+        const p2 = px * px + py * py + pz * pz;
+        const alongSun = Math.sqrt(Math.max(0.08, 1.0 - Math.min(0.92, p2)));
+        const sx = px + sunDir[0] * alongSun;
+        const sy = py + sunDir[1] * alongSun;
+        const sz = pz + sunDir[2] * alongSun;
+        // Blend 75% shadow strike point + 25% sub-solar point for dramatic sunlit Earth + dark umbra framing
+        const bx = sx * 0.75 + sunDir[0] * 0.25;
+        const by = sy * 0.75 + sunDir[1] * 0.25;
+        const bz = sz * 0.75 + sunDir[2] * 0.25;
+        const bLen = Math.hypot(bx, by, bz) || 1;
+        aimDir = [bx / bLen, by / bLen, bz / bLen];
+      }
+
+      const idealYaw = Math.atan2(aimDir[0], aimDir[2]);
+      const idealPitch = Math.max(
+        -1.25,
+        Math.min(1.25, Math.asin(Math.max(-0.96, Math.min(0.96, aimDir[1]))))
+      );
+
+      const resolved = resolveScalePreset('earth', ephemNow, memoriesRef.current);
+      resolved.idealYaw = idealYaw;
+      resolved.idealPitch = idealPitch;
+      resolved.idealDistM = EARTH_MEAN_RADIUS_M * 3.15;
+      setActivePreset('earth');
+      startFlyTo(resolved, resolved.idealDistM, instant);
+    },
+    [startFlyTo]
+  );
+
+  const handleTogglePhotonPulse = useCallback(
+    (forceState?: boolean) => {
+      const next = forceState !== undefined ? forceState : !photonPulseActiveRef.current;
+      photonPulseActiveRef.current = next;
+      setPhotonPulseActive(next);
+      if (next) {
+        photonElapsedSecRef.current = 0;
+        setPhotonElapsedSec(0);
+        setPhotonRadiusM(0);
+        // Frame the inner Solar System nicely if user isn't already viewing planetary scale
+        const ctrl = camCtrlRef.current;
+        if (ctrl.distM < 0.35 * AU_IN_METERS || ctrl.distM > 140 * AU_IN_METERS) {
+          const resolved = resolveScalePreset('solar-system', ctrl.ephemeris, memoriesRef.current);
+          resolved.idealDistM = 3.2 * AU_IN_METERS;
+          setActivePreset('solar-system');
+          startFlyTo(resolved, resolved.idealDistM);
+        }
+        setIsTimePlaying(true);
+      }
+    },
+    [startFlyTo]
+  );
+
+  const handleJumpToEclipseRef = useRef(handleJumpToEclipse);
+  useEffect(() => {
+    handleJumpToEclipseRef.current = handleJumpToEclipse;
+  }, [handleJumpToEclipse]);
+  const handleTogglePhotonRef = useRef(handleTogglePhotonPulse);
+  useEffect(() => {
+    handleTogglePhotonRef.current = handleTogglePhotonPulse;
+  }, [handleTogglePhotonPulse]);
+
+  // Honor optional URL deep-link initial zoom distance once on mount
+  useEffect(() => {
+    if (typeof initialLogDistM !== 'number' || !Number.isFinite(initialLogDistM)) return;
+    const ctrl = camCtrlRef.current;
+    ctrl.distM = Math.max(
+      ctrl.targetRadiusM + MIN_SURFACE_ALTITUDE_M,
+      Math.min(MAX_UNIVERSE_RADIUS_M, Math.pow(10, initialLogDistM))
+    );
+  }, [initialLogDistM]);
+
+  // Honor external Command Palette actions cleanly on next paint frame
+  useEffect(() => {
+    if (!externalEclipseRequest) return;
+    const id = window.requestAnimationFrame(() => {
+      handleJumpToEclipse(externalEclipseRequest.preset);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [externalEclipseRequest, handleJumpToEclipse]);
+
+  useEffect(() => {
+    if (!externalPhotonTrigger) return;
+    const id = window.requestAnimationFrame(() => {
+      handleTogglePhotonPulse(true);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [externalPhotonTrigger, handleTogglePhotonPulse]);
+
+  useEffect(() => {
+    if (!externalScalePresetRequest) return;
+    const id = window.requestAnimationFrame(() => {
+      handleSelectPreset(externalScalePresetRequest.preset);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [externalScalePresetRequest, handleSelectPreset]);
 
   // Main WebGL2 4-Pass Floating-Origin Multi-Scale Engine (yielded across paint frames to prevent UI freeze)
   useEffect(() => {
@@ -998,6 +1218,27 @@ export default function UniverseCanvas({
     const mwStarsPoints = new THREE.Points(mwStarsGeo, mwStarsMat);
     mwStarsPoints.renderOrder = 2;
     galacticRoot.add(mwStarsPoints);
+
+    // Volumetric 3D Fermi Bubbles & eROSITA X-Ray Shock Lobes (+/-8.5 kpc above & below Sgr A*)
+    const fermiGroup = new THREE.Group();
+    const fermiGeo = track(new THREE.SphereGeometry(1, 44, 32));
+    const fermiMat = track(createFermiBubblesMaterial());
+    const fermiNorth = new THREE.Mesh(fermiGeo, fermiMat);
+    fermiNorth.scale.set(3.6, 4.35, 3.6);
+    fermiNorth.position.set(0, 4.35, 0);
+    fermiNorth.renderOrder = 3;
+    const fermiSouth = new THREE.Mesh(fermiGeo, fermiMat);
+    fermiSouth.scale.set(3.6, 4.35, 3.6);
+    fermiSouth.position.set(0, -4.35, 0);
+    fermiSouth.rotation.x = Math.PI;
+    fermiSouth.renderOrder = 3;
+    fermiGroup.add(fermiNorth);
+    fermiGroup.add(fermiSouth);
+    fermiGroup.visible = false;
+    galacticRoot.add(fermiGroup);
+
+    // Smoothly damped spectral band weights [Optical, Infrared, Radio 21cm, X-Ray/Gamma]
+    const currentBandWeights = new THREE.Vector4(1, 0, 0, 0);
 
     // Galactic Polar Grid (kpc concentric rings around Sgr A*, toggleable)
     const galacticGridGroup = new THREE.Group();
@@ -1657,6 +1898,39 @@ export default function UniverseCanvas({
     solarTrailLines.renderOrder = 2;
     solarTrailLines.frustumCulled = false;
     planetaryScene.add(solarTrailLines);
+
+    // Speed-of-Light Photon Pulse Wavefront Sphere + Equatorial Ring (c = 299,792,458 m/s)
+    const photonGroup = new THREE.Group();
+    const photonSphereGeo = track(new THREE.SphereGeometry(1, 44, 28));
+    const photonSphereMat = track(createPhotonPulseMaterial());
+    const photonSphereMesh = new THREE.Mesh(photonSphereGeo, photonSphereMat);
+    photonSphereMesh.renderOrder = 5;
+    photonGroup.add(photonSphereMesh);
+
+    const photonRingGeo = track(new THREE.RingGeometry(0.985, 1.015, 128));
+    photonRingGeo.rotateX(-Math.PI / 2);
+    const photonRingMat = track(
+      new THREE.MeshBasicMaterial({
+        color: '#E88B38',
+        transparent: true,
+        opacity: 0.72,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    const photonRingMesh = new THREE.Mesh(photonRingGeo, photonRingMat);
+    // Align equatorial photon ring with the real J2000 Ecliptic plane (~60.2 deg tilt from Galactic plane)
+    const eclPole = galacticToThreeUp(eclipticJ2000ToGalactic([0, 0, 1]));
+    const eclQuat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(eclPole[0], eclPole[1], eclPole[2]).normalize()
+    );
+    photonRingMesh.quaternion.copy(eclQuat);
+    photonRingMesh.renderOrder = 6;
+    photonGroup.add(photonRingMesh);
+    photonGroup.visible = false;
+    planetaryScene.add(photonGroup);
     cleanups.push(() => {
       try {
         unitSphereGeo.dispose();
@@ -2166,6 +2440,11 @@ export default function UniverseCanvas({
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTextEditingTarget(e.target)) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.code === 'KeyH' && !e.repeat) {
+        e.preventDefault();
+        toggleCinemaRef.current();
+        return;
+      }
       const matched = setFlightKeyState(e, true);
       if (
         matched &&
@@ -2319,6 +2598,35 @@ export default function UniverseCanvas({
         );
         forceHudSync = true;
       },
+      setWavelengthBand: (band) => {
+        wavelengthBandRef.current = band;
+        setWavelengthRef.current(band);
+        // Snap immediately when invoked programmatically for deterministic visual captures
+        currentBandWeights.set(
+          band === 'optical' ? 1 : 0,
+          band === 'infrared' ? 1 : 0,
+          band === 'radio' ? 1 : 0,
+          band === 'xray' ? 1 : 0
+        );
+        forceHudSync = true;
+      },
+      jumpToEclipse: (presetId) => {
+        const target =
+          SOLAR_ECLIPSE_PRESETS.find((p) => p.id === presetId) ?? SOLAR_ECLIPSE_PRESETS[0];
+        handleJumpToEclipseRef.current(target, true);
+        forceHudSync = true;
+      },
+      triggerPhotonPulse: (active = true) => {
+        handleTogglePhotonRef.current(active);
+        if (active) {
+          photonElapsedSecRef.current = 420; // Start visibly mid-inner-system when invoked programmatically
+        }
+        forceHudSync = true;
+      },
+      setCinemaMode: (enabled) => {
+        setCinemaDirectRef.current(enabled);
+        forceHudSync = true;
+      },
       awaitNextFrame: () =>
         new Promise<void>((resolve) => {
           frameWaiters.push(resolve);
@@ -2349,6 +2657,10 @@ export default function UniverseCanvas({
           simDateIso: new Date(simDateMsRef.current).toISOString(),
           starsLoaded: ctrl.starsLoaded,
           fps: ctrl.fps,
+          wavelengthBand: wavelengthBandRef.current,
+          eclipseActive: eclipseActiveRef.current,
+          photonPulseActive: photonPulseActiveRef.current,
+          cinemaMode: cinemaModeRef.current,
         };
       },
     };
@@ -2813,14 +3125,35 @@ export default function UniverseCanvas({
           0,
           Math.min(1, (distToSgrAKpc - 0.35) / 2.85)
         );
+        // Smoothly damp 4-band multi-wavelength weights [Optical, Infrared, Radio 21cm, X-Ray/Gamma]
+        const activeBand = wavelengthBandRef.current;
+        const dampDt = Math.min(0.05, Math.max(0.008, rawDt));
+        currentBandWeights.x = THREE.MathUtils.damp(currentBandWeights.x, activeBand === 'optical' ? 1 : 0, 6.0, dampDt);
+        currentBandWeights.y = THREE.MathUtils.damp(currentBandWeights.y, activeBand === 'infrared' ? 1 : 0, 6.0, dampDt);
+        currentBandWeights.z = THREE.MathUtils.damp(currentBandWeights.z, activeBand === 'radio' ? 1 : 0, 6.0, dampDt);
+        currentBandWeights.w = THREE.MathUtils.damp(currentBandWeights.w, activeBand === 'xray' ? 1 : 0, 6.0, dampDt);
+
         const nebulaFactor = graphicsRef.current.showAtmosphereAndNebulae ? 1.0 : 0.18;
         mwDiskMat.uniforms.uOpacity.value = mwOpacity * 0.96 * bulgeProximityFade * nebulaFactor;
         mwDiskMat.uniforms.uTime.value = elapsedSec;
+        mwDiskMat.uniforms.uBandWeights.value.copy(currentBandWeights);
 
         // Keep Milky Way stars visible inside the Galactic Bulge even at 184 pc!
         const starFloor = insideMilkyWay ? 0.52 : 0;
         mwStarsMat.uniforms.uOpacity.value = Math.max(mwOpacity * 0.86, starFloor);
         mwStarsMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+        mwStarsMat.uniforms.uBandWeights.value.copy(currentBandWeights);
+
+        // Volumetric 3D Fermi Bubbles above & below Sagittarius A* (vivid in X-Ray/Gamma, faint ghost in Radio)
+        const fermiOpacity =
+          Math.max(currentBandWeights.w * 0.92, currentBandWeights.z * 0.14) *
+          mwOpacity *
+          bulgeProximityFade;
+        fermiGroup.visible = fermiOpacity > 0.01 && !nearSgrACloseup;
+        if (fermiGroup.visible) {
+          fermiMat.uniforms.uTime.value = elapsedSec;
+          fermiMat.uniforms.uOpacity.value = fermiOpacity;
+        }
 
         galacticGridGroup.visible = showGridRef.current && weights.galactic > 0.12;
 
@@ -3101,11 +3434,27 @@ export default function UniverseCanvas({
             id === 'sun' ? ([0, 1, 0] as Vec3d) : computeSunDirectionFromBody(bodyState.helioPosM);
 
           if (id === 'earth') {
+            const moonBody = ephem.bodies.moon;
+            const lunarShadow =
+              moonBody
+                ? computeLunarShadowOnEarth(bodyState.helioPosM, moonBody.helioPosM)
+                : null;
+            eclipseActiveRef.current = Boolean(lunarShadow?.isActive);
+            const ecActiveVal = lunarShadow?.isActive ? 1.0 : 0.0;
+            const mRel = lunarShadow?.moonRelEarthRadii ?? [60, 0, 0];
+            const sDist = (lunarShadow?.sunDistM ?? AU_IN_METERS) / EARTH_MEAN_RADIUS_M;
+
             entry.mat.uniforms.uSunDir.value.set(sunDir[0], sunDir[1], sunDir[2]);
             entry.mat.uniforms.uTime.value = elapsedSec;
+            entry.mat.uniforms.uEclipseActive.value = ecActiveVal;
+            entry.mat.uniforms.uMoonRelEarth.value.set(mRel[0], mRel[1], mRel[2]);
+            entry.mat.uniforms.uSunDistEarth.value = sDist;
             if (entry.cloudMat) {
               entry.cloudMat.uniforms.uSunDir.value.set(sunDir[0], sunDir[1], sunDir[2]);
               entry.cloudMat.uniforms.uTime.value = elapsedSec;
+              entry.cloudMat.uniforms.uEclipseActive.value = ecActiveVal;
+              entry.cloudMat.uniforms.uMoonRelEarth.value.set(mRel[0], mRel[1], mRel[2]);
+              entry.cloudMat.uniforms.uSunDistEarth.value = sDist;
             }
           } else {
             entry.mat.uniforms.uTime.value = elapsedSec;
@@ -3130,6 +3479,29 @@ export default function UniverseCanvas({
             entry.ringMat.uniforms.uPlanetRadius.value = radiusUnits;
             entry.ringMat.uniforms.uLightPos.value.set(sunGpuX, sunGpuY, sunGpuZ);
           }
+        }
+
+        // Speed-of-Light Photon Pulse wavefront (c = 299,792,458 m/s) expanding from the Sun
+        if (photonPulseActiveRef.current) {
+          const clockMult = !isTimePlayingRef.current
+            ? 0
+            : timeSpeedRef.current <= 1
+              ? 1
+              : Math.min(180, timeSpeedRef.current >= 86_400 ? 60 : timeSpeedRef.current);
+          photonElapsedSecRef.current += rawDt * clockMult;
+          const pRadM = computePhotonPulseRadiusM(photonElapsedSecRef.current);
+          if (pRadM > 55 * AU_IN_METERS) {
+            photonElapsedSecRef.current = 0;
+          }
+          const radiusUnits = Math.max(700, computePhotonPulseRadiusM(photonElapsedSecRef.current) / mpu);
+          photonGroup.visible = true;
+          photonGroup.position.set(sunGpuX, sunGpuY, sunGpuZ);
+          photonGroup.scale.setScalar(radiusUnits);
+          photonSphereMat.uniforms.uTime.value = elapsedSec;
+          photonSphereMat.uniforms.uOpacity.value = Math.min(0.88, weights.planetary * 0.95);
+          photonRingMat.opacity = Math.min(0.85, weights.planetary * 0.88);
+        } else {
+          photonGroup.visible = false;
         }
 
         // Position Main Asteroid Belt & Kuiper Belt around the Sun in true J2000 Ecliptic plane
@@ -3479,6 +3851,11 @@ export default function UniverseCanvas({
         setScaleBar(bar);
         setSimDateMs(simDateMsRef.current);
         setMoonPhaseFraction(ephem.moonPhaseFraction);
+        setEclipseActive(eclipseActiveRef.current);
+        if (photonPulseActiveRef.current) {
+          setPhotonElapsedSec(photonElapsedSecRef.current);
+          setPhotonRadiusM(computePhotonPulseRadiusM(photonElapsedSecRef.current));
+        }
 
         if (stageRef.current) {
           stageRef.current.dataset.scaleLayer = weights.dominant;
@@ -3492,10 +3869,43 @@ export default function UniverseCanvas({
           stageRef.current.dataset.clusteringActive = clusterModeRef.current ? 'true' : 'false';
           stageRef.current.dataset.clusterCount = String(latestClusterMetrics.clusters.length);
           stageRef.current.dataset.clusterCohesion = latestClusterMetrics.cohesionRatio.toFixed(2);
+          stageRef.current.dataset.wavelengthBand = wavelengthBandRef.current;
+          stageRef.current.dataset.eclipseActive = eclipseActiveRef.current ? 'true' : 'false';
+          stageRef.current.dataset.photonPulseActive = photonPulseActiveRef.current ? 'true' : 'false';
+          stageRef.current.dataset.cinemaMode = cinemaModeRef.current ? 'true' : 'false';
+        }
+
+        // Project precision optical Telescope Targeting Reticle onto active target center
+        if (selectedIdRef.current && !cinemaModeRef.current) {
+          camera.position.set(0, 0, 0);
+          camera.lookAt(-orbitOff[0], -orbitOff[1], -orbitOff[2]);
+          camera.near = 0.0001;
+          camera.far = 1e8;
+          camera.updateProjectionMatrix();
+          camera.updateMatrixWorld();
+          const tLen = lengthVec3d(camRelTargetM);
+          if (tLen > 0) {
+            const s = 100 / tLen;
+            _projTmp.set(-camRelTargetM[0] * s, -camRelTargetM[1] * s, -camRelTargetM[2] * s);
+            _projTmp.project(camera);
+            if (_projTmp.z >= -1 && _projTmp.z <= 1) {
+              const rx = Math.round((_projTmp.x * 0.5 + 0.5) * vpW);
+              const ry = Math.round((-_projTmp.y * 0.5 + 0.5) * vpH);
+              if (rx > 48 && rx < vpW - 48 && ry > 48 && ry < vpH - 48) {
+                setReticlePos({ x: rx, y: ry });
+              } else {
+                setReticlePos(null);
+              }
+            } else {
+              setReticlePos(null);
+            }
+          }
+        } else {
+          setReticlePos((prev) => (prev !== null ? null : prev));
         }
 
         // Compute decluttered non-overlapping 3D projected labels
-        if (showLabelsRef.current) {
+        if (showLabelsRef.current && !cinemaModeRef.current) {
           camera.position.set(0, 0, 0);
           camera.lookAt(-orbitOff[0], -orbitOff[1], -orbitOff[2]);
           camera.near = 0.0001;
@@ -3860,17 +4270,17 @@ export default function UniverseCanvas({
       )}
 
       {/* Asset Streaming Loading Progress Bar (shown only if star tiles continue loading after boot) */}
-      {bootReady && !tilesReady && (
+      {bootReady && !tilesReady && !cinemaMode && (
         <div
           data-testid="tile-loading-banner"
-          className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 rounded-[8px] bg-[#111318]/95 border border-white/[0.10] px-3 py-1.5 flex items-center gap-2.5 shadow-xl"
+          className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.10] px-3 py-1.5 flex items-center gap-2.5"
         >
-          <span className="text-[11px] font-medium text-[#d1d5db]">
+          <span className="text-[11px] font-mono text-[#C8C6C0]">
             {hudCopy.loadingTiles}
           </span>
-          <div className="w-24 h-1.5 rounded-full bg-[#1f2430] overflow-hidden">
+          <div className="w-24 h-1 rounded-[1px] bg-white/[0.08] overflow-hidden">
             <div
-              className="h-full bg-[#0082fb] transition-all duration-200"
+              className="h-full bg-[#E88B38] transition-all duration-200"
               style={{ width: `${Math.max(12, Math.round(tileLoadProgress * 100))}%` }}
             />
           </div>
@@ -3881,16 +4291,33 @@ export default function UniverseCanvas({
       {contextLost && (
         <div
           role="alert"
-          className="absolute inset-0 z-40 flex items-center justify-center bg-[#090a0d]/90"
+          className="absolute inset-0 z-40 flex items-center justify-center bg-[#030406]/90"
         >
-          <div className="rounded-[12px] bg-[#111318] border border-white/[0.12] px-5 py-3 text-sm font-medium text-[#f3f4f6]">
+          <div className="rounded-[4px] bg-[#0a0c10] border border-white/[0.12] px-5 py-3 text-sm font-mono text-[#ECEAE4]">
             {hudCopy.webglRestoring}
           </div>
         </div>
       )}
 
+      {/* Precision Optical Telescope Targeting Reticle (3D projected onto selected object) */}
+      {bootReady && !cinemaMode && selectedId && reticlePos && (
+        <div
+          aria-hidden="true"
+          data-testid="telescope-reticle"
+          style={{
+            transform: `translate3d(${reticlePos.x}px, ${reticlePos.y}px, 0) translate(-50%, -50%)`,
+          }}
+          className="pointer-events-none absolute top-0 left-0 z-10 w-[72px] h-[72px]"
+        >
+          <span className="absolute top-0 left-0 w-3 h-3 border-t border-l border-[#E88B38]/80" />
+          <span className="absolute top-0 right-0 w-3 h-3 border-t border-r border-[#E88B38]/80" />
+          <span className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-[#E88B38]/80" />
+          <span className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-[#E88B38]/80" />
+        </div>
+      )}
+
       {/* Decluttered Non-Overlapping 3D Projected Labels */}
-      {showLabels && labels.length > 0 && (
+      {showLabels && !cinemaMode && labels.length > 0 && (
         <div
           aria-hidden="false"
           className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
@@ -3903,15 +4330,15 @@ export default function UniverseCanvas({
               style={{
                 transform: `translate3d(${lbl.x}px, ${lbl.y}px, 0) translate(-50%, -120%)`,
               }}
-              className="pointer-events-auto absolute top-0 left-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] bg-[#0b0d12]/85 hover:bg-[#171b24] border border-white/[0.12] text-[10px] font-medium text-[#f3f4f6] shadow-md whitespace-nowrap transition-colors"
+              className="pointer-events-auto absolute top-0 left-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#0a0c10]/85 hover:bg-[#141822] border border-white/[0.11] text-[10px] font-medium text-[#ECEAE4] whitespace-nowrap transition-colors"
             >
               <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
+                className="w-1.5 h-1.5 rounded-[1px] shrink-0"
                 style={{ backgroundColor: lbl.accent }}
               />
               <span>{lbl.text}</span>
               {lbl.subtext && (
-                <span className="font-mono text-[9px] text-[#9ca3af]">
+                <span className="font-mono text-[9px] text-[#8A8D96]">
                   {lbl.subtext}
                 </span>
               )}
@@ -3920,49 +4347,82 @@ export default function UniverseCanvas({
         </div>
       )}
 
-      {/* Top-Right Ephemeris Time Panel */}
-      <TimeControlPanel
-        lang={lang}
-        simDateMs={simDateMs}
-        isPlaying={isTimePlaying}
-        speedSecondsPerSec={timeSpeedSecPerSec}
-        moonPhaseFraction={moonPhaseFraction}
-        onTogglePlay={() => setIsTimePlaying((p) => !p)}
-        onChangeSpeed={setTimeSpeedSecPerSec}
-        onResetToNow={handleResetToNow}
-      />
+      {/* Top-Right Ephemeris Time & Solar Eclipse Panel (hidden in Cinema Mode) */}
+      <div
+        className={`transition-opacity duration-300 ${
+          cinemaMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <TimeControlPanel
+          lang={lang}
+          simDateMs={simDateMs}
+          isPlaying={isTimePlaying}
+          speedSecondsPerSec={timeSpeedSecPerSec}
+          moonPhaseFraction={moonPhaseFraction}
+          eclipseActive={eclipseActive}
+          onTogglePlay={() => setIsTimePlaying((p) => !p)}
+          onChangeSpeed={setTimeSpeedSecPerSec}
+          onResetToNow={handleResetToNow}
+          onJumpToEclipse={(preset) => handleJumpToEclipse(preset, false)}
+        />
+      </div>
 
-      {/* Bottom Multi-Scale HUD: Scale Bar, Distance Readout, Provenance, Presets, Layer Toggles */}
-      <ScaleHudBar
-        lang={lang}
-        activePreset={activePreset}
-        dominantLayer={dominantLayer}
-        targetName={targetName}
-        distanceLabel={distanceLabel}
-        isSurfaceAltitude={isSurfaceAltitude}
-        scaleBar={scaleBar}
-        provenance={provenance}
-        logDistM={logDistM}
-        minLogDistM={minLogDistM}
-        maxLogDistM={maxLogDistM}
-        onLogZoomSliderChange={handleLogZoomSliderChange}
-        onZoomStep={handleZoomStep}
-        onSelectPreset={handleSelectPreset}
-        showOrbits={showOrbitRings}
-        onToggleOrbits={onToggleOrbitRings}
-        showTrails={showTrails}
-        onToggleTrails={() => setShowTrails((v) => !v)}
-        clusterMode={clusterMode}
-        onToggleClusterMode={() => setClusterMode((v) => !v)}
-        showLabels={showLabels}
-        onToggleLabels={() => setShowLabels((v) => !v)}
-        showGrid={showGrid}
-        onToggleGrid={() => setShowGrid((v) => !v)}
-        showGalaxies={showGalaxies}
-        onToggleGalaxies={() => setShowGalaxies((v) => !v)}
-        reducedMotion={reducedMotion}
-        onToggleReducedMotion={() => setReducedMotion((v) => !v)}
-      />
+      {/* Bottom Multi-Scale Instrument HUD (hidden in Cinema Mode) */}
+      <div
+        className={`transition-opacity duration-300 ${
+          cinemaMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <ScaleHudBar
+          lang={lang}
+          activePreset={activePreset}
+          dominantLayer={dominantLayer}
+          targetName={targetName}
+          distanceLabel={distanceLabel}
+          isSurfaceAltitude={isSurfaceAltitude}
+          scaleBar={scaleBar}
+          provenance={provenance}
+          logDistM={logDistM}
+          minLogDistM={minLogDistM}
+          maxLogDistM={maxLogDistM}
+          onLogZoomSliderChange={handleLogZoomSliderChange}
+          onZoomStep={handleZoomStep}
+          onSelectPreset={handleSelectPreset}
+          showOrbits={showOrbitRings}
+          onToggleOrbits={onToggleOrbitRings}
+          showTrails={showTrails}
+          onToggleTrails={() => setShowTrails((v) => !v)}
+          clusterMode={clusterMode}
+          onToggleClusterMode={() => setClusterMode((v) => !v)}
+          showLabels={showLabels}
+          onToggleLabels={() => setShowLabels((v) => !v)}
+          showGrid={showGrid}
+          onToggleGrid={() => setShowGrid((v) => !v)}
+          showGalaxies={showGalaxies}
+          onToggleGalaxies={() => setShowGalaxies((v) => !v)}
+          reducedMotion={reducedMotion}
+          onToggleReducedMotion={() => setReducedMotion((v) => !v)}
+          wavelengthBand={wavelengthBand}
+          onChangeWavelengthBand={setWavelengthBandState}
+          photonPulseActive={photonPulseActive}
+          photonElapsedSec={photonElapsedSec}
+          photonRadiusM={photonRadiusM}
+          onTogglePhotonPulse={() => handleTogglePhotonPulse()}
+          onToggleCinemaMode={toggleCinemaModeState}
+        />
+      </div>
+
+      {/* Subtle Unobtrusive Restore Trigger in Cinema / Telescope Mode */}
+      {cinemaMode && (
+        <button
+          type="button"
+          data-testid="restore-hud-btn"
+          onClick={toggleCinemaModeState}
+          className="pointer-events-auto absolute bottom-3 right-3 z-30 rounded-[2px] bg-[#0a0c10]/85 hover:bg-[#141820] border border-white/[0.12] px-2.5 py-1 text-[10px] font-mono text-[#ECEAE4] transition-colors"
+        >
+          {hudCopy.showHud}
+        </button>
+      )}
     </div>
   );
 }

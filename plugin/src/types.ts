@@ -1,4 +1,5 @@
 import type React from 'react';
+import type { WavelengthBandId } from './lib/astrophysics-science';
 import type { GraphicsSettings, QualityTierId } from './lib/graphics-settings';
 import type { LanguageCode } from './lib/i18n';
 import type { MemoryNode } from './lib/memory-types';
@@ -18,13 +19,15 @@ export interface MilkyWayPluginProps {
   initialGraphicsTier?: PluginGraphicsPresetTier;
   /** Optional initial celestial object ID to inspect (`'earth'`, `'saturn'`, `'BLACK_HOLE_CORE'`, etc.). */
   initialTarget?: string | null;
+  /** Initial spectral observation band (`'optical' | 'infrared' | 'radio' | 'xray'`). Defaults to `'optical'`. */
+  initialWavelengthBand?: WavelengthBandId;
   /** Initial simulation scale mode (`'true-1to1'` or `'atlas'`). Defaults to `'true-1to1'`. */
   initialScaleMode?: SimulationScaleMode;
-  /** Initial sidebar state on desktop. Defaults to `true`. */
+  /** Initial sidebar state when `showSidebar` is enabled. Defaults to `false` (full-bleed observatory). */
   initialSidebarOpen?: boolean;
-  /** Show or hide the top navigation bar. Set `false` when embedding inside a host app header. Defaults to `true`. */
+  /** Show or hide the floating instrument strip / top navigation. Defaults to `true`. */
   showTopBar?: boolean;
-  /** Show or hide the left celestial catalog sidebar. Set `false` for a minimal 3D canvas widget. Defaults to `true`. */
+  /** Show or hide the optional left celestial catalog sidebar. Defaults to `false` (Command Palette `/` replaces permanent sidebar). */
   showSidebar?: boolean;
   /**
    * Public base path where `plugin/public/data` and `plugin/public/workers` are served by the host app.
@@ -33,9 +36,8 @@ export interface MilkyWayPluginProps {
    */
   assetBasePath?: string;
   /**
-   * Optional endpoint URL for AI celestial body summarization (`POST` returning `{ title, category, summary, tags }`).
+   * Optional endpoint URL for celestial body summarization (`POST` returning `{ title, category, summary, tags }`).
    * Set to `""` to always use the built-in offline astrophysicist generator with zero backend required.
-   * Defaults to `""` inside the standalone plugin so host projects work immediately with no backend setup.
    */
   summarizeApiUrl?: string;
   /** Persist user language, custom objects, and graphics tier in `localStorage`. Defaults to `true`. */
@@ -59,6 +61,14 @@ export interface MilkyWayPluginHandle {
   flyToTarget: (targetId: string, distanceMeters?: number) => void;
   /** Jump to a named cosmic scale preset (`'earth' | 'solar-system' | 'nearby-stars' | 'milky-way' | 'sgr-a' | 'local-group'`). */
   flyToPreset: (preset: ScalePresetId) => void;
+  /** Switch electromagnetic observation band (`'optical' | 'infrared' | 'radio' | 'xray'`). */
+  setWavelengthBand: (band: WavelengthBandId) => void;
+  /** Jump ephemeris clock and camera directly to a real Total Solar Eclipse (`'eclipse-2026-08-12'`, `'eclipse-2027-08-02'`, `'eclipse-2024-04-08'`). */
+  jumpToEclipse: (presetId?: string) => void;
+  /** Toggle or emit the Speed-of-Light Photon Pulse wavefront (`c = 299,792,458 m/s`). */
+  triggerPhotonPulse: (active?: boolean) => void;
+  /** Toggle distraction-free Cinema / Telescope Mode (`H`). */
+  setCinemaMode: (enabled: boolean) => void;
   /** Switch UI language programmatically. */
   setLanguage: (lang: LanguageCode) => void;
   /** Switch graphics preset programmatically (e.g. `'rtx'` for RTX 3050-4050 4-8GB VRAM). */

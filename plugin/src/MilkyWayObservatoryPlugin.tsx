@@ -8,7 +8,19 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import {
+  ChevronDown,
+  CircleDot,
+  Globe,
+  LayoutGrid,
+  Plus,
+  Scaling,
+  Search,
+  SlidersHorizontal,
+  Telescope,
+} from 'lucide-react';
 import AddMemoryModal from './components/AddMemoryModal';
+import CommandPalette from './components/CommandPalette';
 import ExoplanetCatalogView from './components/ExoplanetCatalogView';
 import GraphicsSettingsModal from './components/GraphicsSettingsModal';
 import MemoryDetailDrawer from './components/MemoryDetailDrawer';
@@ -17,6 +29,11 @@ import ObservatorySidebar from './components/ObservatorySidebar';
 import TopSearchBar, { ActiveWebView } from './components/TopSearchBar';
 import UniverseCanvas from './components/UniverseCanvas';
 import {
+  SOLAR_ECLIPSE_PRESETS,
+  SolarEclipsePreset,
+  WavelengthBandId,
+} from './lib/astrophysics-science';
+import {
   detectClientHardwareProfile,
   GRAPHICS_PRESETS,
   GraphicsSettings,
@@ -24,12 +41,12 @@ import {
   HardwareRecommendation,
   scoreHardwareAndRecommend,
 } from './lib/graphics-settings';
-import { LanguageCode } from './lib/i18n';
+import { LanguageCode, SUPPORTED_LANGUAGES, UI_STRINGS } from './lib/i18n';
 import { computeConstellationLinks, filterMemories } from './lib/memory-logic';
 import { MemoryCategory, MemoryNode } from './lib/memory-types';
 import { INITIAL_MEMORIES } from './lib/mock-memories';
 import { SimulationScaleMode } from './lib/scientific-catalog';
-import { ScalePresetId } from './lib/universe-i18n';
+import { ScalePresetId, UNIVERSE_HUD_COPY } from './lib/universe-i18n';
 import {
   MilkyWayPluginHandle,
   MilkyWayPluginProps,
@@ -63,10 +80,11 @@ export const MilkyWayObservatoryPlugin = forwardRef<
     initialLanguage = 'en',
     initialGraphicsTier,
     initialTarget = null,
+    initialWavelengthBand = 'optical',
     initialScaleMode = 'true-1to1',
-    initialSidebarOpen = true,
+    initialSidebarOpen = false,
     showTopBar = true,
-    showSidebar = true,
+    showSidebar = false,
     assetBasePath = '',
     summarizeApiUrl = '',
     persistState = true,
@@ -105,6 +123,20 @@ export const MilkyWayObservatoryPlugin = forwardRef<
   const [showMilkyWayDisk, setShowMilkyWayDisk] = useState<boolean>(true);
   const [scaleMode, setScaleMode] = useState<SimulationScaleMode>(initialScaleMode);
   const [cameraResetTrigger, setCameraResetTrigger] = useState<number>(0);
+
+  const [wavelengthBand, setWavelengthBand] = useState<WavelengthBandId>(initialWavelengthBand);
+  const [cinemaMode, setCinemaMode] = useState<boolean>(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false);
+  const [langMenuOpen, setLangMenuOpen] = useState<boolean>(false);
+  const [eclipseRequest, setEclipseRequest] = useState<{
+    preset: SolarEclipsePreset;
+    seq: number;
+  } | null>(null);
+  const [photonTrigger, setPhotonTrigger] = useState<number>(0);
+  const [scalePresetRequest, setScalePresetRequest] = useState<{
+    preset: ScalePresetId;
+    seq: number;
+  } | null>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isGraphicsOpen, setIsGraphicsOpen] = useState<boolean>(false);
@@ -189,6 +221,31 @@ export const MilkyWayObservatoryPlugin = forwardRef<
     storageLangKey,
     storageNodesKey,
   ]);
+
+  // Global Command Palette keyboard trigger ('/' or Cmd/Ctrl + K)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditing =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsPaletteOpen((v) => !v);
+        return;
+      }
+      if (!isEditing && !e.metaKey && !e.ctrlKey && !e.altKey && e.key === '/') {
+        e.preventDefault();
+        setIsPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const links = useMemo(() => computeConstellationLinks(memories), [memories]);
 
@@ -305,7 +362,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
   const handleSelectTag = useCallback((tag: string) => {
     setSearchQuery(tag);
     setSelectedCategory('ALL');
-    setSidebarOpen(true);
+    setActiveView('catalog');
   }, []);
 
   // Expose imperative plugin controller API to host applications via ref
@@ -320,6 +377,27 @@ export const MilkyWayObservatoryPlugin = forwardRef<
       flyToPreset: (preset: ScalePresetId) => {
         setActiveView('explorer');
         window.__OBSERVATORY_API__?.flyToPreset(preset);
+      },
+      setWavelengthBand: (band: WavelengthBandId) => {
+        setWavelengthBand(band);
+        window.__OBSERVATORY_API__?.setWavelengthBand(band);
+      },
+      jumpToEclipse: (presetId?: string) => {
+        setActiveView('explorer');
+        const preset =
+          SOLAR_ECLIPSE_PRESETS.find((p) => p.id === presetId) ?? SOLAR_ECLIPSE_PRESETS[0];
+        setEclipseRequest((prev) => ({ preset, seq: (prev?.seq ?? 0) + 1 }));
+      },
+      triggerPhotonPulse: (active = true) => {
+        setActiveView('explorer');
+        if (active) {
+          setPhotonTrigger((n) => n + 1);
+        } else {
+          window.__OBSERVATORY_API__?.triggerPhotonPulse(false);
+        }
+      },
+      setCinemaMode: (enabled: boolean) => {
+        setCinemaMode(enabled);
       },
       setLanguage: (nextLang: LanguageCode) => {
         handleChangeLang(nextLang);
@@ -338,58 +416,65 @@ export const MilkyWayObservatoryPlugin = forwardRef<
     [handleChangeGraphicsSettings, handleChangeLang, handleSelectNode]
   );
 
+  const t = UI_STRINGS[lang];
+  const hud = UNIVERSE_HUD_COPY[lang];
+  const activeLangOption =
+    SUPPORTED_LANGUAGES.find((l) => l.code === lang) || SUPPORTED_LANGUAGES[0];
+  const isTrue1To1 = scaleMode === 'true-1to1';
+
   return (
     <div
       data-testid="milky-way-observatory-plugin"
-      className={`relative w-full h-full min-h-[480px] flex flex-col overflow-hidden bg-[#090a0d] text-[#f3f4f6] ${className}`.trim()}
+      className={`relative w-full h-full min-h-[480px] flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4] ${className}`.trim()}
       style={style}
     >
-      {showTopBar && (
-        <TopSearchBar
-          activeView={activeView}
-          isInspectingBlackHole={selectedId === 'BLACK_HOLE_CORE'}
-          onSelectExplorer={() => {
-            setActiveView('explorer');
-            if (selectedId === 'BLACK_HOLE_CORE') {
-              handleSelectNode(null);
-            }
-          }}
-          onSelectBlackHoleLab={() => {
-            setActiveView('explorer');
-            handleSelectNode('BLACK_HOLE_CORE');
-          }}
-          onSelectCatalog={() => setActiveView('catalog')}
-          onOpenSimulator={() => setIsAddModalOpen(true)}
-          scaleMode={scaleMode}
-          onToggleScaleMode={() =>
-            setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
-          }
-          resolutionScale={graphicsSettings.resolutionScale}
-          onOpenGraphicsSettings={() => setIsGraphicsOpen(true)}
-          lang={lang}
-          onChangeLang={handleChangeLang}
-        />
-      )}
-
       {activeView === 'catalog' ? (
-        <ExoplanetCatalogView
-          memories={memories}
-          matchedIds={matchedIds}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          onInspectIn3D={(id) => {
-            setActiveView('explorer');
-            handleSelectNode(id);
-          }}
-          onOpenBlackHoleLab={() => {
-            setActiveView('explorer');
-            handleSelectNode('BLACK_HOLE_CORE');
-          }}
-          onOpenSimulator={() => setIsAddModalOpen(true)}
-          lang={lang}
-        />
+        <>
+          {showTopBar && (
+            <TopSearchBar
+              activeView={activeView}
+              isInspectingBlackHole={selectedId === 'BLACK_HOLE_CORE'}
+              onSelectExplorer={() => {
+                setActiveView('explorer');
+                if (selectedId === 'BLACK_HOLE_CORE') {
+                  handleSelectNode(null);
+                }
+              }}
+              onSelectBlackHoleLab={() => {
+                setActiveView('explorer');
+                handleSelectNode('BLACK_HOLE_CORE');
+              }}
+              onSelectCatalog={() => setActiveView('catalog')}
+              onOpenSimulator={() => setIsAddModalOpen(true)}
+              scaleMode={scaleMode}
+              onToggleScaleMode={() =>
+                setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
+              }
+              resolutionScale={graphicsSettings.resolutionScale}
+              onOpenGraphicsSettings={() => setIsGraphicsOpen(true)}
+              lang={lang}
+              onChangeLang={handleChangeLang}
+            />
+          )}
+          <ExoplanetCatalogView
+            memories={memories}
+            matchedIds={matchedIds}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            onInspectIn3D={(id) => {
+              setActiveView('explorer');
+              handleSelectNode(id);
+            }}
+            onOpenBlackHoleLab={() => {
+              setActiveView('explorer');
+              handleSelectNode('BLACK_HOLE_CORE');
+            }}
+            onOpenSimulator={() => setIsAddModalOpen(true)}
+            lang={lang}
+          />
+        </>
       ) : (
         <div className="relative flex-1 flex overflow-hidden">
           {showSidebar && (
@@ -436,11 +521,157 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                 lang={lang}
                 assetBasePath={assetBasePath}
                 onBootReady={onReady}
+                wavelengthBand={wavelengthBand}
+                onChangeWavelengthBand={setWavelengthBand}
+                cinemaMode={cinemaMode}
+                onToggleCinemaMode={() => setCinemaMode((v) => !v)}
+                externalEclipseRequest={eclipseRequest}
+                externalPhotonTrigger={photonTrigger}
+                externalScalePresetRequest={scalePresetRequest}
               />
             ) : (
-              <div className="relative w-full h-full bg-[#05060a]">
+              <div className="relative w-full h-full bg-[#030406]">
                 <ObservatoryBootOverlay stage="bundle" progress={12} lang={lang} />
               </div>
+            )}
+
+            {/* Floating Top-Left Precision Instrument Strip */}
+            {showTopBar && (
+              <header
+                className={`absolute top-3 left-3 z-30 flex flex-wrap items-center gap-1.5 max-w-[calc(100%-380px)] transition-opacity duration-300 ${
+                  cinemaMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+              >
+                <div className="rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.09] p-1 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSelectNode(null);
+                      setCameraResetTrigger((c) => c + 1);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] text-[12px] font-semibold tracking-[-0.01em] text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                  >
+                    <Telescope className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
+                    <span className="hidden sm:inline">{t.brandTitle}</span>
+                  </button>
+
+                  <span className="h-4 w-px bg-white/[0.09]" aria-hidden="true" />
+
+                  <button
+                    type="button"
+                    onClick={() => setIsPaletteOpen(true)}
+                    className="inline-flex items-center gap-2 px-2 py-1 rounded-[2px] text-[11px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                  >
+                    <Search className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
+                    <span className="hidden md:inline max-w-[160px] truncate">
+                      {hud.searchTrigger}
+                    </span>
+                    <kbd className="px-1 rounded-[2px] border border-white/[0.12] bg-white/[0.04] font-mono text-[9px] text-[#C8C6C0]">
+                      /
+                    </kbd>
+                  </button>
+                </div>
+
+                <div className="rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.09] p-1 flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectNode('BLACK_HOLE_CORE')}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium transition-colors whitespace-nowrap ${
+                      selectedId === 'BLACK_HOLE_CORE'
+                        ? 'bg-[#E88B38] text-[#050608] font-semibold'
+                        : 'text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <CircleDot className="w-3 h-3 shrink-0" />
+                    <span>Sgr A*</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveView('catalog')}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                  >
+                    <LayoutGrid className="w-3 h-3 shrink-0 text-[#8A8D96]" />
+                    <span className="hidden lg:inline">{t.navCatalog}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                  >
+                    <Plus className="w-3 h-3 text-[#E88B38] shrink-0" />
+                    <span className="hidden lg:inline">{hud.worldLabLabel}</span>
+                  </button>
+
+                  <span className="mx-0.5 h-3.5 w-px bg-white/[0.09]" aria-hidden="true" />
+
+                  <button
+                    type="button"
+                    aria-pressed={isTrue1To1}
+                    onClick={() =>
+                      setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
+                    }
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[10px] font-mono transition-colors whitespace-nowrap ${
+                      isTrue1To1
+                        ? 'text-[#E88B38] bg-[#E88B38]/12'
+                        : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <Scaling className="w-3 h-3 shrink-0" />
+                    <span>{isTrue1To1 ? '1:1' : 'ATLAS'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsGraphicsOpen(true)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[10px] font-mono text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                  >
+                    <SlidersHorizontal className="w-3 h-3 text-[#E88B38] shrink-0" />
+                    <span>{graphicsSettings.resolutionScale}x</span>
+                  </button>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setLangMenuOpen((v) => !v)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[10px] font-mono text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                    >
+                      <Globe className="w-3 h-3 text-[#8A8D96]" />
+                      <span>{activeLangOption.shortCode}</span>
+                      <ChevronDown className="w-2.5 h-2.5 text-[#6B707B]" />
+                    </button>
+
+                    {langMenuOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-44 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl p-1 z-50">
+                        {SUPPORTED_LANGUAGES.map((opt) => {
+                          const active = opt.code === lang;
+                          return (
+                            <button
+                              key={opt.code}
+                              type="button"
+                              onClick={() => {
+                                handleChangeLang(opt.code);
+                                setLangMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-[2px] text-xs font-medium flex items-center justify-between transition-colors ${
+                                active
+                                  ? 'bg-[#E88B38]/15 text-[#E88B38]'
+                                  : 'text-[#C8C6C0] hover:bg-white/[0.06]'
+                              }`}
+                            >
+                              <span>{opt.nativeLabel}</span>
+                              <span className="font-mono text-[10px] text-[#6B707B]">
+                                {opt.shortCode}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </header>
             )}
 
             <MemoryDetailDrawer
@@ -453,10 +684,38 @@ export const MilkyWayObservatoryPlugin = forwardRef<
               onSelectTag={handleSelectTag}
               onDeleteNode={handleDeleteNode}
               lang={lang}
+              hiddenInCinemaMode={cinemaMode}
             />
           </main>
         </div>
       )}
+
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        memories={memories}
+        lang={lang}
+        onSelectObject={(id) => {
+          setActiveView('explorer');
+          handleSelectNode(id);
+        }}
+        onJumpToEclipse={(preset) => {
+          setActiveView('explorer');
+          setEclipseRequest((prev) => ({ preset, seq: (prev?.seq ?? 0) + 1 }));
+        }}
+        onSelectWavelength={(band) => {
+          setActiveView('explorer');
+          setWavelengthBand(band);
+        }}
+        onTriggerPhotonPulse={() => {
+          setActiveView('explorer');
+          setPhotonTrigger((n) => n + 1);
+        }}
+        onSelectScalePreset={(preset) => {
+          setActiveView('explorer');
+          setScalePresetRequest((prev) => ({ preset, seq: (prev?.seq ?? 0) + 1 }));
+        }}
+      />
 
       <AddMemoryModal
         isOpen={isAddModalOpen}

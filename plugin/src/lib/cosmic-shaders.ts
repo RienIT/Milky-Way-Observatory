@@ -1124,6 +1124,7 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
       uOpacity: { value: 1.0 },
       uDensityScale: { value: 1.0 },
       uLensingPass: { value: 0.0 },
+      uBandWeights: { value: new THREE.Vector4(1, 0, 0, 0) },
     },
     vertexShader: `
       #include <common>
@@ -1172,6 +1173,7 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
       #include <logdepthbuf_pars_fragment>
       uniform float uOpacity;
       uniform float uDensityScale;
+      uniform vec4 uBandWeights;
       varying vec3 vColor;
       varying float vTwinkle;
       varying float vCull;
@@ -1184,8 +1186,27 @@ export function createMilkyWayStarfieldMaterial(): THREE.ShaderMaterial {
 
         float core = exp(-r2 * 18.0);
         float halo = exp(-r2 * 4.5) * 0.24;
-        float alpha = clamp((core * 0.72 + halo) * vTwinkle * uOpacity * uDensityScale, 0.0, 0.92);
-        vec3 col = mix(vColor, vec3(1.0, 0.99, 0.97), core * 0.42);
+
+        // Spectral band modulation: Optical / Infrared / Radio 21cm / X-Ray-Gamma
+        vec3 optCol = mix(vColor, vec3(1.0, 0.99, 0.97), core * 0.42);
+        vec3 irCol = mix(vec3(0.95, 0.52, 0.16), vec3(1.0, 0.88, 0.62), core * 0.68);
+        vec3 radioCol = mix(vec3(0.18, 0.62, 0.95), vec3(0.75, 0.95, 1.0), core * 0.55);
+        float isHot = smoothstep(-0.02, 0.18, vColor.b - vColor.r);
+        vec3 xrayCol = mix(vec3(0.65, 0.35, 0.98), vec3(0.55, 0.92, 1.0), isHot);
+
+        vec3 col =
+          optCol * uBandWeights.x +
+          irCol * uBandWeights.y +
+          radioCol * uBandWeights.z +
+          xrayCol * uBandWeights.w;
+
+        float bandGain =
+          1.0 * uBandWeights.x +
+          1.12 * uBandWeights.y +
+          0.52 * uBandWeights.z +
+          (0.24 + 0.88 * isHot) * uBandWeights.w;
+
+        float alpha = clamp((core * 0.72 + halo) * vTwinkle * uOpacity * uDensityScale * bandGain, 0.0, 0.92);
         gl_FragColor = vec4(col, alpha);
         #include <logdepthbuf_fragment>
       }
@@ -1329,6 +1350,9 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
       uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
       uTime: { value: 0 },
       uDetailBoost: { value: 0 },
+      uEclipseActive: { value: 0 },
+      uMoonRelEarth: { value: new THREE.Vector3(60, 0, 0) },
+      uSunDistEarth: { value: 23455.0 },
     },
     vertexShader: `
       #include <common>
@@ -1354,6 +1378,9 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
       uniform vec3 uSunDir;
       uniform float uTime;
       uniform float uDetailBoost;
+      uniform float uEclipseActive;
+      uniform vec3 uMoonRelEarth;
+      uniform float uSunDistEarth;
 
       varying vec3 vObjPos;
       varying vec3 vWorldNormal;
@@ -1449,18 +1476,43 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
         float ndl = dot(N, L);
         float dayFactor = smoothstep(-0.08, 0.18, ndl);
         float diffuse = max(0.0, ndl);
-        // Subtle twilight orange-amber band right along the terminator
-        float terminatorBand = exp(-pow((ndl + 0.015) * 11.0, 2.0));
-        vec3 twilightTint = vec3(0.62, 0.25, 0.09) * terminatorBand * 0.24;
+        // Analytical Solar Eclipse Lunar Umbra & Penumbra from live astronomy-engine Moon/Sun positions
+        float eclipseFactor = 1.0;
+        float eclipseUmbraGlow = 0.0;
+        if (uEclipseActive > 0.001 && ndl > -0.05) {
+          vec3 toMoon = uMoonRelEarth - N;
+          float projMoon = dot(toMoon, L);
+          if (projMoon > 0.0) {
+            float dMoon = length(toMoon);
+            vec3 dirMoon = toMoon / max(0.001, dMoon);
+            float sep = acos(clamp(dot(dirMoon, L), -1.0, 1.0));
+            float angMoon = atan(0.2727, dMoon);
+            float angSun = atan(109.1, max(1000.0, uSunDistEarth));
+            float penumbraEdge = angMoon + angSun;
+            float umbraEdge = max(0.00022, abs(angMoon - angSun));
+            float penumbra = smoothstep(umbraEdge * 1.15, penumbraEdge * 1.15, sep);
+            float umbraCore = smoothstep(umbraEdge * 0.45, penumbraEdge * 0.28, sep);
+            float rawShadow = mix(0.02, 1.0, penumbra * (0.18 + 0.82 * umbraCore));
+            eclipseFactor = mix(1.0, rawShadow, uEclipseActive);
+            // Warm bronze-amber 360-degree twilight rim right around the umbral core
+            eclipseUmbraGlow = exp(-pow((sep - penumbraEdge * 0.22) / (penumbraEdge * 0.14), 2.0)) * uEclipseActive * dayFactor;
+          }
+        }
 
-        // Crisp solar specular glint on liquid ocean (not land or ice)
+        // Solar illumination + twilight terminator scattering (attenuated by lunar shadow)
+        float terminatorBand = exp(-pow((ndl + 0.015) * 11.0, 2.0));
+        vec3 twilightTint = vec3(0.62, 0.25, 0.09) * terminatorBand * 0.24 * eclipseFactor;
+        twilightTint += vec3(0.45, 0.19, 0.07) * eclipseUmbraGlow * 0.22;
+
+        // Crisp solar specular glint on liquid ocean (extinguished inside totality)
         vec3 H = normalize(L + V);
         float specPow = pow(max(0.0, dot(N, H)), 46.0);
         float waterMask = (1.0 - landMask) * (1.0 - iceCap);
-        vec3 specular = vec3(0.95, 0.92, 0.84) * specPow * waterMask * 0.55 * dayFactor;
+        vec3 specular = vec3(0.95, 0.92, 0.84) * specPow * waterMask * 0.55 * dayFactor * eclipseFactor;
 
-        // City night lights strictly on night-side temperate & coastal continents!
+        // City night lights on night-side continents + faint glimmer inside deep solar eclipse totality!
         float nightMask = smoothstep(0.04, -0.14, ndl);
+        float eclipseTotalityNight = smoothstep(0.22, 0.06, eclipseFactor) * dayFactor * 0.65;
         float habitableLat = (1.0 - smoothstep(0.52, 0.74, lat)) * (1.0 - iceCap) * (1.0 - mountain * 0.7);
         float coastBias = smoothstep(0.0, 0.18, elevation - seaLevel) * (1.0 - smoothstep(0.14, 0.32, elevation - seaLevel));
         float cityClusters = noise3(p * 34.0) * noise3(p * 78.0 + vec3(4.2, -1.7, 9.3));
@@ -1469,7 +1521,7 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
             ? smoothstep(0.62, 0.86, noise3(p * 145.0 + vec3(1.8, 5.4, -3.1))) * 0.22 * uDetailBoost
             : 0.0;
         float citySparks = smoothstep(0.36, 0.62, cityClusters + coastBias * 0.28 + fineMetropolis) * landMask * habitableLat;
-        vec3 cityLights = vec3(1.0, 0.74, 0.34) * citySparks * nightMask * (1.45 + 0.25 * uDetailBoost);
+        vec3 cityLights = vec3(1.0, 0.74, 0.34) * citySparks * max(nightMask, eclipseTotalityNight) * (1.45 + 0.25 * uDetailBoost);
 
         // Analytical alpine relief shading on RTX 3050-4050 / Ultra
         float landRelief = 1.0;
@@ -1481,12 +1533,12 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
 
         // Rayleigh blue atmospheric scattering along limb
         float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.2);
-        vec3 rayleighDay = vec3(0.24, 0.56, 1.0) * fresnel * (0.25 + 0.75 * dayFactor) * 0.72;
+        vec3 rayleighDay = vec3(0.24, 0.56, 1.0) * fresnel * (0.25 + 0.75 * dayFactor) * 0.72 * (0.35 + 0.65 * eclipseFactor);
         vec3 rayleighNight = vec3(0.06, 0.14, 0.30) * fresnel * nightMask * 0.22;
 
         // Earthshine ambient floor on dark side so silhouette stays readable against stars
         vec3 nightAmbient = surfaceAlbedo * 0.032;
-        vec3 litColor = surfaceAlbedo * (diffuse * 1.18 * landRelief) + twilightTint + specular + nightAmbient * (1.0 - dayFactor);
+        vec3 litColor = surfaceAlbedo * (diffuse * 1.18 * landRelief * eclipseFactor) + twilightTint + specular + nightAmbient * (1.0 - dayFactor * eclipseFactor);
         vec3 finalColor = litColor + cityLights + rayleighDay + rayleighNight;
 
         gl_FragColor = vec4(finalColor, 1.0);
@@ -1508,6 +1560,9 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
       uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
       uTime: { value: 0 },
       uDetailBoost: { value: 0 },
+      uEclipseActive: { value: 0 },
+      uMoonRelEarth: { value: new THREE.Vector3(60, 0, 0) },
+      uSunDistEarth: { value: 23455.0 },
     },
     vertexShader: `
       #include <common>
@@ -1530,6 +1585,9 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
       uniform vec3 uSunDir;
       uniform float uTime;
       uniform float uDetailBoost;
+      uniform float uEclipseActive;
+      uniform vec3 uMoonRelEarth;
+      uniform float uSunDistEarth;
       varying vec3 vObjPos;
       varying vec3 vWorldNormal;
 
@@ -1584,9 +1642,28 @@ export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
         if (alpha < 0.01) discard;
 
         vec3 N = normalize(vWorldNormal);
-        float ndl = dot(N, normalize(uSunDir));
-        float dayLit = smoothstep(-0.12, 0.22, ndl);
-        float twilight = exp(-pow((ndl + 0.02) * 10.0, 2.0));
+        vec3 L = normalize(uSunDir);
+        float ndl = dot(N, L);
+        float eclipseFactor = 1.0;
+        if (uEclipseActive > 0.001 && ndl > -0.05) {
+          vec3 toMoon = uMoonRelEarth - N * 1.011;
+          float projMoon = dot(toMoon, L);
+          if (projMoon > 0.0) {
+            float dMoon = length(toMoon);
+            vec3 dirMoon = toMoon / max(0.001, dMoon);
+            float sep = acos(clamp(dot(dirMoon, L), -1.0, 1.0));
+            float angMoon = atan(0.2727, dMoon);
+            float angSun = atan(109.1, max(1000.0, uSunDistEarth));
+            float penumbraEdge = angMoon + angSun;
+            float umbraEdge = max(0.00022, abs(angMoon - angSun));
+            float penumbra = smoothstep(umbraEdge * 1.15, penumbraEdge * 1.15, sep);
+            float umbraCore = smoothstep(umbraEdge * 0.45, penumbraEdge * 0.28, sep);
+            float rawShadow = mix(0.025, 1.0, penumbra * (0.18 + 0.82 * umbraCore));
+            eclipseFactor = mix(1.0, rawShadow, uEclipseActive);
+          }
+        }
+        float dayLit = smoothstep(-0.12, 0.22, ndl) * eclipseFactor;
+        float twilight = exp(-pow((ndl + 0.02) * 10.0, 2.0)) * eclipseFactor;
         vec3 col = mix(vec3(0.05, 0.06, 0.09), vec3(0.95, 0.97, 1.0), dayLit);
         col += vec3(0.65, 0.28, 0.12) * twilight * 0.35;
 
@@ -1612,6 +1689,7 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
     uniforms: {
       uOpacity: { value: 1.0 },
       uTime: { value: 0.0 },
+      uBandWeights: { value: new THREE.Vector4(1, 0, 0, 0) },
     },
     vertexShader: `
       #include <common>
@@ -1631,6 +1709,7 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
 
       uniform float uOpacity;
       uniform float uTime;
+      uniform vec4 uBandWeights;
       varying vec2 vDiskPos;
 
       float hash21(vec2 p) {
@@ -1820,10 +1899,48 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
         float barEdgeDust = smoothstep(0.55, 1.05, barShape) * dustFilament * 0.22;
         barCol = mix(barCol, dustRustUmber * 1.15, barEdgeDust);
 
-        vec3 finalCol = mix(diskCol, barCol, smoothstep(0.06, 0.82, barAlpha));
+        vec3 optFinal = mix(diskCol, barCol, smoothstep(0.06, 0.82, barAlpha));
         // Add luminous golden core glow + bright ruby-pink H-II knots sitting above dust
-        finalCol += barCreamCore * nuclearPeak * 0.32;
-        finalCol += h2RubyPink * clamp(h2Accum, 0.0, 1.4) * armRadialEnv * 1.05;
+        optFinal += barCreamCore * nuclearPeak * 0.32;
+        optFinal += h2RubyPink * clamp(h2Accum, 0.0, 1.4) * armRadialEnv * 1.05;
+
+        // -----------------------------------------------------------------
+        // 5. Multi-Wavelength Synthesis (Infrared / Radio 21cm HI / X-Ray & Gamma)
+        // -----------------------------------------------------------------
+        // Infrared (3.6-24 um Spitzer/JWST): Dust becomes transparent and emits warm PAH amber-crimson,
+        // revealing the glowing golden Central Bar & molecular ring cleanly.
+        vec3 irDisk = vec3(0.30, 0.11, 0.05) * (0.65 + 0.45 * fineCluster) * diskBase;
+        irDisk += vec3(0.88, 0.42, 0.14) * clamp(broadArm, 0.0, 1.4) * armRadialEnv * 0.62;
+        // PAH dust lanes glow warm red-orange instead of absorbing!
+        irDisk += vec3(1.00, 0.48, 0.16) * dustMask * (0.68 + 0.55 * dustFilament) * 0.92;
+        irDisk += vec3(1.00, 0.78, 0.34) * clamp(h2Accum, 0.0, 1.4) * armRadialEnv * 1.15;
+        vec3 irBar = mix(vec3(0.96, 0.54, 0.18), vec3(1.00, 0.93, 0.68), clamp(barCore * 0.85 + nuclearPeak * 0.65, 0.0, 1.0));
+        vec3 irFinal = mix(irDisk, irBar, smoothstep(0.04, 0.78, barAlpha)) + vec3(1.0, 0.88, 0.58) * nuclearPeak * 0.48;
+
+        // Radio 21cm (1.42 GHz HI): Extended neutral atomic hydrogen disk & filamentary outer spiral arms
+        float hiOuterEnv = smoothstep(1.6, 4.2, r) * smoothstep(21.4, 15.8, r);
+        float molRing = exp(-pow((r - 4.35) / 1.15, 2.0));
+        vec3 hiDisk = vec3(0.03, 0.14, 0.32) * exp(-r / 10.8) * smoothstep(21.4, 14.2, r);
+        hiDisk += vec3(0.08, 0.56, 0.92) * clamp(broadArm, 0.0, 1.45) * hiOuterEnv * (0.68 + 0.52 * dustFilament) * 0.92;
+        hiDisk += vec3(0.45, 0.92, 1.00) * clamp(crispRidge + dustLane * 0.48, 0.0, 1.65) * hiOuterEnv * 0.68;
+        hiDisk += vec3(0.28, 0.78, 0.98) * outerArc * 0.72;
+        hiDisk += vec3(0.32, 0.84, 1.00) * molRing * (0.35 + 0.45 * fineCluster) * 0.55;
+        hiDisk += vec3(0.85, 0.96, 1.00) * nuclearPeak * 0.42;
+
+        // X-Ray & Gamma (Chandra / Fermi-LAT): Dim cool stars, intense Galactic Center CMZ & high-energy SNR/H-II shocks
+        vec3 xrayDisk = vec3(0.05, 0.03, 0.14) * diskBase * 0.45;
+        xrayDisk += vec3(0.26, 0.12, 0.56) * clamp(broadArm, 0.0, 1.3) * armRadialEnv * 0.36;
+        xrayDisk += vec3(0.76, 0.34, 1.00) * clamp(h2Accum, 0.0, 1.4) * armRadialEnv * 1.45;
+        float xraySpark = smoothstep(0.76, 0.92, microSparkle * fineCluster * 1.38) * armRadialEnv;
+        xrayDisk += vec3(0.55, 0.90, 1.00) * xraySpark * 1.4;
+        xrayDisk += vec3(0.95, 0.58, 1.00) * barCore * 0.55;
+        xrayDisk += vec3(0.85, 0.92, 1.00) * nuclearPeak * 1.35;
+
+        vec3 finalCol =
+          optFinal * uBandWeights.x +
+          irFinal * uBandWeights.y +
+          hiDisk * uBandWeights.z +
+          xrayDisk * uBandWeights.w;
 
         // Soft filmic shoulder so nothing ever clips to harsh flat #ffffff
         finalCol = finalCol / (vec3(1.0) + finalCol * 0.28);
@@ -1834,11 +1951,12 @@ export function createMilkyWayParametricDiskMaterial(): THREE.ShaderMaterial {
           broadArm * armRadialEnv * 0.65 +
           crispRidge * armRadialEnv * 0.55 +
           outerArc * 0.45 +
-          barBody * 0.98,
+          barBody * 0.98 +
+          hiOuterEnv * broadArm * 0.38 * uBandWeights.z,
           0.0,
           0.98
         );
-        float alpha = lumAlpha * smoothstep(21.2, 13.8, r) * uOpacity;
+        float alpha = lumAlpha * smoothstep(21.4, 14.0, r) * uOpacity;
 
         gl_FragColor = vec4(finalCol, alpha);
         #include <logdepthbuf_fragment>
@@ -2365,6 +2483,165 @@ export function createClusterHaloMaterial(): THREE.ShaderMaterial {
     `,
   });
 }
+
+/**
+ * Volumetric 3D Fermi Bubbles & eROSITA X-Ray Shock Shell Shader (Phase 2).
+ * Renders the twin bipolar gamma-ray/X-ray lobes rising +/-8.5 kpc (~50,000 ly span)
+ * perpendicular to the Milky Way disk from Sagittarius A*.
+ */
+export function createFermiBubblesMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uOpacity: { value: 0.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vViewDir;
+
+      void main() {
+        vObjPos = position;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        vViewDir = normalize(cameraPosition - wp.xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform float uTime;
+      uniform float uOpacity;
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vViewDir;
+
+      float hash31(vec3 p) {
+        p = fract(p * 0.1031);
+        p += dot(p, p.yzx + 33.33);
+        return fract((p.x + p.y) * p.z);
+      }
+
+      float noise3(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
+              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+
+      void main() {
+        if (uOpacity <= 0.004) discard;
+        vec3 N = normalize(vWorldNormal);
+        vec3 V = normalize(vViewDir);
+        float ndv = abs(dot(N, V));
+
+        // Sharp Fermi-LAT limb-brightened plasma shell + soft internal gamma-ray glow
+        float shellRim = pow(1.0 - ndv, 2.1);
+        float innerFill = 0.24 + 0.32 * (1.0 - ndv);
+
+        // Gently rising relativistic outflow filaments from Sgr A* base
+        vec3 p = normalize(vObjPos) * 3.8 + vec3(0.0, -uTime * 0.08, 0.0);
+        float turb = noise3(p) * 0.65 + noise3(p * 2.3 + vec3(4.1, -2.2, 1.7)) * 0.35;
+
+        // Pinch bright at the galactic center neck, soft cap at +/- 8.5 kpc
+        float neckFocus = smoothstep(0.95, -0.75, vObjPos.y) * 0.35 + 0.65;
+
+        vec3 gammaMagenta = vec3(0.76, 0.24, 0.94);
+        vec3 erositaCyan  = vec3(0.32, 0.78, 1.00);
+        vec3 coreViolet   = vec3(0.96, 0.56, 0.98);
+
+        vec3 col = mix(gammaMagenta, erositaCyan, clamp(shellRim * 0.82, 0.0, 1.0));
+        col = mix(col, coreViolet, clamp((1.0 - abs(vObjPos.y)) * 0.35 * turb, 0.0, 0.45));
+
+        float alpha = clamp((innerFill * 0.48 + shellRim * 0.95) * (0.68 + 0.55 * turb) * neckFocus * uOpacity, 0.0, 0.88);
+        gl_FragColor = vec4(col * alpha, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Speed-of-Light Photon Pulse Wavefront Shader (c = 299,792,458 m/s, Phase 2).
+ * Expanding spherical light shell leaving the Sun at true physical speed of light.
+ */
+export function createPhotonPulseMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uOpacity: { value: 0.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec3 vObjNormal;
+      varying vec3 vWorldNormal;
+      varying vec3 vViewDir;
+
+      void main() {
+        vObjNormal = normalize(position);
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        vViewDir = normalize(cameraPosition - wp.xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform float uTime;
+      uniform float uOpacity;
+      varying vec3 vObjNormal;
+      varying vec3 vWorldNormal;
+      varying vec3 vViewDir;
+
+      void main() {
+        if (uOpacity <= 0.004) discard;
+        vec3 N = normalize(vWorldNormal);
+        vec3 V = normalize(vViewDir);
+        float fresnel = pow(1.0 - abs(dot(N, V)), 2.6);
+
+        // Crisp equatorial ecliptic waveband + subtle wavefront meridian pulse
+        float eclipticBand = exp(-pow(vObjNormal.y * 16.0, 2.0));
+        float waveRipple = 0.85 + 0.15 * sin(vObjNormal.y * 28.0 - uTime * 4.0);
+
+        vec3 amberEdge = vec3(0.95, 0.58, 0.22);
+        vec3 ivoryCore = vec3(1.00, 0.94, 0.82);
+        vec3 col = mix(amberEdge, ivoryCore, clamp(eclipticBand * 0.72 + fresnel * 0.42, 0.0, 1.0));
+
+        float alpha = clamp((fresnel * 0.68 + eclipticBand * 0.55 + 0.04) * waveRipple * uOpacity, 0.0, 0.85);
+        gl_FragColor = vec4(col, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
 
 
 

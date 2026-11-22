@@ -20,8 +20,7 @@ export interface ObservatoryBootOverlayProps {
 
 /**
  * Clean, compositor-friendly startup loading overlay for the WebGL2 observatory.
- * Uses solid/opaque surfaces (zero backdrop-blur over WebGL) and transform/opacity
- * transitions so startup progress paints smoothly without freezing or visual flicker.
+ * Precision aerospace monochrome surface (zero backdrop-blur over WebGL) with optical amber signal.
  */
 export default function ObservatoryBootOverlay({
   stage,
@@ -43,26 +42,28 @@ export default function ObservatoryBootOverlay({
       role="status"
       aria-live="polite"
       aria-busy={stage !== 'ready'}
-      className={`absolute inset-0 z-50 flex items-center justify-center bg-[#05060a] px-4 transition-opacity duration-500 ease-out ${
+      className={`absolute inset-0 z-50 flex items-center justify-center bg-[#030406] px-4 transition-opacity duration-500 ease-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       }`}
     >
-      <div className="w-full max-w-[420px] rounded-[16px] bg-[#0d1017] border border-white/[0.08] p-6 sm:p-7 shadow-2xl">
-        {/* Header & Subtle Orbital Emblem */}
+      <div className="w-full max-w-[420px] rounded-[4px] bg-[#0a0c10] border border-white/[0.11] p-6 sm:p-7 shadow-2xl">
+        {/* Header & Precision Orbital Emblem */}
         <div className="flex items-center gap-3.5">
-          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#131824] border border-white/[0.09]">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] bg-[#10131a] border border-white/[0.10]">
             <div
               aria-hidden="true"
-              className="absolute inset-0 rounded-full border border-transparent border-t-[#3b82f6] border-r-[#3b82f6]/40 animate-spin motion-reduce:animate-none"
+              className="absolute inset-0 rounded-[4px] border border-transparent border-t-[#E88B38] animate-spin motion-reduce:animate-none"
               style={{ animationDuration: '4.5s' }}
             />
-            <Orbit className="h-5 w-5 text-[#60a5fa]" strokeWidth={1.75} />
+            <Orbit className="h-4 w-4 text-[#E88B38]" strokeWidth={1.75} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold tracking-tight text-[#f3f4f6] truncate">
+            <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[#ECEAE4] truncate">
               {copy.title}
             </h2>
-            <p className="text-xs text-[#9ca3af] mt-0.5 truncate">{copy.subtitle}</p>
+            <p className="text-[11px] font-mono text-[#8A8D96] mt-0.5 truncate">
+              {copy.subtitle}
+            </p>
           </div>
         </div>
 
@@ -71,13 +72,13 @@ export default function ObservatoryBootOverlay({
           <div className="flex items-baseline justify-between gap-3">
             <span
               data-testid="boot-stage-label"
-              className="text-xs font-medium text-[#e5e7eb] truncate"
+              className="text-xs font-medium text-[#ECEAE4] truncate"
             >
               {activeStageLabel}
             </span>
             <span
               data-testid="boot-progress-percent"
-              className="shrink-0 font-mono text-xs font-medium text-[#60a5fa] tabular-nums"
+              className="shrink-0 font-mono text-xs font-medium text-[#E88B38] tabular-nums"
             >
               {clampedProgress}%
             </span>
@@ -89,17 +90,17 @@ export default function ObservatoryBootOverlay({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={clampedProgress}
-            className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]"
+            className="mt-2.5 h-1 w-full overflow-hidden rounded-[1px] bg-white/[0.08]"
           >
             <div
-              className="h-full w-full origin-left rounded-full bg-[#0082fb] transition-transform duration-300 ease-out"
+              className="h-full w-full origin-left bg-[#E88B38] transition-transform duration-300 ease-out"
               style={{ transform: `scaleX(${clampedProgress / 100})` }}
             />
           </div>
         </div>
 
         {/* Real Engine Initialization Milestones */}
-        <ul className="mt-5 grid grid-cols-1 gap-2 border-t border-white/[0.06] pt-4">
+        <ul className="mt-5 grid grid-cols-1 gap-2 border-t border-white/[0.08] pt-4">
           {BOOT_MILESTONES.map((milestoneId) => {
             const status = getBootMilestoneStatus(stage, milestoneId);
             return (
@@ -110,25 +111,25 @@ export default function ObservatoryBootOverlay({
                 className="flex items-center gap-2.5 text-xs"
               >
                 {status === 'done' ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#0082fb]/20 text-[#60a5fa]">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] bg-[#E88B38]/18 text-[#E88B38]">
                     <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
                   </span>
                 ) : status === 'active' ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#60a5fa]">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#E88B38]">
                     <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
                   </span>
                 ) : (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#4b5563]">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#4F5460]">
                     <Circle className="h-2.5 w-2.5" strokeWidth={2} />
                   </span>
                 )}
                 <span
                   className={
                     status === 'done'
-                      ? 'text-[#d1d5db]'
+                      ? 'text-[#C8C6C0]'
                       : status === 'active'
-                        ? 'text-[#f9fafb] font-medium'
-                        : 'text-[#6b7280]'
+                        ? 'text-[#ECEAE4] font-medium'
+                        : 'text-[#6B707B]'
                   }
                 >
                   {copy.milestones[milestoneId]}
@@ -138,7 +139,7 @@ export default function ObservatoryBootOverlay({
           })}
         </ul>
 
-        <p className="mt-4 text-[11px] leading-relaxed text-[#6b7280]">{copy.reassurance}</p>
+        <p className="mt-4 text-[11px] leading-relaxed text-[#6B707B]">{copy.reassurance}</p>
       </div>
     </div>
   );

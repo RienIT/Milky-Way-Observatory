@@ -19,6 +19,7 @@ import {
 } from '@/lib/i18n';
 import { SimulationScaleMode } from '@/lib/scientific-catalog';
 import { ResolutionScaleOption } from '@/lib/graphics-settings';
+import { UNIVERSE_HUD_COPY } from '@/lib/universe-i18n';
 
 export type ActiveWebView = 'explorer' | 'catalog';
 
@@ -84,6 +85,7 @@ export default function TopSearchBar({
 }: TopNavBarProps) {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const t = UI_STRINGS[lang];
+  const hud = UNIVERSE_HUD_COPY[lang];
   const extraCopy = SCALE_LABELS[lang];
   const activeLangOption =
     SUPPORTED_LANGUAGES.find((l) => l.code === lang) || SUPPORTED_LANGUAGES[0];
@@ -94,20 +96,20 @@ export default function TopSearchBar({
   const isTrue1To1 = scaleMode === 'true-1to1';
 
   return (
-    <header className="relative z-40 h-14 shrink-0 bg-[#111318] border-b border-white/[0.08] px-3 lg:px-4 flex items-center justify-between gap-2.5">
-      {/* Zone 1: Astryx Clean Brand Wordmark */}
+    <header className="relative z-40 h-12 shrink-0 bg-[#0a0c10] border-b border-white/[0.09] px-3 lg:px-4 flex items-center justify-between gap-2.5">
+      {/* Zone 1: Clean Brand Wordmark */}
       <button
         type="button"
         onClick={onSelectExplorer}
-        className="inline-flex items-center gap-2 text-[14px] font-semibold tracking-[-0.015em] text-[#f3f4f6] hover:text-white transition-colors whitespace-nowrap shrink-0"
+        className="inline-flex items-center gap-2 text-[13px] font-semibold tracking-[-0.01em] text-[#ECEAE4] hover:text-white transition-colors whitespace-nowrap shrink-0"
       >
-        <span className="w-7 h-7 rounded-[8px] bg-[#0082fb] text-white inline-flex items-center justify-center shrink-0">
-          <Telescope className="w-4 h-4" />
+        <span className="w-6 h-6 rounded-[2px] bg-[#E88B38] text-[#050608] inline-flex items-center justify-center shrink-0">
+          <Telescope className="w-3.5 h-3.5" />
         </span>
         <span>{t.brandTitle}</span>
       </button>
 
-      {/* Zone 2: Astryx Neutral Navigation Tabs */}
+      {/* Zone 2: Navigation Tabs */}
       <nav
         aria-label="Primary navigation"
         className="flex items-center gap-1 overflow-x-auto no-scrollbar"
@@ -116,15 +118,15 @@ export default function TopSearchBar({
           type="button"
           onClick={onSelectExplorer}
           data-testid="nav-explorer-btn"
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium transition-colors whitespace-nowrap shrink-0 ${
             isExplorerActive
-              ? 'bg-[#1f2430] text-[#f3f4f6] border border-white/[0.10]'
-              : 'text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] border border-transparent'
+              ? 'bg-white/[0.09] text-[#ECEAE4]'
+              : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05]'
           }`}
         >
           <Compass
             className={`w-3.5 h-3.5 shrink-0 ${
-              isExplorerActive ? 'text-[#54a8ff]' : 'text-[#6b7280]'
+              isExplorerActive ? 'text-[#E88B38]' : 'text-[#6B707B]'
             }`}
           />
           <span>{t.navExplorer}</span>
@@ -134,15 +136,15 @@ export default function TopSearchBar({
           type="button"
           onClick={onSelectBlackHoleLab}
           data-testid="inspect-blackhole-btn"
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium transition-colors whitespace-nowrap shrink-0 ${
             isBlackHoleActive
-              ? 'bg-[#0082fb]/15 text-[#54a8ff] border border-[#0082fb]/40'
-              : 'text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] border border-transparent'
+              ? 'bg-[#E88B38]/18 text-[#E88B38] border border-[#E88B38]/40'
+              : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05] border border-transparent'
           }`}
         >
           <CircleDot
             className={`w-3.5 h-3.5 shrink-0 ${
-              isBlackHoleActive ? 'text-[#54a8ff]' : 'text-[#f59e0b]'
+              isBlackHoleActive ? 'text-[#E88B38]' : 'text-[#8A8D96]'
             }`}
           />
           <span>{t.navBlackHole}</span>
@@ -152,15 +154,15 @@ export default function TopSearchBar({
           type="button"
           onClick={onSelectCatalog}
           data-testid="nav-catalog-btn"
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium transition-colors whitespace-nowrap shrink-0 ${
             isCatalogActive
-              ? 'bg-[#1f2430] text-[#f3f4f6] border border-white/[0.10]'
-              : 'text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] border border-transparent'
+              ? 'bg-white/[0.09] text-[#ECEAE4]'
+              : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05]'
           }`}
         >
           <LayoutGrid
             className={`w-3.5 h-3.5 shrink-0 ${
-              isCatalogActive ? 'text-[#54a8ff]' : 'text-[#6b7280]'
+              isCatalogActive ? 'text-[#E88B38]' : 'text-[#6B707B]'
             }`}
           />
           <span>{t.navCatalog}</span>
@@ -170,61 +172,56 @@ export default function TopSearchBar({
           type="button"
           onClick={onOpenSimulator}
           data-testid="nav-simulator-btn"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[13px] font-medium text-[#9ca3af] hover:text-[#f3f4f6] hover:bg-[#181b22] border border-transparent transition-colors whitespace-nowrap shrink-0"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05] transition-colors whitespace-nowrap shrink-0"
         >
-          <Plus className="w-3.5 h-3.5 text-[#54a8ff] shrink-0" />
-          <span>{t.navSimulator}</span>
+          <Plus className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
+          <span>{hud.worldLabLabel}</span>
         </button>
       </nav>
 
-      {/* Zone 3: True 1:1 Scale Mode + Graphics Settings + 5-Language Switcher */}
+      {/* Zone 3: Scale + Graphics + Language */}
       <div className="relative flex items-center gap-1.5 shrink-0">
-        {/* True 1:1 Scale Switcher */}
         <button
           type="button"
           data-testid="scale-mode-toggle"
           aria-pressed={isTrue1To1}
           onClick={onToggleScaleMode}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-xs font-medium border transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] text-[11px] font-mono border transition-colors whitespace-nowrap shrink-0 ${
             isTrue1To1
-              ? 'bg-[#0082fb] border-[#0082fb] text-white font-semibold'
-              : 'bg-[#181b22] hover:bg-[#1f232c] border-white/[0.10] text-[#e5e7eb]'
+              ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
+              : 'bg-white/[0.05] hover:bg-white/[0.09] border-white/[0.09] text-[#ECEAE4]'
           }`}
         >
-          <Scaling className="w-3.5 h-3.5 shrink-0" />
+          <Scaling className="w-3 h-3 shrink-0" />
           <span>{isTrue1To1 ? extraCopy.true1to1 : extraCopy.atlas}</span>
         </button>
 
-        {/* Graphics & Resolution Settings Trigger */}
         <button
           type="button"
           data-testid="open-graphics-settings-btn"
           onClick={onOpenGraphicsSettings}
           aria-label={extraCopy.graphics}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-[#181b22] hover:bg-[#1f232c] border border-white/[0.10] text-xs font-medium text-[#e5e7eb] transition-colors whitespace-nowrap shrink-0"
+          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] text-[11px] font-mono text-[#ECEAE4] transition-colors whitespace-nowrap shrink-0"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5 text-[#54a8ff] shrink-0" />
+          <SlidersHorizontal className="w-3 h-3 text-[#E88B38] shrink-0" />
           <span className="hidden md:inline">{extraCopy.graphics}</span>
-          <span className="font-mono text-[11px] text-[#54a8ff]">
-            {resolutionScale}x
-          </span>
+          <span className="text-[#E88B38]">{resolutionScale}x</span>
         </button>
 
-        {/* Compact Astryx 5-Language Dropdown */}
         <div className="relative">
           <button
             type="button"
             data-testid="lang-dropdown-trigger"
             onClick={() => setLangMenuOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-[#181b22] hover:bg-[#1f232c] border border-white/[0.10] text-xs font-medium text-[#f3f4f6] transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] text-[11px] font-mono text-[#ECEAE4] transition-colors whitespace-nowrap shrink-0"
           >
-            <Globe className="w-3.5 h-3.5 text-[#54a8ff]" />
+            <Globe className="w-3 h-3 text-[#E88B38]" />
             <span>{activeLangOption.shortCode}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-[#9ca3af]" />
+            <ChevronDown className="w-3 h-3 text-[#8A8D96]" />
           </button>
 
           {langMenuOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-[12px] bg-[#111318] border border-white/[0.12] shadow-2xl p-1 z-50">
+            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl p-1 z-50">
               {SUPPORTED_LANGUAGES.map((opt) => {
                 const active = opt.code === lang;
                 return (
@@ -236,14 +233,14 @@ export default function TopSearchBar({
                       onChangeLang(opt.code);
                       setLangMenuOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 rounded-[8px] text-xs font-medium flex items-center justify-between transition-colors ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-[2px] text-xs font-medium flex items-center justify-between transition-colors ${
                       active
-                        ? 'bg-[#0082fb]/15 text-[#54a8ff]'
-                        : 'text-[#d1d5db] hover:bg-[#181b22]'
+                        ? 'bg-[#E88B38]/15 text-[#E88B38]'
+                        : 'text-[#C8C6C0] hover:bg-white/[0.06]'
                     }`}
                   >
                     <span>{opt.nativeLabel}</span>
-                    <span className="font-mono text-[10px] text-[#6b7280]">
+                    <span className="font-mono text-[10px] text-[#6B707B]">
                       {opt.shortCode}
                     </span>
                   </button>

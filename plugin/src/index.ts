@@ -11,6 +11,10 @@ export type {
 // Direct low-level canvas & UI exports for custom host layouts
 export { default as UniverseCanvas } from './components/UniverseCanvas';
 export type { UniverseCanvasProps } from './components/UniverseCanvas';
+export { default as CommandPalette } from './components/CommandPalette';
+export type { CommandPaletteProps } from './components/CommandPalette';
+export { default as AstrophysicsCharts } from './components/AstrophysicsCharts';
+export type { AstrophysicsChartsProps } from './components/AstrophysicsCharts';
 export { default as GraphicsSettingsModal } from './components/GraphicsSettingsModal';
 export { default as ObservatoryBootOverlay } from './components/ObservatoryBootOverlay';
 export type { ObservatoryBootOverlayProps } from './components/ObservatoryBootOverlay';
@@ -74,3 +78,33 @@ export type {
   BootStageId,
   BootState,
 } from './lib/boot-sequence';
+export {
+  HR_BENCHMARK_STARS,
+  PHOTON_MILESTONES,
+  SOLAR_ECLIPSE_PRESETS,
+  SPEED_OF_LIGHT_MPS,
+  WAVELENGTH_BAND_INDEX,
+  WAVELENGTH_BAND_ORDER,
+  WAVELENGTH_BAND_SPECS,
+  computeLunarShadowOnEarth,
+  computePhotonPulseRadiusM,
+  computeStarHrPoint,
+  formatLightTravelTime,
+  getLatestPhotonMilestone,
+  kelvinToBlackbodyHex,
+  mapTempLumToHrNorm,
+  parseObservatoryHash,
+  parseSurfaceTemperatureK,
+  sampleNormalizedPlanckCurve,
+  serializeObservatoryHash,
+  wienPeakWavelengthNm,
+} from './lib/astrophysics-science';
+export type {
+  HrDiagramPoint,
+  LunarEclipseShadowState,
+  ObservatoryHashState,
+  PhotonMilestone,
+  SolarEclipsePreset,
+  WavelengthBandId,
+  WavelengthBandSpec,
+} from './lib/astrophysics-science';

@@ -1,6 +1,6 @@
 /**
  * 5-Language Localization Dictionary (en, vi, ja, zh, ko) for Multi-Scale Universe HUD,
- * Time Simulation Controls, Scale Presets, Layer Toggles, and Data Provenance Labels (Phase 4).
+ * Time Simulation Controls, Multi-Wavelength Bands, Solar Eclipses, Photon Pulse, and Cinema Mode.
  */
 
 import { LanguageCode } from './i18n';
@@ -51,6 +51,15 @@ export interface UniverseHudCopy {
   solarSystemSection: string;
   zoomSliderAria: string;
   moonPhaseLabel: string;
+  wavelengthLabel: string;
+  eclipseBtn: string;
+  eclipseActiveBadge: string;
+  photonPulseBtn: string;
+  photonStopBtn: string;
+  cinemaMode: string;
+  showHud: string;
+  searchTrigger: string;
+  worldLabLabel: string;
 }
 
 export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
@@ -103,6 +112,15 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     solarSystemSection: 'Solar System (Live Ephemeris)',
     zoomSliderAria: 'Logarithmic universe zoom slider',
     moonPhaseLabel: 'Lunar Illum.',
+    wavelengthLabel: 'Spectrum',
+    eclipseBtn: 'Eclipses',
+    eclipseActiveBadge: 'Umbra Active',
+    photonPulseBtn: 'Light Pulse (c)',
+    photonStopBtn: 'Stop Pulse',
+    cinemaMode: 'Cinema [H]',
+    showHud: 'Show HUD [H]',
+    searchTrigger: 'Search catalog, stars, galaxies…',
+    worldLabLabel: 'World Lab',
   },
   vi: {
     scalePresetsTitle: 'Thang đo',
@@ -153,6 +171,15 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     solarSystemSection: 'Hệ Mặt Trời (Quỹ đạo Thực)',
     zoomSliderAria: 'Thanh trượt thu phóng logarit vũ trụ',
     moonPhaseLabel: 'Pha Mặt Trăng',
+    wavelengthLabel: 'Phổ quan sát',
+    eclipseBtn: 'Nhật thực',
+    eclipseActiveBadge: 'Bóng tối Umbra',
+    photonPulseBtn: 'Xung ánh sáng (c)',
+    photonStopBtn: 'Tắt xung',
+    cinemaMode: 'Toàn cảnh [H]',
+    showHud: 'Hiện HUD [H]',
+    searchTrigger: 'Tìm thiên thể, ngôi sao, thiên hà…',
+    worldLabLabel: 'Phòng thí nghiệm',
   },
   ja: {
     scalePresetsTitle: 'スケール',
@@ -203,6 +230,15 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     solarSystemSection: '太陽系（実天体暦）',
     zoomSliderAria: '対数ズームスライダー',
     moonPhaseLabel: '月照率',
+    wavelengthLabel: '観測波長',
+    eclipseBtn: '日食',
+    eclipseActiveBadge: '本影検出中',
+    photonPulseBtn: '光速パルス (c)',
+    photonStopBtn: 'パルス停止',
+    cinemaMode: 'シネマ [H]',
+    showHud: 'HUD表示 [H]',
+    searchTrigger: '天体・恒星・銀河を検索…',
+    worldLabLabel: 'ワールド生成',
   },
   zh: {
     scalePresetsTitle: '尺度',
@@ -253,6 +289,15 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     solarSystemSection: '太阳系（实时星历）',
     zoomSliderAria: '对数宇宙缩放滑块',
     moonPhaseLabel: '月相照明',
+    wavelengthLabel: '观测波段',
+    eclipseBtn: '日食',
+    eclipseActiveBadge: '月球本影',
+    photonPulseBtn: '光速脉冲 (c)',
+    photonStopBtn: '停止脉冲',
+    cinemaMode: '纯粹模式 [H]',
+    showHud: '显示 HUD [H]',
+    searchTrigger: '搜索天体、恒星、星系…',
+    worldLabLabel: '行星实验室',
   },
   ko: {
     scalePresetsTitle: '스케일',
@@ -303,5 +348,14 @@ export const UNIVERSE_HUD_COPY: Record<LanguageCode, UniverseHudCopy> = {
     solarSystemSection: '태양계 (실시간 천체력)',
     zoomSliderAria: '로그 우주 줌 슬라이더',
     moonPhaseLabel: '달 위상',
+    wavelengthLabel: '관측 파장',
+    eclipseBtn: '일식',
+    eclipseActiveBadge: '본영 활성',
+    photonPulseBtn: '광속 펄스 (c)',
+    photonStopBtn: '펄스 중지',
+    cinemaMode: '시네마 [H]',
+    showHud: 'HUD 표시 [H]',
+    searchTrigger: '천체, 항성, 은하 검색…',
+    worldLabLabel: '행성 실험실',
   },
 };
