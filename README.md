@@ -12,7 +12,7 @@
   <a href="./.github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white" alt="CI" /></a>
   <a href="./.github/workflows/codeql.yml"><img src="https://img.shields.io/badge/Security-CodeQL-2ea44f?logo=github&logoColor=white" alt="CodeQL" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-FA500F.svg" alt="License: MIT" /></a>
-  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js 15" /></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16" /></a>
   <a href="https://threejs.org"><img src="https://img.shields.io/badge/Three.js-WebGL2%20GLSL-FA500F?logo=threedotjs" alt="Three.js WebGL2" /></a>
   <a href="https://heroui.com"><img src="https://img.shields.io/badge/UI-HeroUI%20v3-111111" alt="HeroUI v3" /></a>
 </p>
@@ -77,7 +77,7 @@
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router) · React 19 · TypeScript 5
+- **Framework**: Next.js 16 (App Router) · React 19 · TypeScript 5
 - **3D & Shaders**: Three.js WebGL2 · Custom GLSL shaders (Schwarzschild geodesic lensing, 4-band multi-wavelength disk, Fermi Bubbles, Earth eclipse umbra/penumbra, photon wavefront) · Logarithmic depth buffer
 - **Ephemeris & Catalogs**: `astronomy-engine` (VSOP87 / ELP2000) · Off-main-thread Web Worker binary star tiles (`Float32Array`)
 - **Styling & Icons**: Tailwind CSS v4 · HeroUI v3 (`@heroui/react`) · `Playfair Display` / `Inter` / `JetBrains Mono` · Lucide React · Motion

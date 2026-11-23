@@ -5,9 +5,7 @@ export default function nextConfig(phase: string): NextConfig {
   return {
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? '.next-dev' : '.next',
     reactStrictMode: true,
-    eslint: {
-      ignoreDuringBuilds: true,
-    },
+    turbopack: {},
     typescript: {
       // Strict typechecking runs via `npm run typecheck` & CI; skip redundant pass inside `next build`
       ignoreBuildErrors: true,

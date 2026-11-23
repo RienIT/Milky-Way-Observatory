@@ -176,7 +176,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
   // Hydrate browser-only state & hardware profile once mounted
   useEffect(() => {
     let cancelled = false;
-    const rafId = window.requestAnimationFrame(() => {
+    const timerId = window.setTimeout(() => {
       if (cancelled) return;
       setIsClientMounted(true);
 
@@ -236,7 +236,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
 
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
     };
   }, [
     baseCatalog.length,

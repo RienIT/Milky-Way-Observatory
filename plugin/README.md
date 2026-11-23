@@ -58,12 +58,13 @@ Copy the entire `plugin/` directory into your host project (for example `./plugi
 {
   "dependencies": {
     "@milky-way/observatory-plugin": "file:./plugins/milky-way-observatory",
+    "@heroui/react": "^3.2.8",
     "three": "^0.187.0",
     "astronomy-engine": "^2.1.19",
-    "lucide-react": "^0.553.0",
-    "motion": "^12.23.24",
+    "lucide-react": "^1.78.0",
+    "motion": "^14.14.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.7.1"
   }
 }
 ```

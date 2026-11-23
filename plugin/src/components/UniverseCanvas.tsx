@@ -985,29 +985,36 @@ export default function UniverseCanvas({
           resolve();
           return;
         }
+        let settled = false;
         let rId = 0;
         let tId = 0;
+        let fallbackId = 0;
         const finish = () => {
+          if (settled) return;
+          settled = true;
+          cancelAnimationFrame(rId);
+          clearTimeout(tId);
+          clearTimeout(fallbackId);
           activeYieldCancels.delete(cancel);
           resolve();
         };
         const cancel = () => {
-          cancelAnimationFrame(rId);
-          clearTimeout(tId);
-          activeYieldCancels.delete(cancel);
-          resolve();
+          finish();
         };
         activeYieldCancels.add(cancel);
+        // Safety fallback so throttled/background iframes never stall boot
+        fallbackId = window.setTimeout(finish, 120);
         rId = requestAnimationFrame(() => {
           tId = window.setTimeout(finish, 0);
         });
       });
 
     const bootEngine = async () => {
-      // Yield 1 paint frame immediately so ObservatoryBootOverlay paints crisply before heavy WebGL2 setup
-      reportBootStage('webgl');
-      await yieldToPaint();
-      if (isDisposed) return;
+      try {
+        // Yield 1 paint frame immediately so ObservatoryBootOverlay paints crisply before heavy WebGL2 setup
+        reportBootStage('webgl');
+        await yieldToPaint();
+        if (isDisposed) return;
 
       const width = container.clientWidth || window.innerWidth || 1280;
       const height = container.clientHeight || window.innerHeight || 720;
@@ -4194,7 +4201,20 @@ export default function UniverseCanvas({
       }
     }
 
+    // Ensure first frame commits even if rAF is briefly throttled in an iframe
     frameId = requestAnimationFrame(tick);
+    timeoutId = window.setTimeout(() => {
+      if (!isDisposed && !firstFrameCommitted) {
+        tick(performance.now());
+      }
+    }, 180);
+      } catch (err) {
+        console.error('[Observatory] WebGL2 startup error:', err);
+        if (!isDisposed) {
+          reportBootStage('ready');
+          onBootReadyRef.current?.();
+        }
+      }
     };
 
     void bootEngine();

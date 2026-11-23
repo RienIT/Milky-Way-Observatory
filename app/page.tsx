@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 import {
   Button,
   Card,
@@ -35,6 +34,7 @@ import MemoryDetailDrawer from '@/components/MemoryDetailDrawer';
 import ObservatoryBootOverlay from '@/components/ObservatoryBootOverlay';
 import ObservatoryLogo from '@/components/ObservatoryLogo';
 import TopSearchBar, { ActiveWebView } from '@/components/TopSearchBar';
+import UniverseCanvas from '@/components/UniverseCanvas';
 import {
   parseObservatoryHash,
   serializeObservatoryHash,
@@ -69,15 +69,6 @@ import { INITIAL_MEMORIES } from '@/lib/mock-memories';
 import { SimulationScaleMode } from '@/lib/scientific-catalog';
 import { ScalePresetId, UNIVERSE_HUD_COPY } from '@/lib/universe-i18n';
 
-const UniverseCanvas = dynamic(() => import('@/components/UniverseCanvas'), {
-  ssr: false,
-  loading: () => (
-    <div className="relative w-full h-full bg-[#030406]">
-      <ObservatoryBootOverlay stage="bundle" progress={12} lang="en" />
-    </div>
-  ),
-});
-
 const STORAGE_MEMORIES_KEY = 'milky-way-nodes-v4';
 const STORAGE_LANG_KEY = 'milky-way-lang-v2';
 const STORAGE_GFX_KEY = 'milky-way-gfx-v1';
@@ -96,6 +87,7 @@ const DEFAULT_HARDWARE_PROFILE: HardwareProfile = {
 };
 
 export default function MilkyWayObservatoryPage() {
+  const [isClientMounted, setIsClientMounted] = useState(false);
   const [memories, setMemories] = useState<MemoryNode[]>(INITIAL_MEMORIES);
   const [lang, setLang] = useState<LanguageCode>('en');
   const [activeView, setActiveView] = useState<ActiveWebView>('explorer');
@@ -145,11 +137,12 @@ export default function MilkyWayObservatoryPage() {
     GRAPHICS_PRESETS.medium
   );
 
-  // Hydrate URL hash deep-link, persisted language, custom celestial objects, and auto-detected hardware recommendation
+  // Hydrate client mount gate, URL hash deep-link, persisted language, custom celestial objects, and hardware recommendation
   useEffect(() => {
     let cancelled = false;
-    const rafId = window.requestAnimationFrame(() => {
+    const timerId = window.setTimeout(() => {
       if (cancelled) return;
+      setIsClientMounted(true);
 
       const parsedHash = parseObservatoryHash(window.location.hash);
       if (parsedHash.target) setSelectedId(parsedHash.target);
@@ -204,7 +197,7 @@ export default function MilkyWayObservatoryPage() {
 
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
     };
   }, []);
 
@@ -519,39 +512,45 @@ export default function MilkyWayObservatoryPage() {
       ) : (
         <main className="relative flex-1 w-full h-full overflow-hidden">
           {/* Full-Bleed 100vw x 100vh Continuous Multi-Scale 3D Viewport */}
-          <UniverseCanvas
-            memories={memories}
-            links={links}
-            matchedIds={matchedIds}
-            isFilterActive={isFilterActive}
-            selectedId={selectedId}
-            onSelectNode={setSelectedId}
-            orbitSpeedMultiplier={orbitSpeedMultiplier}
-            onChangeOrbitSpeed={setOrbitSpeedMultiplier}
-            showOrbitRings={showOrbitRings}
-            onToggleOrbitRings={() => setShowOrbitRings((v) => !v)}
-            showConstellations={showConstellations}
-            onToggleConstellations={() => setShowConstellations((v) => !v)}
-            showMilkyWayDisk={showMilkyWayDisk}
-            onToggleMilkyWayDisk={() => setShowMilkyWayDisk((v) => !v)}
-            scaleMode={scaleMode}
-            graphicsSettings={graphicsSettings}
-            cameraResetTrigger={cameraResetTrigger}
-            onResetCamera={() => {
-              setSelectedId(null);
-              setCameraResetTrigger((c) => c + 1);
-            }}
-            lang={lang}
-            wavelengthBand={wavelengthBand}
-            onChangeWavelengthBand={setWavelengthBand}
-            cinemaMode={cinemaMode}
-            onToggleCinemaMode={() => setCinemaMode((v) => !v)}
-            initialSimDateMs={initialSimDateMs}
-            initialLogDistM={initialLogDistM}
-            externalEclipseRequest={eclipseRequest}
-            externalPhotonTrigger={photonTrigger}
-            externalScalePresetRequest={scalePresetRequest}
-          />
+          {isClientMounted ? (
+            <UniverseCanvas
+              memories={memories}
+              links={links}
+              matchedIds={matchedIds}
+              isFilterActive={isFilterActive}
+              selectedId={selectedId}
+              onSelectNode={setSelectedId}
+              orbitSpeedMultiplier={orbitSpeedMultiplier}
+              onChangeOrbitSpeed={setOrbitSpeedMultiplier}
+              showOrbitRings={showOrbitRings}
+              onToggleOrbitRings={() => setShowOrbitRings((v) => !v)}
+              showConstellations={showConstellations}
+              onToggleConstellations={() => setShowConstellations((v) => !v)}
+              showMilkyWayDisk={showMilkyWayDisk}
+              onToggleMilkyWayDisk={() => setShowMilkyWayDisk((v) => !v)}
+              scaleMode={scaleMode}
+              graphicsSettings={graphicsSettings}
+              cameraResetTrigger={cameraResetTrigger}
+              onResetCamera={() => {
+                setSelectedId(null);
+                setCameraResetTrigger((c) => c + 1);
+              }}
+              lang={lang}
+              wavelengthBand={wavelengthBand}
+              onChangeWavelengthBand={setWavelengthBand}
+              cinemaMode={cinemaMode}
+              onToggleCinemaMode={() => setCinemaMode((v) => !v)}
+              initialSimDateMs={initialSimDateMs}
+              initialLogDistM={initialLogDistM}
+              externalEclipseRequest={eclipseRequest}
+              externalPhotonTrigger={photonTrigger}
+              externalScalePresetRequest={scalePresetRequest}
+            />
+          ) : (
+            <div className="relative w-full h-full bg-[#030406]">
+              <ObservatoryBootOverlay stage="bundle" progress={12} lang={lang} />
+            </div>
+          )}
 
           {/* Floating Top-Left Precision Instrument Strip (Mistral Dark Studio + HeroUI v3) */}
           <header
