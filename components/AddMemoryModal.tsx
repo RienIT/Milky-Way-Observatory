@@ -6,13 +6,12 @@ import {
   Input,
   Label,
   ListBox,
-  Modal,
   Select,
   TextArea,
 } from '@heroui/react';
 import { Loader2, Sparkles } from 'lucide-react';
 import ObservatoryLogo from '@/components/ObservatoryLogo';
-import SunsetStripeBand from '@/components/SunsetStripeBand';
+import ObservatoryModalShell from '@/components/ObservatoryModalShell';
 import {
   ALL_CATEGORIES,
   MemoryCategory,
@@ -155,42 +154,39 @@ export default function AddMemoryModal({
   ];
 
   return (
-    <Modal.Backdrop
+    <ObservatoryModalShell
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      isDismissable
-      className="bg-black/70 z-50"
+      onClose={onClose}
+      ariaLabel={t.modalTitle}
+      testId="add-memory-modal"
+      theme="light"
+      maxWidthClass="max-w-[660px]"
+      closeButtonAriaLabel={t.modalCancelBtn}
     >
-      <Modal.Container placement="center" size="lg" scroll="inside">
-        {/* Mistral contact-form-panel: warm cream #FFF8E7, 12px radius, beige-deep border */}
-        <Modal.Dialog
-          aria-label={t.modalTitle}
-          data-testid="add-memory-modal"
-          className="mistral-editorial-light bg-[#FFF8E7] border border-[#E9DFC6] rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.22)] max-w-[660px] w-full p-0 overflow-hidden text-[#111111]"
-        >
-          <SunsetStripeBand variant="hairline" />
-          <Modal.CloseTrigger className="top-4 right-4 text-[#525252] hover:text-[#111111] hover:bg-[#FEF0C7] rounded-[8px]" />
-          <Modal.Header className="px-7 pt-6 pb-4 border-b border-[#E9DFC6] flex flex-row items-center gap-3.5">
-            <ObservatoryLogo size={36} assetBasePath={assetBasePath} />
-            <div className="min-w-0 pr-6">
-              <Modal.Heading
-                id="add-memory-modal-title"
-                className="font-display text-[24px] font-normal leading-[1.2] tracking-[-0.015em] text-[#111111] truncate"
-              >
-                {t.modalTitle}
-              </Modal.Heading>
-              <p className="text-[13px] font-normal text-[#525252] truncate mt-0.5">
-                {t.modalSubtitle}
-              </p>
-            </div>
-          </Modal.Header>
+      <div className="px-5 @[520px]/modal:px-7 pt-5 pb-4 pr-12 border-b border-[#E9DFC6] flex flex-row items-center gap-3.5 shrink-0">
+        <ObservatoryLogo size={36} assetBasePath={assetBasePath} />
+        <div className="min-w-0">
+          <h2
+            id="add-memory-modal-title"
+            className="font-display text-[20px] @[520px]/modal:text-[24px] font-normal leading-[1.2] tracking-[-0.015em] text-[#111111] truncate"
+          >
+            {t.modalTitle}
+          </h2>
+          <p className="text-[12px] @[520px]/modal:text-[13px] font-normal text-[#525252] truncate mt-0.5">
+            {t.modalSubtitle}
+          </p>
+        </div>
+      </div>
 
-          <form id="add-memory-form" onSubmit={handleAnalyzeWithAI} suppressHydrationWarning>
-            <Modal.Body className="px-7 py-6 space-y-5">
-              {/* Quick Presets (cream-deeper 8px buttons) */}
-              <div className="space-y-2">
+      <form
+        id="add-memory-form"
+        onSubmit={handleAnalyzeWithAI}
+        suppressHydrationWarning
+        className="flex flex-col flex-1 min-h-0"
+      >
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 @[520px]/modal:px-7 py-5 space-y-5">
+          {/* Quick Presets (cream-deeper 8px buttons) */}
+          <div className="space-y-2">
                 <span className="text-[12px] font-semibold text-[#525252]">
                   {t.modalPresetsLabel}
                 </span>
@@ -215,7 +211,7 @@ export default function AddMemoryModal({
               </div>
 
               {/* Name & Classification (44px white inputs, 8px radius, orange focus) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 @[460px]/modal:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="memory-title-input"
@@ -252,7 +248,11 @@ export default function AddMemoryModal({
                     <Select.Value />
                     <Select.Indicator className="text-[#525252]" />
                   </Select.Trigger>
-                  <Select.Popover className="mistral-editorial-light bg-[#FFFFFF] border border-[#E5E0D5] rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.12)]">
+                  <Select.Popover
+                    data-mw-observatory="true"
+                    data-theme="light"
+                    className="mistral-editorial-light z-[99999] bg-[#FFFFFF] border border-[#E5E0D5] rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.16)]"
+                  >
                     <ListBox>
                       {categoryItems.map((item) => (
                         <ListBox.Item
@@ -302,41 +302,39 @@ export default function AddMemoryModal({
                   {errorMsg}
                 </div>
               )}
-            </Modal.Body>
+        </div>
 
-            <Modal.Footer className="px-7 py-4 border-t border-[#E9DFC6] bg-[#FFFDF5]">
-              <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <p className="text-[12px] text-[#737373]">{t.modalFooterNote}</p>
+        <div className="px-5 @[520px]/modal:px-7 py-4 border-t border-[#E9DFC6] bg-[#FFFDF5] shrink-0">
+          <div className="w-full flex flex-col @[500px]/modal:flex-row @[500px]/modal:items-center justify-between gap-3">
+            <p className="text-[12px] text-[#737373]">{t.modalFooterNote}</p>
 
-                <div className="flex items-center justify-end gap-2.5 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onPress={onClose}
-                    className="h-10 rounded-[8px] px-4 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-[#D4CFC3] text-[13px] font-medium text-[#262626]"
-                  >
-                    {t.modalCancelBtn}
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant="primary"
-                    isDisabled={isLoading}
-                    className="h-10 rounded-[8px] px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white font-medium text-[13px] gap-1.5"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isLoading ? t.modalLoadingBtn : t.modalSubmitBtn}</span>
-                  </Button>
-                </div>
-              </div>
-            </Modal.Footer>
-          </form>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+            <div className="flex items-center justify-end gap-2.5 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onPress={onClose}
+                className="h-10 rounded-[8px] px-4 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-[#D4CFC3] text-[13px] font-medium text-[#262626] inline-flex items-center justify-center leading-none"
+              >
+                {t.modalCancelBtn}
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                variant="primary"
+                isDisabled={isLoading}
+                className="h-10 rounded-[8px] px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white font-medium text-[13px] inline-flex items-center justify-center leading-none gap-1.5"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 block" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 shrink-0 block" />
+                )}
+                <span>{isLoading ? t.modalLoadingBtn : t.modalSubmitBtn}</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </ObservatoryModalShell>
   );
 }

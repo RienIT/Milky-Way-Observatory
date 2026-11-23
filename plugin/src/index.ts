@@ -1,3 +1,5 @@
+import './observatory-plugin.css';
+
 export {
   MilkyWayObservatoryPlugin,
   default,

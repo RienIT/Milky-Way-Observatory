@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Chip, Input, Modal, Tabs } from '@heroui/react';
+import { Button, Chip, Input, Tabs } from '@heroui/react';
 import {
   CircleDot,
   Compass,
@@ -16,7 +16,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import SunsetStripeBand from './SunsetStripeBand';
+import ObservatoryModalShell from './ObservatoryModalShell';
 import {
   SOLAR_ECLIPSE_PRESETS,
   SolarEclipsePreset,
@@ -309,27 +309,20 @@ export default function CommandPalette({
   };
 
   return (
-    <Modal.Backdrop
+    <ObservatoryModalShell
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      isDismissable
-      className="bg-black/75 z-50"
+      onClose={onClose}
+      ariaLabel={hud.searchTrigger}
+      testId="command-palette-dialog"
+      placement="top"
+      theme="dark"
+      maxWidthClass="max-w-[620px]"
+      showCloseButton={false}
     >
-      <Modal.Container placement="top" size="lg" className="pt-[8vh] px-3">
-        <Modal.Dialog
-          aria-label={hud.searchTrigger}
-          data-testid="command-palette-dialog"
-          data-theme="dark"
-          data-mw-observatory="true"
-          className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[620px] w-full p-0 overflow-hidden"
-        >
-          <SunsetStripeBand variant="hairline" />
-          <Modal.Body className="p-0 gap-0">
-            {/* Search Input Row */}
-            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#FFF8E7]/10">
-              <Search className="w-4 h-4 text-[#FA500F] shrink-0" />
+      <div className="flex flex-col min-h-0 max-h-full">
+        {/* Search Input Row */}
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#FFF8E7]/10 shrink-0">
+          <Search className="w-4 h-4 text-[#FA500F] shrink-0 block" />
               <Input
                 ref={inputRef}
                 data-testid="command-palette-input"
@@ -400,7 +393,7 @@ export default function CommandPalette({
             </div>
 
             {/* Result List */}
-            <div className="max-h-[54vh] overflow-y-auto divide-y divide-[#FFF8E7]/[0.06]">
+            <div className="flex-1 min-h-0 max-h-[54vh] overflow-y-auto divide-y divide-[#FFF8E7]/[0.06]">
               {filtered.length === 0 ? (
                 <div className="px-4 py-10 text-center text-[13px] text-[#A19F99]">
                   {copy.empty}
@@ -420,25 +413,25 @@ export default function CommandPalette({
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="shrink-0 text-[#FA500F]">
+                        <span className="shrink-0 text-[#FA500F] inline-flex items-center justify-center">
                           {entry.kind === 'tour' ? (
-                            <Compass className="w-4 h-4" />
+                            <Compass className="w-4 h-4 shrink-0 block" />
                           ) : entry.kind === 'eclipse' ? (
-                            <Eclipse className="w-4 h-4 text-[#FFAF00]" />
+                            <Eclipse className="w-4 h-4 text-[#FFAF00] shrink-0 block" />
                           ) : entry.kind === 'spectral' ? (
-                            <Radio className="w-4 h-4" />
+                            <Radio className="w-4 h-4 shrink-0 block" />
                           ) : entry.kind === 'photon' ? (
-                            <Zap className="w-4 h-4 text-[#FFD800]" />
+                            <Zap className="w-4 h-4 text-[#FFD800] shrink-0 block" />
                           ) : entry.objectId === 'BLACK_HOLE_CORE' ? (
-                            <CircleDot className="w-4 h-4" />
+                            <CircleDot className="w-4 h-4 shrink-0 block" />
                           ) : entry.group === 'galaxies' ? (
-                            <Sparkles className="w-4 h-4 text-[#A19F99]" />
+                            <Sparkles className="w-4 h-4 text-[#A19F99] shrink-0 block" />
                           ) : entry.title.toLowerCase().includes('sun') ? (
-                            <Sun className="w-4 h-4 text-[#FFAF00]" />
+                            <Sun className="w-4 h-4 text-[#FFAF00] shrink-0 block" />
                           ) : entry.group === 'catalog' ? (
-                            <Globe2 className="w-4 h-4 text-[#A19F99]" />
+                            <Globe2 className="w-4 h-4 text-[#A19F99] shrink-0 block" />
                           ) : (
-                            <Orbit className="w-4 h-4 text-[#A19F99]" />
+                            <Orbit className="w-4 h-4 text-[#A19F99] shrink-0 block" />
                           )}
                         </span>
                         <div className="min-w-0">
@@ -459,7 +452,7 @@ export default function CommandPalette({
                         <span className="font-mono text-[11px] tabular-nums text-[#A19F99]">
                           {entry.meta}
                         </span>
-                        {active && <CornerDownLeft className="w-3.5 h-3.5 text-[#FA500F]" />}
+                        {active && <CornerDownLeft className="w-3.5 h-3.5 text-[#FA500F] shrink-0 block" />}
                       </div>
                     </button>
                   );
@@ -468,7 +461,7 @@ export default function CommandPalette({
             </div>
 
             {/* Footer Hints */}
-            <div className="px-4 py-2 border-t border-[#FFF8E7]/08 bg-[#101012] flex items-center justify-between text-[11px] font-mono text-[#8F8D87]">
+            <div className="px-4 py-2 border-t border-[#FFF8E7]/08 bg-[#101012] flex items-center justify-between text-[11px] font-mono text-[#8F8D87] shrink-0">
               <span>{copy.hints}</span>
               <Chip
                 size="sm"
@@ -478,9 +471,7 @@ export default function CommandPalette({
                 {filtered.length}
               </Chip>
             </div>
-          </Modal.Body>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+      </div>
+    </ObservatoryModalShell>
   );
 }

@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Chip,
-  Modal,
   ProgressBar,
   Switch,
 } from '@heroui/react';
@@ -17,7 +16,7 @@ import {
   SlidersHorizontal,
   Sparkles,
 } from 'lucide-react';
-import SunsetStripeBand from '@/components/SunsetStripeBand';
+import ObservatoryModalShell from '@/components/ObservatoryModalShell';
 import {
   ASTEROID_COUNT_OPTIONS,
   FPS_CAP_OPTIONS,
@@ -358,78 +357,71 @@ export default function GraphicsSettingsModal({
   };
 
   return (
-    <Modal.Backdrop
+    <ObservatoryModalShell
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      isDismissable
-      className="bg-black/75 z-50"
+      onClose={onClose}
+      ariaLabel={copy.title}
+      testId="graphics-settings-modal"
+      theme="dark"
+      maxWidthClass="max-w-[780px]"
+      closeButtonAriaLabel={copy.closeBtn}
     >
-      <Modal.Container placement="center" size="lg" scroll="inside" className="px-3">
-        <Modal.Dialog
-          aria-label={copy.title}
-          data-testid="graphics-settings-modal"
-          data-theme="dark"
-          data-mw-observatory="true"
-          className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[780px] w-full p-0 overflow-hidden"
+      <div className="px-4 @[520px]/modal:px-6 py-3.5 @[520px]/modal:py-4 pr-12 border-b border-[#FFF8E7]/10 bg-[#101012] flex flex-row items-start gap-3 shrink-0">
+        <span className="w-8 h-8 @[520px]/modal:w-9 @[520px]/modal:h-9 rounded-[8px] bg-[#FA500F]/15 border border-[#FA500F]/40 text-[#FA500F] inline-flex items-center justify-center shrink-0 mt-0.5">
+          <SlidersHorizontal className="w-4 h-4 shrink-0 block" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-display text-[19px] @[520px]/modal:text-[22px] font-normal leading-[1.2] tracking-[-0.015em] text-[#FFF8E7]">
+            {copy.title}
+          </h2>
+          <p className="text-[11px] @[520px]/modal:text-[12px] font-normal text-[#A19F99] mt-0.5 leading-snug">
+            {copy.subtitle}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 @[520px]/modal:px-6 py-4 @[520px]/modal:py-5 space-y-4 @[520px]/modal:space-y-5">
+        {/* 1. Hardware Auto-Detection & Recommendation Banner */}
+        <Card
+          data-testid="hardware-recommendation-card"
+          className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0"
         >
-          <SunsetStripeBand variant="hairline" />
-          <Modal.CloseTrigger className="top-4 right-4 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] rounded-[8px]" />
-          <Modal.Header className="px-6 py-4 border-b border-[#FFF8E7]/10 bg-[#101012] flex flex-row items-start gap-3">
-            <span className="w-9 h-9 rounded-[8px] bg-[#FA500F]/15 border border-[#FA500F]/40 text-[#FA500F] inline-flex items-center justify-center shrink-0 mt-0.5">
-              <SlidersHorizontal className="w-4 h-4" />
-            </span>
-            <div>
-              <Modal.Heading className="font-display text-[22px] font-normal leading-[1.2] tracking-[-0.015em] text-[#FFF8E7]">
-                {copy.title}
-              </Modal.Heading>
-              <p className="text-[12px] font-normal text-[#A19F99] mt-0.5">{copy.subtitle}</p>
+          <Card.Content className="p-3.5 @[520px]/modal:p-4 space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-[#FA500F] shrink-0 block" />
+                <h3 className="text-[13px] font-semibold text-[#FFF8E7]">
+                  {copy.hardwareHeading}
+                </h3>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip
+                  size="sm"
+                  variant="soft"
+                  color="accent"
+                  className="h-7 rounded-full bg-[#FA500F]/15 border border-[#FA500F]/40 px-2.5 text-[11px] font-mono font-semibold text-[#FFD800] inline-flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-[#FFAF00] shrink-0 block" />
+                  <span>
+                    {copy.recommendedBadge}: {copy.tierNames[recommendation.recommendedTier]}
+                  </span>
+                </Chip>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  data-testid="apply-recommended-graphics-btn"
+                  onPress={applyRecommended}
+                  className="h-8 rounded-[8px] px-3.5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[12px] font-medium inline-flex items-center justify-center leading-none"
+                >
+                  {copy.applyRecommended}
+                </Button>
+              </div>
             </div>
-          </Modal.Header>
 
-          <Modal.Body className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-            {/* 1. Hardware Auto-Detection & Recommendation Banner */}
-            <Card
-              data-testid="hardware-recommendation-card"
-              className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0"
-            >
-              <Card.Content className="p-4 space-y-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-[#FA500F] shrink-0" />
-                    <h3 className="text-[13px] font-semibold text-[#FFF8E7]">
-                      {copy.hardwareHeading}
-                    </h3>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      color="accent"
-                      className="h-7 rounded-full bg-[#FA500F]/15 border border-[#FA500F]/40 px-2.5 text-[11px] font-mono font-semibold text-[#FFD800] gap-1"
-                    >
-                      <Sparkles className="w-3 h-3 text-[#FFAF00] shrink-0" />
-                      <span>
-                        {copy.recommendedBadge}: {copy.tierNames[recommendation.recommendedTier]}
-                      </span>
-                    </Chip>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      data-testid="apply-recommended-graphics-btn"
-                      onPress={applyRecommended}
-                      className="h-8 rounded-[8px] px-3.5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[12px] font-medium"
-                    >
-                      {copy.applyRecommended}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Hardware Specs Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
-                  <div className="col-span-2 sm:col-span-3 lg:col-span-2 rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+            {/* Hardware Specs Grid */}
+            <div className="grid grid-cols-2 @[480px]/modal:grid-cols-3 @[680px]/modal:grid-cols-5 gap-2 text-xs">
+              <div className="col-span-2 @[480px]/modal:col-span-3 @[680px]/modal:col-span-2 rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
                     <span className="text-[11px] text-[#8F8D87] block">{copy.gpuLabel}</span>
                     <span
                       data-testid="detected-gpu-name"
@@ -515,7 +507,7 @@ export default function GraphicsSettingsModal({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 @[520px]/modal:grid-cols-3 gap-2">
                 {TIER_ORDER.map((tierId) => {
                   const isSelected = settings.tier === tierId;
                   const isRecommended = recommendation.recommendedTier === tierId;
@@ -577,7 +569,7 @@ export default function GraphicsSettingsModal({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-3 @[480px]/modal:grid-cols-6 gap-1.5">
                   {RESOLUTION_OPTIONS.map((opt) => {
                     const active = settings.resolutionScale === opt.scale;
                     return (
@@ -604,7 +596,7 @@ export default function GraphicsSettingsModal({
             </Card>
 
             {/* 4. Granular GPU & Scene Complexity Controls */}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <section className="grid grid-cols-1 @[560px]/modal:grid-cols-2 gap-3">
               {/* Milky Way Star Count */}
               <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
                 <Card.Content className="p-3.5 space-y-2.5">
@@ -614,7 +606,7 @@ export default function GraphicsSettingsModal({
                       {(settings.starfieldCount / 1000).toFixed(0)}k
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-3 @[420px]/modal:grid-cols-6 gap-1">
                     {STAR_COUNT_OPTIONS.map((cnt) => {
                       const active = settings.starfieldCount === cnt;
                       return (
@@ -648,7 +640,7 @@ export default function GraphicsSettingsModal({
                         : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-3 @[420px]/modal:grid-cols-6 gap-1">
                     {ASTEROID_COUNT_OPTIONS.map((cnt) => {
                       const active = settings.asteroidBeltCount === cnt;
                       return (
@@ -680,7 +672,7 @@ export default function GraphicsSettingsModal({
                       {settings.planetSegments} {extra.segUnit}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-3 @[420px]/modal:grid-cols-6 gap-1">
                     {TESSELLATION_OPTIONS.map((seg) => {
                       const active = settings.planetSegments === seg;
                       return (
@@ -737,7 +729,7 @@ export default function GraphicsSettingsModal({
             </section>
 
             {/* 5. Toggles & FPS Cap */}
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <section className="grid grid-cols-1 @[600px]/modal:grid-cols-3 gap-3">
               {/* FPS Cap */}
               <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
                 <Card.Content className="p-3.5 space-y-2.5">
@@ -809,25 +801,23 @@ export default function GraphicsSettingsModal({
                 </Card.Content>
               </Card>
             </section>
-          </Modal.Body>
+      </div>
 
-          <Modal.Footer className="px-6 py-4 border-t border-[#FFF8E7]/10 bg-[#101012] flex items-center justify-between">
-            <span className="text-[11px] font-mono text-[#8F8D87]">
-              WebGL{hardwareProfile.webgl2Supported ? '2' : '1'} · MaxTex{' '}
-              {hardwareProfile.maxTextureSize}px
-            </span>
-            <Button
-              size="sm"
-              variant="primary"
-              data-testid="close-graphics-settings-btn"
-              onPress={onClose}
-              className="h-9 rounded-[8px] px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[13px] font-medium"
-            >
-              {copy.closeBtn}
-            </Button>
-          </Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+      <div className="px-4 @[520px]/modal:px-6 py-3.5 border-t border-[#FFF8E7]/10 bg-[#101012] flex items-center justify-between gap-2 shrink-0">
+        <span className="text-[11px] font-mono text-[#8F8D87] truncate">
+          WebGL{hardwareProfile.webgl2Supported ? '2' : '1'} · MaxTex{' '}
+          {hardwareProfile.maxTextureSize}px
+        </span>
+        <Button
+          size="sm"
+          variant="primary"
+          data-testid="close-graphics-settings-btn"
+          onPress={onClose}
+          className="h-9 rounded-[8px] px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[13px] font-medium inline-flex items-center justify-center leading-none shrink-0"
+        >
+          {copy.closeBtn}
+        </Button>
+      </div>
+    </ObservatoryModalShell>
   );
 }

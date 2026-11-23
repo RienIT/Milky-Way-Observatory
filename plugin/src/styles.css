@@ -1,19 +1,90 @@
 /*
- * @milky-way/observatory-plugin — Self-Contained Stylesheet (HeroUI v3 + Mistral Editorial Tokens)
+ * @milky-way/observatory-plugin — Scoped Theme & Icon-Alignment Armor
  *
- * Host integration (Next.js / Vite with Tailwind CSS v4):
- *   @import "@milky-way/observatory-plugin/styles.css";
- *
- * Tokens are scoped to `.mw-observatory-root` and `[data-mw-observatory="true"]`
- * so importing this file never overrides the host application's `:root` or `body` styles.
+ * Pre-compiled automatically into `./observatory-plugin.css` by `npm run sync:plugin`
+ * and auto-imported by `MilkyWayObservatoryPlugin` so host projects need ZERO CSS or
+ * Tailwind configuration. All tokens and base resets are strictly scoped to
+ * `.mw-observatory-root` and `[data-mw-observatory="true"]` to never affect the host app.
  */
-@import "@heroui/styles";
-@source "./";
+
+@layer base {
+  .mw-observatory-root,
+  .mw-observatory-root *,
+  .mw-observatory-root *::before,
+  .mw-observatory-root *::after,
+  [data-mw-observatory="true"],
+  [data-mw-observatory="true"] *,
+  [data-mw-observatory="true"] *::before,
+  [data-mw-observatory="true"] *::after {
+    box-sizing: border-box;
+    border-style: solid;
+    border-width: 0;
+    border-color: var(--border, rgba(255, 248, 231, 0.12));
+  }
+
+  .mw-observatory-root h1,
+  .mw-observatory-root h2,
+  .mw-observatory-root h3,
+  .mw-observatory-root h4,
+  .mw-observatory-root p,
+  .mw-observatory-root figure,
+  .mw-observatory-root blockquote,
+  .mw-observatory-root ul,
+  .mw-observatory-root ol,
+  [data-mw-observatory="true"] h1,
+  [data-mw-observatory="true"] h2,
+  [data-mw-observatory="true"] h3,
+  [data-mw-observatory="true"] h4,
+  [data-mw-observatory="true"] p {
+    margin: 0;
+  }
+
+  .mw-observatory-root button,
+  .mw-observatory-root input,
+  .mw-observatory-root textarea,
+  .mw-observatory-root select,
+  [data-mw-observatory="true"] button,
+  [data-mw-observatory="true"] input,
+  [data-mw-observatory="true"] textarea,
+  [data-mw-observatory="true"] select {
+    font: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+  }
+
+  .mw-observatory-root button,
+  [data-mw-observatory="true"] button {
+    cursor: pointer;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  .mw-observatory-root svg,
+  .mw-observatory-root img,
+  .mw-observatory-root canvas,
+  [data-mw-observatory="true"] svg,
+  [data-mw-observatory="true"] img,
+  [data-mw-observatory="true"] canvas {
+    display: block;
+    vertical-align: middle;
+  }
+
+  .mw-observatory-root svg,
+  [data-mw-observatory="true"] svg {
+    flex-shrink: 0;
+  }
+}
 
 .mw-observatory-root,
 [data-mw-observatory="true"] {
   color-scheme: dark;
+  --z-index-overlay: 100000;
+  --z-index-toast: 100001;
   font-family: var(--font-sans, "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
   /* Mistral Core Brand & Sunset Spectrum */
   --mistral-primary: #FA500F;
@@ -90,6 +161,7 @@
 }
 
 .mw-observatory-root .mistral-editorial-light,
+[data-mw-observatory="true"].mistral-editorial-light,
 .mistral-editorial-light {
   color-scheme: light;
   --background: #FFFFFF;
@@ -109,6 +181,15 @@
   --field-border: #D4CFC3;
   --border: #EFECE4;
   --separator: #E9DFC6;
+}
+
+/* Guarantee HeroUI buttons stay dead-centered regardless of host app global CSS */
+.mw-observatory-root .button,
+[data-mw-observatory="true"] .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .mw-observatory-root .font-display,

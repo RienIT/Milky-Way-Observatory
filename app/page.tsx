@@ -463,7 +463,11 @@ export default function MilkyWayObservatoryPage() {
   const isTrue1To1 = scaleMode === 'true-1to1';
 
   return (
-    <div className="mw-observatory-root @container/root h-screen w-screen relative flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4]">
+    <div
+      data-theme="dark"
+      data-mw-observatory="true"
+      className="mw-observatory-root @container/root dark h-screen w-screen relative flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4]"
+    >
       {activeView === 'catalog' ? (
         <>
           <TopSearchBar
@@ -662,7 +666,7 @@ export default function MilkyWayObservatoryPage() {
                     placement="bottom start"
                     data-theme="dark"
                     data-mw-observatory="true"
-                    className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80 max-w-[calc(100vw-24px)]"
+                    className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80 max-w-[calc(100vw-24px)]"
                   >
                     <Dropdown.Menu
                       aria-label={extra.toursBtn}
@@ -730,7 +734,7 @@ export default function MilkyWayObservatoryPage() {
                     placement="bottom"
                     data-theme="dark"
                     data-mw-observatory="true"
-                    className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                    className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                   >
                     {isTrue1To1 ? extra.scaleTrue1to1 : extra.scaleAtlas}
                   </Tooltip.Content>
@@ -742,9 +746,9 @@ export default function MilkyWayObservatoryPage() {
                   data-testid="open-graphics-settings-btn"
                   onPress={() => setIsGraphicsOpen(true)}
                   aria-label={extra.graphicsAria}
-                  className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                  className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap inline-flex items-center justify-center leading-none gap-1"
                 >
-                  <SlidersHorizontal className="w-3 h-3 text-[#FA500F] shrink-0" />
+                  <SlidersHorizontal className="w-3 h-3 text-[#FA500F] shrink-0 block" />
                   <span className="hidden @[460px]/obs:inline">{graphicsSettings.resolutionScale}x</span>
                 </Button>
 
@@ -756,7 +760,7 @@ export default function MilkyWayObservatoryPage() {
                     data-testid="share-view-btn"
                     onPress={handleShareView}
                     aria-label={extra.shareAria}
-                    className={`hidden @[600px]/obs:inline-flex h-7 min-w-7 rounded-[8px] px-1.5 text-[10px] font-mono whitespace-nowrap gap-1 ${
+                    className={`hidden @[600px]/obs:inline-flex items-center justify-center leading-none h-7 min-w-7 rounded-[8px] px-1.5 text-[10px] font-mono whitespace-nowrap gap-1 ${
                       shareCopied
                         ? 'bg-[#FA500F] text-[#FFFFFF]'
                         : 'text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
@@ -764,18 +768,18 @@ export default function MilkyWayObservatoryPage() {
                   >
                     {shareCopied ? (
                       <>
-                        <Check className="w-3 h-3 shrink-0" />
+                        <Check className="w-3 h-3 shrink-0 block" />
                         <span>{extra.copiedLabel}</span>
                       </>
                     ) : (
-                      <Share2 className="w-3 h-3 shrink-0" />
+                      <Share2 className="w-3 h-3 shrink-0 block" />
                     )}
                   </Button>
                   <Tooltip.Content
                     placement="bottom"
                     data-theme="dark"
                     data-mw-observatory="true"
-                    className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                    className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                   >
                     {extra.shareTooltip}
                   </Tooltip.Content>
@@ -790,15 +794,15 @@ export default function MilkyWayObservatoryPage() {
                     onPress={handleCapturePng}
                     isDisabled={isCapturingPng}
                     aria-label={extra.captureAria}
-                    className="hidden @[460px]/obs:inline-flex w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                    className="hidden @[460px]/obs:inline-flex items-center justify-center leading-none w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
                   >
-                    <Camera className="w-3 h-3 shrink-0" />
+                    <Camera className="w-3 h-3 shrink-0 block" />
                   </Button>
                   <Tooltip.Content
                     placement="bottom"
                     data-theme="dark"
                     data-mw-observatory="true"
-                    className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                    className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                   >
                     {extra.captureTooltip}
                   </Tooltip.Content>
@@ -812,15 +816,15 @@ export default function MilkyWayObservatoryPage() {
                     data-testid="open-shortcuts-btn"
                     onPress={() => setIsShortcutsOpen(true)}
                     aria-label={extra.shortcutsAria}
-                    className="hidden @[600px]/obs:inline-flex w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                    className="hidden @[600px]/obs:inline-flex items-center justify-center leading-none w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
                   >
-                    <HelpCircle className="w-3 h-3 shrink-0" />
+                    <HelpCircle className="w-3 h-3 shrink-0 block" />
                   </Button>
                   <Tooltip.Content
                     placement="bottom"
                     data-theme="dark"
                     data-mw-observatory="true"
-                    className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                    className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                   >
                     {extra.shortcutsTooltip}
                   </Tooltip.Content>
@@ -832,17 +836,17 @@ export default function MilkyWayObservatoryPage() {
                     size="sm"
                     variant="ghost"
                     data-testid="lang-dropdown-trigger"
-                    className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                    className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap inline-flex items-center justify-center leading-none gap-1"
                   >
-                    <Globe className="w-3 h-3 text-[#9A968C] shrink-0" />
+                    <Globe className="w-3 h-3 text-[#9A968C] shrink-0 block" />
                     <span>{activeLangOption.shortCode}</span>
-                    <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0" />
+                    <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0 block" />
                   </Button>
                   <Dropdown.Popover
                     placement="bottom end"
                     data-theme="dark"
                     data-mw-observatory="true"
-                    className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
+                    className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
                   >
                     <Dropdown.Menu
                       aria-label="Language"

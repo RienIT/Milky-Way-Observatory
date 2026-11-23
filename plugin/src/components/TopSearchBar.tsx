@@ -211,7 +211,9 @@ export default function TopSearchBar({
             </Button>
             <Dropdown.Popover
               placement="bottom end"
-              className="mistral-editorial-light bg-[#FFFFFF] border border-[#E5E0D5] rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.12)] min-w-[184px]"
+              data-theme="light"
+              data-mw-observatory="true"
+              className="mistral-editorial-light z-[99999] bg-[#FFFFFF] border border-[#E5E0D5] rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.16)] min-w-[184px]"
             >
               <Dropdown.Menu
                 aria-label="Language"

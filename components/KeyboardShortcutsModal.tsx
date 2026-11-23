@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Kbd, Modal } from '@heroui/react';
+import { Kbd } from '@heroui/react';
 import { Keyboard } from 'lucide-react';
-import SunsetStripeBand from '@/components/SunsetStripeBand';
+import ObservatoryModalShell from '@/components/ObservatoryModalShell';
 import { LanguageCode } from '@/lib/i18n';
 
 export interface KeyboardShortcutsModalProps {
@@ -104,55 +104,41 @@ export default function KeyboardShortcutsModal({
   lang,
 }: KeyboardShortcutsModalProps) {
   return (
-    <Modal.Backdrop
+    <ObservatoryModalShell
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      isDismissable
-      className="bg-black/75 z-50"
+      onClose={onClose}
+      ariaLabel={MODAL_TITLE[lang]}
+      testId="shortcuts-modal-dialog"
+      theme="dark"
+      maxWidthClass="max-w-[540px]"
     >
-      <Modal.Container placement="center" size="lg" className="px-3">
-        <Modal.Dialog
-          aria-label={MODAL_TITLE[lang]}
-          data-testid="shortcuts-modal-dialog"
-          data-theme="dark"
-          data-mw-observatory="true"
-          className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] max-w-[540px] w-full p-0 overflow-hidden"
-        >
-          <SunsetStripeBand variant="hairline" />
-          <Modal.CloseTrigger className="top-3.5 right-3.5 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] rounded-[8px]" />
-          <Modal.Header className="px-5 py-4 border-b border-[#FFF8E7]/10 flex flex-row items-center gap-2.5">
-            <Keyboard className="w-4 h-4 text-[#FA500F] shrink-0" />
-            <Modal.Heading className="font-display text-[20px] font-normal text-[#FFF8E7]">
-              {MODAL_TITLE[lang]}
-            </Modal.Heading>
-          </Modal.Header>
+      <div className="px-5 py-4 pr-12 border-b border-[#FFF8E7]/10 flex flex-row items-center gap-2.5 shrink-0">
+        <Keyboard className="w-4 h-4 text-[#FA500F] shrink-0 block" />
+        <h2 className="font-display text-[20px] font-normal text-[#FFF8E7]">
+          {MODAL_TITLE[lang]}
+        </h2>
+      </div>
 
-          <Modal.Body className="p-0">
-            <div className="divide-y divide-[#FFF8E7]/[0.07]">
-              {SHORTCUT_ROWS.map((row) => (
-                <div
-                  key={row.keys.join('-')}
-                  className="px-5 py-3 flex items-center justify-between gap-4"
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#FFF8E7]/[0.07]">
+        {SHORTCUT_ROWS.map((row) => (
+          <div
+            key={row.keys.join('-')}
+            className="px-5 py-3 flex items-center justify-between gap-4"
+          >
+            <span className="text-[13px] text-[#D6D3CB]">{row.label[lang]}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              {row.keys.map((k) => (
+                <Kbd
+                  key={k}
+                  className="px-2 py-0.5 rounded-[4px] border border-[#FFF8E7]/16 bg-[#FFF8E7]/[0.07] font-mono text-[11px] text-[#FFF8E7] shadow-none"
                 >
-                  <span className="text-[13px] text-[#D6D3CB]">{row.label[lang]}</span>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {row.keys.map((k) => (
-                      <Kbd
-                        key={k}
-                        className="px-2 py-0.5 rounded-[4px] border border-[#FFF8E7]/16 bg-[#FFF8E7]/[0.07] font-mono text-[11px] text-[#FFF8E7] shadow-none"
-                      >
-                        <Kbd.Content>{k}</Kbd.Content>
-                      </Kbd>
-                    ))}
-                  </div>
-                </div>
+                  <Kbd.Content>{k}</Kbd.Content>
+                </Kbd>
               ))}
             </div>
-          </Modal.Body>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+          </div>
+        ))}
+      </div>
+    </ObservatoryModalShell>
   );
 }

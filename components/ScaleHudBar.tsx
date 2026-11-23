@@ -217,7 +217,7 @@ export default function ScaleHudBar({
                       placement="top"
                       data-theme="dark"
                       data-mw-observatory="true"
-                      className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] font-mono rounded-[8px] px-2.5 py-1.5"
+                      className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] font-mono rounded-[8px] px-2.5 py-1.5"
                     >
                       {`${band.labels[lang]} · ${band.wavelengthRange} (${band.observatoryRef})`}
                     </Tooltip.Content>
@@ -274,9 +274,9 @@ export default function ScaleHudBar({
                 data-testid="zoom-in-btn"
                 onPress={() => onZoomStep(-0.35)}
                 aria-label={extra.zoomInAria}
-                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 inline-flex items-center justify-center leading-none text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
               >
-                <ZoomIn className="w-3.5 h-3.5" />
+                <ZoomIn className="w-3.5 h-3.5 shrink-0 block" />
               </Button>
               <Slider
                 aria-label={copy.zoomSliderAria}
@@ -302,9 +302,9 @@ export default function ScaleHudBar({
                 data-testid="zoom-out-btn"
                 onPress={() => onZoomStep(0.35)}
                 aria-label={extra.zoomOutAria}
-                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 inline-flex items-center justify-center leading-none text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
               >
-                <ZoomOut className="w-3.5 h-3.5" />
+                <ZoomOut className="w-3.5 h-3.5 shrink-0 block" />
               </Button>
             </Card.Content>
           </Card>
@@ -454,19 +454,19 @@ export default function ScaleHudBar({
                 aria-pressed={reducedMotion}
                 aria-label={copy.layerToggles.reducedMotion}
                 onPress={onToggleReducedMotion}
-                className={`w-7 h-7 min-w-7 rounded-[8px] p-0 ${
+                className={`w-7 h-7 min-w-7 rounded-[8px] p-0 inline-flex items-center justify-center leading-none ${
                   reducedMotion
                     ? 'bg-[#FFF8E7]/[0.10] text-[#FA500F]'
                     : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
                 }`}
               >
-                <Eye className="w-3 h-3" />
+                <Eye className="w-3 h-3 shrink-0 block" />
               </Button>
               <Tooltip.Content
                 placement="top"
                 data-theme="dark"
                 data-mw-observatory="true"
-                className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
               >
                 {copy.layerToggles.reducedMotion}
               </Tooltip.Content>

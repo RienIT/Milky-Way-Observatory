@@ -70,14 +70,11 @@ Copy the entire `plugin/` directory into your host project (for example `./plugi
 }
 ```
 
-Then import the plugin's scoped stylesheet **once** in your host global CSS (`app/globals.css` or `src/index.css`) right after `@import "tailwindcss";`:
+Then render `<MilkyWayObservatoryPlugin />` directly — **no extra CSS import or Tailwind configuration is required**! The plugin auto-imports its own pre-compiled, container-scoped stylesheet (`observatory-plugin.css`), so it works out of the box in **Next.js, Vite, Remix, Webpack, Electron, or multi-window desktop apps** (whether your host uses Tailwind v4, Tailwind v3, or plain CSS).
 
-```css
-@import "tailwindcss";
-@import "@milky-way/observatory-plugin/styles.css";
-```
-
-> **Responsive Embedded Containers:** All Observatory HUD overlays, drawers, and catalog grids use **CSS Container Queries (`@container`)** instead of viewport breakpoints, so the plugin automatically adapts whether rendered fullscreen (`100vw × 100vh`) or embedded inside a narrow dashboard card (`420px–960px`) without overlapping panels or leaking styles onto your host `:root`.
+> **Multi-Window & Embedded Container Safe:**
+> - All Observatory HUD overlays, drawers, catalog grids, and sub-windows (Graphics Settings, Command Palette, World Lab, Shortcuts) use **CSS Container Queries (`@container/root`, `@container/obs`, `@container/modal`)** and **container-scoped modals** (`position: absolute` inside the plugin window), so sub-windows always open inside and above your host window frame without escaping or hiding behind host `z-index` layers.
+> - All base resets, variables, and icon-centering rules are strictly scoped to `.mw-observatory-root` / `[data-mw-observatory="true"]` and never alter your host app's global styles.
 
 ### Step 2: Copy Star Catalog Tiles & Web Worker into Host `public/`
 

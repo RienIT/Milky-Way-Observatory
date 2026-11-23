@@ -17,7 +17,8 @@
       "types": "./src/components/UniverseCanvas.tsx",
       "import": "./src/components/UniverseCanvas.tsx"
     },
-    "./styles.css": "./src/styles.css",
+    "./styles.css": "./src/observatory-plugin.css",
+    "./source.css": "./src/styles.css",
     "./assets/*": "./public/*"
   },
   "files": [

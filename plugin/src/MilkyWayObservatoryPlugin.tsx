@@ -1,5 +1,6 @@
 'use client';
 
+import './observatory-plugin.css';
 import React, {
   forwardRef,
   useCallback,
@@ -802,7 +803,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         placement="bottom start"
                         data-theme="dark"
                         data-mw-observatory="true"
-                        className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80 max-w-[calc(100vw-24px)]"
+                        className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80 max-w-[calc(100vw-24px)]"
                       >
                         <Dropdown.Menu
                           aria-label={extra.toursBtn}
@@ -840,25 +841,26 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                       <Button
                         size="sm"
                         variant="ghost"
+                        data-testid="scale-mode-toggle"
                         aria-pressed={isTrue1To1}
                         aria-label={isTrue1To1 ? extra.scaleTrue1to1 : extra.scaleAtlas}
                         onPress={() =>
                           setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
                         }
-                        className={`h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono whitespace-nowrap gap-1 ${
+                        className={`h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono whitespace-nowrap inline-flex items-center justify-center leading-none gap-1 ${
                           isTrue1To1
                             ? 'text-[#FFAF00] bg-[#FA500F]/16'
                             : 'text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
                         }`}
                       >
-                        <Scaling className="w-3 h-3 shrink-0" />
+                        <Scaling className="w-3 h-3 shrink-0 block" />
                         <span className="hidden @[620px]/obs:inline">{isTrue1To1 ? '1:1' : 'ATLAS'}</span>
                       </Button>
                       <Tooltip.Content
                         placement="bottom"
                         data-theme="dark"
                         data-mw-observatory="true"
-                        className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                        className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                       >
                         {isTrue1To1 ? extra.scaleTrue1to1 : extra.scaleAtlas}
                       </Tooltip.Content>
@@ -867,11 +869,12 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                     <Button
                       size="sm"
                       variant="ghost"
+                      data-testid="open-graphics-settings-btn"
                       onPress={() => setIsGraphicsOpen(true)}
                       aria-label={extra.graphicsAria}
-                      className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                      className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap inline-flex items-center justify-center leading-none gap-1"
                     >
-                      <SlidersHorizontal className="w-3 h-3 text-[#FA500F] shrink-0" />
+                      <SlidersHorizontal className="w-3 h-3 text-[#FA500F] shrink-0 block" />
                       <span className="hidden @[460px]/obs:inline">{graphicsSettings.resolutionScale}x</span>
                     </Button>
 
@@ -880,17 +883,18 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         isIconOnly
                         size="sm"
                         variant="ghost"
+                        data-testid="capture-png-btn"
                         onPress={handleCapturePng}
                         aria-label={extra.captureAria}
-                        className="hidden @[460px]/obs:inline-flex w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                        className="hidden @[460px]/obs:inline-flex items-center justify-center leading-none w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
                       >
-                        <Camera className="w-3 h-3 shrink-0" />
+                        <Camera className="w-3 h-3 shrink-0 block" />
                       </Button>
                       <Tooltip.Content
                         placement="bottom"
                         data-theme="dark"
                         data-mw-observatory="true"
-                        className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                        className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                       >
                         {extra.captureTooltip}
                       </Tooltip.Content>
@@ -901,17 +905,18 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         isIconOnly
                         size="sm"
                         variant="ghost"
+                        data-testid="open-shortcuts-btn"
                         onPress={() => setIsShortcutsOpen(true)}
                         aria-label={extra.shortcutsAria}
-                        className="hidden @[600px]/obs:inline-flex w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                        className="hidden @[600px]/obs:inline-flex items-center justify-center leading-none w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
                       >
-                        <HelpCircle className="w-3 h-3 shrink-0" />
+                        <HelpCircle className="w-3 h-3 shrink-0 block" />
                       </Button>
                       <Tooltip.Content
                         placement="bottom"
                         data-theme="dark"
                         data-mw-observatory="true"
-                        className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                        className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                       >
                         {extra.shortcutsTooltip}
                       </Tooltip.Content>
@@ -922,17 +927,17 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         size="sm"
                         variant="ghost"
                         data-testid="lang-dropdown-trigger"
-                        className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                        className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap inline-flex items-center justify-center leading-none gap-1"
                       >
-                        <Globe className="w-3 h-3 text-[#9A968C] shrink-0" />
+                        <Globe className="w-3 h-3 text-[#9A968C] shrink-0 block" />
                         <span>{activeLangOption.shortCode}</span>
-                        <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0" />
+                        <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0 block" />
                       </Button>
                       <Dropdown.Popover
                         placement="bottom end"
                         data-theme="dark"
                         data-mw-observatory="true"
-                        className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
+                        className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
                       >
                         <Dropdown.Menu
                           aria-label="Language"

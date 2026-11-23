@@ -119,9 +119,9 @@ export default function TimeControlPanel({
             data-testid="time-play-pause-btn"
             onPress={onTogglePlay}
             aria-label={isPlaying ? copy.pause : copy.play}
-            className="w-7 h-7 min-w-7 rounded-[8px] bg-[#FA500F] hover:bg-[#D93D04] text-white shrink-0 p-0"
+            className="w-7 h-7 min-w-7 rounded-[8px] bg-[#FA500F] hover:bg-[#D93D04] text-white shrink-0 p-0 inline-flex items-center justify-center leading-none"
           >
-            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            {isPlaying ? <Pause className="w-3 h-3 shrink-0 block" /> : <Play className="w-3 h-3 shrink-0 block" />}
           </Button>
 
           <div className="flex items-center gap-0.5 flex-1 min-w-0">
@@ -168,7 +168,7 @@ export default function TimeControlPanel({
                 placement="bottom end"
                 data-theme="dark"
                 data-mw-observatory="true"
-                className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[260px] max-w-[calc(100vw-24px)]"
+                className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[260px] max-w-[calc(100vw-24px)]"
               >
                 <Dropdown.Menu
                   aria-label={copy.eclipseBtn}
