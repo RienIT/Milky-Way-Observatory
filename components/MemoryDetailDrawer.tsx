@@ -148,7 +148,7 @@ export default function MemoryDetailDrawer({
       <aside
         aria-label={t.bhHeadline}
         data-testid="memory-detail-drawer"
-        className="absolute top-[106px] right-3 bottom-[112px] z-30 w-[calc(100%-24px)] md:w-[396px] flex flex-col overflow-hidden"
+        className="absolute inset-x-3 top-[60px] bottom-[152px] @[680px]/obs:left-auto @[680px]/obs:right-3 @[680px]/obs:top-[146px] @[680px]/obs:bottom-[124px] @[680px]/obs:w-[min(396px,calc(100%-24px))] @[1220px]/obs:top-[96px] @[1220px]/obs:w-[396px] z-35 flex flex-col overflow-hidden"
       >
         <Card className="h-full rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/14 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] p-0 flex flex-col overflow-hidden">
           <SunsetStripeBand variant="hairline" />
@@ -441,7 +441,7 @@ export default function MemoryDetailDrawer({
     <aside
       aria-label={localized.title}
       data-testid="memory-detail-drawer"
-      className="absolute top-[106px] right-3 bottom-[112px] z-30 w-[calc(100%-24px)] md:w-[396px] flex flex-col overflow-hidden"
+      className="absolute inset-x-3 top-[60px] bottom-[152px] @[680px]/obs:left-auto @[680px]/obs:right-3 @[680px]/obs:top-[146px] @[680px]/obs:bottom-[124px] @[680px]/obs:w-[min(396px,calc(100%-24px))] @[1220px]/obs:top-[96px] @[1220px]/obs:w-[396px] z-35 flex flex-col overflow-hidden"
     >
       <Card className="h-full rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/14 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] p-0 flex flex-col overflow-hidden">
         <SunsetStripeBand variant="hairline" />

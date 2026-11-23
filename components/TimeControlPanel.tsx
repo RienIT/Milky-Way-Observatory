@@ -64,16 +64,16 @@ export default function TimeControlPanel({
   return (
     <Card
       data-testid="time-control-panel"
-      className="pointer-events-auto absolute top-3 right-3 z-20 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-[380px] p-0"
+      className="pointer-events-auto absolute top-[60px] inset-x-3 @[540px]/obs:left-auto @[540px]/obs:right-3 @[1220px]/obs:top-3 z-20 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-[calc(100%-24px)] @[540px]/obs:max-w-[380px] p-0"
     >
-      <Card.Content className="px-3.5 py-2.5 flex flex-col gap-2 overflow-visible">
+      <Card.Content className="px-3 py-2 @[540px]/obs:px-3.5 @[540px]/obs:py-2.5 flex flex-col gap-1.5 @[540px]/obs:gap-2 overflow-visible">
         {/* Top Line: Ephemeris Date + Moon Illumination + Reset to Now */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <Clock className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
             <span
               data-testid="sim-date-readout"
-              className="text-[11px] font-mono tabular-nums font-semibold text-[#FFF8E7] whitespace-nowrap"
+              className="text-[11px] font-mono tabular-nums font-semibold text-[#FFF8E7] whitespace-nowrap truncate"
             >
               {formatUtcTimestamp(simDateMs)}
             </span>
@@ -91,7 +91,7 @@ export default function TimeControlPanel({
               </Chip>
             ) : (
               <span
-                className="hidden sm:inline text-[10px] font-mono tabular-nums text-[#A19F99]"
+                className="hidden @[440px]/obs:inline text-[10px] font-mono tabular-nums text-[#A19F99]"
                 title={copy.moonPhaseLabel}
               >
                 {copy.moonPhaseLabel} {moonPct}%
@@ -124,7 +124,7 @@ export default function TimeControlPanel({
             {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
           </Button>
 
-          <div className="flex items-center gap-0.5 flex-1">
+          <div className="flex items-center gap-0.5 flex-1 min-w-0">
             {TIME_SPEED_PRESETS.map((preset) => {
               const active = Math.abs(speedSecondsPerSec - preset.secondsPerSecond) < 0.5;
               return (
@@ -134,7 +134,7 @@ export default function TimeControlPanel({
                   variant={active ? 'outline' : 'ghost'}
                   data-testid={`time-speed-${preset.id}`}
                   onPress={() => onChangeSpeed(preset.secondsPerSecond)}
-                  className={`flex-1 h-7 min-w-0 rounded-[8px] px-1.5 text-[10px] font-mono whitespace-nowrap ${
+                  className={`flex-1 h-7 min-w-0 rounded-[8px] px-1 @[540px]/obs:px-1.5 text-[10px] font-mono whitespace-nowrap ${
                     active
                       ? 'bg-[#FA500F]/18 text-[#FFD800] font-semibold border-[#FA500F]/60'
                       : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.07] border-transparent'
@@ -153,19 +153,22 @@ export default function TimeControlPanel({
                 size="sm"
                 variant="outline"
                 data-testid="eclipse-presets-trigger"
-                className={`h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono gap-1 whitespace-nowrap ${
+                aria-label={copy.eclipseBtn}
+                className={`h-7 min-w-0 rounded-[8px] px-1.5 @[540px]/obs:px-2 text-[10px] font-mono gap-1 whitespace-nowrap shrink-0 ${
                   eclipseActive
                     ? 'bg-[#FA500F]/20 text-[#FFD800] border-[#FA500F]/60'
                     : 'bg-[#FFF8E7]/[0.06] text-[#F5F2EB] hover:bg-[#FFF8E7]/[0.12] border-[#FFF8E7]/12'
                 }`}
               >
                 <Eclipse className="w-3 h-3 text-[#FFAF00] shrink-0" />
-                <span className="hidden sm:inline">{copy.eclipseBtn}</span>
+                <span className="hidden @[440px]/obs:inline">{copy.eclipseBtn}</span>
                 <ChevronDown className="w-2.5 h-2.5 shrink-0" />
               </Button>
               <Dropdown.Popover
                 placement="bottom end"
-                className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[270px]"
+                data-theme="dark"
+                data-mw-observatory="true"
+                className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[260px] max-w-[calc(100vw-24px)]"
               >
                 <Dropdown.Menu
                   aria-label={copy.eclipseBtn}

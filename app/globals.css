@@ -142,3 +142,12 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(250, 80, 15, 0.55);
 }
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

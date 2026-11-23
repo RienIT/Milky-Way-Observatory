@@ -159,17 +159,17 @@ export default function ExoplanetCatalogView({
             'linear-gradient(135deg, #FFF8E7 0%, #FFE84D26 48%, #FFAF0028 78%, #FA500F18 100%)',
         }}
       >
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+        <div className="max-w-[1280px] mx-auto px-4 @[640px]/root:px-6 @[1024px]/root:px-8 py-8 @[640px]/root:py-12 @[1024px]/root:py-16">
+          <div className="grid grid-cols-1 @[960px]/root:grid-cols-12 gap-6 @[960px]/root:gap-10 items-stretch">
             {/* Hero Left: Editorial Near-Serif Display + Subtitle + Primary/Dark CTA Row */}
-            <div className="lg:col-span-6 flex flex-col justify-center space-y-5">
+            <div className="@[960px]/root:col-span-6 flex flex-col justify-center space-y-4 @[640px]/root:space-y-5">
               <p className="text-[11px] font-semibold uppercase tracking-[1px] text-[#FA500F]">
                 {t.catalogHeroKicker}
               </p>
-              <h1 className="font-display text-[40px] sm:text-[52px] lg:text-[60px] font-normal leading-[1.06] tracking-[-0.025em] text-[#111111] text-balance">
+              <h1 className="font-display text-[32px] @[640px]/root:text-[48px] @[1024px]/root:text-[60px] font-normal leading-[1.06] tracking-[-0.025em] text-[#111111] text-balance">
                 {t.catalogHeroTitle}
               </h1>
-              <p className="text-[17px] leading-[1.55] text-[#262626] max-w-xl">
+              <p className="text-[15px] @[640px]/root:text-[17px] leading-[1.55] text-[#262626] max-w-xl">
                 {t.catalogHeroSubtitle}
               </p>
 
@@ -194,8 +194,8 @@ export default function ExoplanetCatalogView({
             </div>
 
             {/* Hero Right: Atmospheric Mountain-Sunset Observatory Photography */}
-            <div className="lg:col-span-6 flex">
-              <div className="relative w-full min-h-[240px] lg:min-h-[320px] rounded-[12px] overflow-hidden border border-[#E9DFC6] bg-[#141416] shadow-[0_12px_24px_-4px_rgba(0,0,0,0.08)]">
+            <div className="@[960px]/root:col-span-6 flex">
+              <div className="relative w-full min-h-[200px] @[640px]/root:min-h-[260px] @[960px]/root:min-h-[320px] rounded-[12px] overflow-hidden border border-[#E9DFC6] bg-[#141416] shadow-[0_12px_24px_-4px_rgba(0,0,0,0.08)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={heroPhotoSrc}
@@ -210,26 +210,26 @@ export default function ExoplanetCatalogView({
       </section>
 
       {/* 2. Editorial Stat Row (stat-display 56px Editorial Serif) */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 border-b border-[#EFECE4]">
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#EFECE4]">
-          <div className="py-4 md:py-0 md:pr-8 space-y-1.5">
-            <p className="font-display text-[48px] sm:text-[56px] font-normal leading-[1.08] tracking-[-1px] text-[#111111] tabular-nums">
+      <section className="max-w-[1280px] mx-auto px-4 @[640px]/root:px-6 @[1024px]/root:px-8 py-8 @[640px]/root:py-10 border-b border-[#EFECE4]">
+        <div className="grid grid-cols-1 @[768px]/root:grid-cols-3 divide-y @[768px]/root:divide-y-0 @[768px]/root:divide-x divide-[#EFECE4]">
+          <div className="py-4 @[768px]/root:py-0 @[768px]/root:pr-8 space-y-1.5">
+            <p className="font-display text-[40px] @[640px]/root:text-[52px] font-normal leading-[1.08] tracking-[-1px] text-[#111111] tabular-nums">
               {memories.length}+
             </p>
             <p className="text-[14px] leading-[1.5] text-[#525252]">
               {copy.statCatalogLabel}
             </p>
           </div>
-          <div className="py-4 md:py-0 md:px-8 space-y-1.5">
-            <p className="font-display text-[48px] sm:text-[56px] font-normal leading-[1.08] tracking-[-1px] text-[#111111] tabular-nums">
+          <div className="py-4 @[768px]/root:py-0 @[768px]/root:px-8 space-y-1.5">
+            <p className="font-display text-[40px] @[640px]/root:text-[52px] font-normal leading-[1.08] tracking-[-1px] text-[#111111] tabular-nums">
               23+
             </p>
             <p className="text-[14px] leading-[1.5] text-[#525252]">
               {copy.statScaleLabel}
             </p>
           </div>
-          <div className="py-4 md:py-0 md:pl-8 space-y-1.5">
-            <p className="font-display text-[48px] sm:text-[56px] font-normal leading-[1.08] tracking-[-1px] text-[#111111] tabular-nums">
+          <div className="py-4 @[768px]/root:py-0 @[768px]/root:pl-8 space-y-1.5">
+            <p className="font-display text-[40px] @[640px]/root:text-[52px] font-normal leading-[1.08] tracking-[-1px] text-[#111111] tabular-nums">
               4
             </p>
             <p className="text-[14px] leading-[1.5] text-[#525252]">
@@ -240,12 +240,12 @@ export default function ExoplanetCatalogView({
       </section>
 
       {/* 3. Main Catalog Workspace */}
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <div className="max-w-[1280px] mx-auto px-4 @[640px]/root:px-6 @[1024px]/root:px-8 py-8 @[640px]/root:py-10 space-y-8">
         {/* Warm Cream Filter Panel (card-cream) */}
         <Card className="rounded-[12px] bg-[#FFF8E7] border border-[#E9DFC6] shadow-none p-0">
-          <Card.Content className="p-6 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="relative w-full md:w-[400px] flex items-center">
+          <Card.Content className="p-4 @[640px]/root:p-6 space-y-4">
+            <div className="flex flex-col @[768px]/root:flex-row @[768px]/root:items-center justify-between gap-4">
+              <div className="relative w-full @[768px]/root:w-[400px] flex items-center">
                 <Search className="w-4 h-4 text-[#737373] absolute left-3.5 pointer-events-none z-10" />
                 <Input
                   aria-label={t.searchPlaceholder}
@@ -332,7 +332,7 @@ export default function ExoplanetCatalogView({
             </Card.Content>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 @[680px]/root:grid-cols-2 @[1024px]/root:grid-cols-3 gap-5 @[680px]/root:gap-6">
             {visibleNodes.map((rawNode) => {
               const node = getLocalizedNode(rawNode, lang);
               const meta =
@@ -422,9 +422,9 @@ export default function ExoplanetCatalogView({
         {/* 4. Mistral Warm Cream Page-Bottom CTA Banner (cta-banner-cream) */}
         <section className="pt-4">
           <Card className="rounded-[12px] bg-[#FFF8E7] border border-[#E9DFC6] shadow-none p-0">
-            <Card.Content className="p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <Card.Content className="p-6 @[640px]/root:p-10 flex flex-col @[960px]/root:flex-row @[960px]/root:items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
-                <h2 className="font-display text-[32px] sm:text-[44px] font-normal leading-[1.12] tracking-[-0.02em] text-[#111111] text-balance">
+                <h2 className="font-display text-[28px] @[640px]/root:text-[42px] font-normal leading-[1.12] tracking-[-0.02em] text-[#111111] text-balance">
                   {copy.ctaHeading}
                 </h2>
                 <p className="text-[15px] leading-[1.55] text-[#525252]">
@@ -458,7 +458,7 @@ export default function ExoplanetCatalogView({
 
       {/* 6. Warm Cream Multi-Column Observatory Footer */}
       <footer className="bg-[#FFF8E7] border-t border-[#E9DFC6] text-[#111111]">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="max-w-[1280px] mx-auto px-4 @[640px]/root:px-6 @[1024px]/root:px-8 py-10 @[640px]/root:py-12 grid grid-cols-1 @[768px]/root:grid-cols-3 gap-8">
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
               <ObservatoryLogo size={32} assetBasePath={assetBasePath} />
@@ -512,7 +512,7 @@ export default function ExoplanetCatalogView({
             </ul>
           </div>
         </div>
-        <div className="border-t border-[#E9DFC6] py-4 px-4 sm:px-6 lg:px-8">
+        <div className="border-t border-[#E9DFC6] py-4 px-4 @[640px]/root:px-6 @[1024px]/root:px-8">
           <div className="max-w-[1280px] mx-auto flex flex-wrap items-center justify-between gap-2 text-[12px] font-medium text-[#737373]">
             <span>© 2026 Milky Way Observatory</span>
             <span className="font-mono">MIT License · WebGL2 Float64 Multi-Scale Engine</span>

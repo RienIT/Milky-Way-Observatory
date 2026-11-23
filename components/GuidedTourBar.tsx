@@ -136,20 +136,20 @@ export default function GuidedTourBar({
     <aside
       aria-label={tour.title[lang]}
       data-testid="guided-tour-bar"
-      className="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[118px] z-30 w-[calc(100%-24px)] max-w-[600px]"
+      className="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[144px] @[680px]/obs:bottom-[108px] z-30 w-[calc(100%-24px)] max-w-[580px]"
     >
       <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/14 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] p-0 overflow-hidden">
         <SunsetStripeBand variant="hairline" />
-        <Card.Content className="px-5 py-3.5 flex flex-col gap-2.5">
+        <Card.Content className="px-3.5 py-2.5 @[640px]/obs:px-5 @[640px]/obs:py-3.5 flex flex-col gap-2 @[640px]/obs:gap-2.5">
           {/* Top Header Row */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 @[640px]/obs:gap-2 min-w-0">
               <Compass className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
               <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[#FFAF00] shrink-0">
                 {copy.expeditionLabel}
               </span>
-              <span className="text-[#FFF8E7]/25 text-xs">/</span>
-              <span className="text-[12px] font-medium text-[#D6D3CB] truncate">
+              <span className="hidden @[500px]/obs:inline text-[#FFF8E7]/25 text-xs">/</span>
+              <span className="hidden @[500px]/obs:inline text-[12px] font-medium text-[#D6D3CB] truncate">
                 {tour.title[lang]}
               </span>
             </div>
@@ -223,7 +223,7 @@ export default function GuidedTourBar({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3
               data-testid="tour-stop-title"
-              className="font-display text-[19px] font-normal leading-[1.2] text-[#FFF8E7] tracking-[-0.01em]"
+              className="font-display text-[16px] @[640px]/obs:text-[19px] font-normal leading-[1.2] text-[#FFF8E7] tracking-[-0.01em]"
             >
               {stop.title[lang]}
             </h3>
@@ -231,7 +231,7 @@ export default function GuidedTourBar({
               size="sm"
               variant="soft"
               color="accent"
-              className="h-6 rounded-full bg-[#FFF8E7]/[0.09] border border-[#FFAF00]/35 px-2.5 text-[11px] font-mono tabular-nums text-[#FFD800]"
+              className="h-6 rounded-full bg-[#FFF8E7]/[0.09] border border-[#FFAF00]/35 px-2.5 text-[10px] @[640px]/obs:text-[11px] font-mono tabular-nums text-[#FFD800]"
             >
               {stop.metricLabel}
             </Chip>
@@ -240,7 +240,7 @@ export default function GuidedTourBar({
           {/* Concise Scientific Narrative */}
           <p
             data-testid="tour-stop-narrative"
-            className="text-[13px] leading-[1.55] text-[#D6D3CB]"
+            className="text-[12px] @[640px]/obs:text-[13px] leading-[1.55] text-[#D6D3CB]"
           >
             {stop.narrative[lang]}
           </p>
@@ -287,7 +287,7 @@ export default function GuidedTourBar({
                   );
                 })}
               </div>
-              <span className="hidden sm:inline text-[10px] font-mono text-[#8F8D87] whitespace-nowrap">
+              <span className="hidden @[600px]/obs:inline text-[10px] font-mono text-[#8F8D87] whitespace-nowrap">
                 {copy.keysHint}
               </span>
             </div>

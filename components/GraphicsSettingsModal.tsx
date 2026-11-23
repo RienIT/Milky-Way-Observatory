@@ -366,11 +366,13 @@ export default function GraphicsSettingsModal({
       isDismissable
       className="bg-black/75 z-50"
     >
-      <Modal.Container placement="center" size="lg" scroll="inside">
+      <Modal.Container placement="center" size="lg" scroll="inside" className="px-3">
         <Modal.Dialog
           aria-label={copy.title}
           data-testid="graphics-settings-modal"
-          className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[780px] w-full p-0 overflow-hidden"
+          data-theme="dark"
+          data-mw-observatory="true"
+          className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[780px] w-full p-0 overflow-hidden"
         >
           <SunsetStripeBand variant="hairline" />
           <Modal.CloseTrigger className="top-4 right-4 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] rounded-[8px]" />

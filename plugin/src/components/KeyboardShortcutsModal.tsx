@@ -112,11 +112,13 @@ export default function KeyboardShortcutsModal({
       isDismissable
       className="bg-black/75 z-50"
     >
-      <Modal.Container placement="center" size="lg">
+      <Modal.Container placement="center" size="lg" className="px-3">
         <Modal.Dialog
           aria-label={MODAL_TITLE[lang]}
           data-testid="shortcuts-modal-dialog"
-          className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] max-w-[540px] w-full p-0 overflow-hidden"
+          data-theme="dark"
+          data-mw-observatory="true"
+          className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] max-w-[540px] w-full p-0 overflow-hidden"
         >
           <SunsetStripeBand variant="hairline" />
           <Modal.CloseTrigger className="top-3.5 right-3.5 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] rounded-[8px]" />

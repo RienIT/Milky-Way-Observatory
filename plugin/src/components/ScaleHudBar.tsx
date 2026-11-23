@@ -132,27 +132,27 @@ export default function ScaleHudBar({
   return (
     <div
       data-testid="scale-hud-bar"
-      className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex flex-col gap-2"
+      className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex flex-col gap-1.5 @[680px]/obs:gap-2"
     >
       {/* Row 1: Telemetry Readout + Multi-Wavelength Switcher + Speed-of-Light Pulse + Zoom */}
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="flex items-end justify-between gap-1.5 @[680px]/obs:gap-2 max-w-full">
         {/* Left: Target Distance + Scale Bar + Provenance */}
-        <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] p-0">
-          <Card.Content className="px-3.5 py-2 flex flex-row flex-wrap items-center gap-3 overflow-visible">
+        <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] min-w-0 shrink p-0">
+          <Card.Content className="px-2.5 py-1.5 @[680px]/obs:px-3.5 @[680px]/obs:py-2 flex flex-row items-center gap-2.5 @[680px]/obs:gap-3 overflow-visible">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold text-[#FFF8E7] truncate max-w-[168px]">
+              <div className="flex items-center gap-1.5 @[680px]/obs:gap-2">
+                <span className="text-[11px] @[680px]/obs:text-[12px] font-semibold text-[#FFF8E7] truncate max-w-[104px] @[540px]/obs:max-w-[140px] @[780px]/obs:max-w-[168px]">
                   {targetName}
                 </span>
-                <span className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#FFAF00]">
+                <span className="hidden @[520px]/obs:inline text-[10px] font-mono uppercase tracking-[0.06em] text-[#FFAF00] whitespace-nowrap">
                   {copy.layers[dominantLayer]}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] font-mono tabular-nums text-[#D6D3CB]">
-                <span className="text-[#8F8D87]">
+              <div className="flex items-center gap-1.5 mt-0.5 text-[10px] @[680px]/obs:text-[11px] font-mono tabular-nums text-[#D6D3CB]">
+                <span className="hidden @[560px]/obs:inline text-[#8F8D87] whitespace-nowrap">
                   {isSurfaceAltitude ? copy.altitudeAboveSurface : copy.distanceToTarget}:
                 </span>
-                <span data-testid="hud-distance-readout" className="text-[#FFF8E7] font-semibold">
+                <span data-testid="hud-distance-readout" className="text-[#FFF8E7] font-semibold whitespace-nowrap">
                   {distanceLabel}
                 </span>
               </div>
@@ -162,9 +162,9 @@ export default function ScaleHudBar({
             <div
               aria-label={copy.scaleBarAria}
               data-testid="hud-scale-bar"
-              className="flex flex-col items-start gap-1 pl-3 border-l border-[#FFF8E7]/10"
+              className="hidden @[640px]/obs:flex flex-col items-start gap-1 pl-3 border-l border-[#FFF8E7]/10 shrink-0"
             >
-              <span className="text-[10px] font-mono tabular-nums text-[#D6D3CB]">
+              <span className="text-[10px] font-mono tabular-nums text-[#D6D3CB] whitespace-nowrap">
                 {scaleBar.label}
               </span>
               <div
@@ -176,7 +176,7 @@ export default function ScaleHudBar({
             {/* Data Provenance */}
             <span
               data-testid="hud-provenance-badge"
-              className="hidden xl:inline-block pl-3 border-l border-[#FFF8E7]/10 text-[10px] font-mono text-[#A19F99] whitespace-nowrap"
+              className="hidden @[1240px]/obs:inline-block pl-3 border-l border-[#FFF8E7]/10 text-[10px] font-mono text-[#A19F99] whitespace-nowrap"
             >
               {provenanceText}
             </span>
@@ -184,14 +184,14 @@ export default function ScaleHudBar({
         </Card>
 
         {/* Center/Right: 4-Band Spectral Switcher + Light Pulse (c) + Logarithmic Zoom */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 @[680px]/obs:gap-2 min-w-0 shrink-0 max-w-full overflow-x-auto no-scrollbar">
           {/* 4-Band Multi-Wavelength Observation Switcher */}
           <Card
             data-testid="wavelength-switcher"
-            className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] p-0"
+            className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] shrink-0 p-0"
           >
-            <Card.Content className="p-1.5 flex flex-row items-center gap-1 overflow-visible">
-              <span className="hidden lg:inline px-1.5 text-[10px] font-mono uppercase tracking-[0.06em] text-[#8F8D87]">
+            <Card.Content className="p-1 @[680px]/obs:p-1.5 flex flex-row items-center gap-0.5 @[680px]/obs:gap-1 overflow-visible">
+              <span className="hidden @[1080px]/obs:inline px-1.5 text-[10px] font-mono uppercase tracking-[0.06em] text-[#8F8D87] whitespace-nowrap">
                 {copy.wavelengthLabel}
               </span>
               {WAVELENGTH_BAND_ORDER.map((bandId) => {
@@ -205,7 +205,7 @@ export default function ScaleHudBar({
                       data-testid={`wavelength-btn-${band.id}`}
                       aria-pressed={active}
                       onPress={() => onChangeWavelengthBand(band.id)}
-                      className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-mono whitespace-nowrap ${
+                      className={`h-7 min-w-0 rounded-[8px] px-1.5 @[640px]/obs:px-2.5 text-[10px] @[640px]/obs:text-[11px] font-mono whitespace-nowrap ${
                         active
                           ? 'bg-[#FA500F] text-white font-semibold'
                           : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]'
@@ -215,41 +215,46 @@ export default function ScaleHudBar({
                     </Button>
                     <Tooltip.Content
                       placement="top"
-                      className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] font-mono rounded-[8px] px-2.5 py-1.5"
+                      data-theme="dark"
+                      data-mw-observatory="true"
+                      className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] font-mono rounded-[8px] px-2.5 py-1.5"
                     >
                       {`${band.labels[lang]} · ${band.wavelengthRange} (${band.observatoryRef})`}
                     </Tooltip.Content>
                   </Tooltip>
                 );
               })}
-              <span className="hidden 2xl:inline px-1.5 text-[10px] font-mono text-[#A19F99] border-l border-[#FFF8E7]/10 ml-0.5">
+              <span className="hidden @[1380px]/obs:inline px-1.5 text-[10px] font-mono text-[#A19F99] border-l border-[#FFF8E7]/10 ml-0.5 whitespace-nowrap">
                 {activeBandSpec.wavelengthRange}
               </span>
             </Card.Content>
           </Card>
 
           {/* Speed-of-Light Photon Pulse (c = 299,792,458 m/s) */}
-          <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] p-0">
-            <Card.Content className="p-1.5 flex flex-row items-center gap-1.5 overflow-visible">
+          <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] shrink-0 p-0">
+            <Card.Content className="p-1 @[680px]/obs:p-1.5 flex flex-row items-center gap-1.5 overflow-visible">
               <Button
                 size="sm"
                 variant={photonPulseActive ? 'primary' : 'ghost'}
                 data-testid="photon-pulse-btn"
                 aria-pressed={photonPulseActive}
+                aria-label={photonPulseActive ? copy.photonStopBtn : copy.photonPulseBtn}
                 onPress={onTogglePhotonPulse}
-                className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-mono gap-1.5 whitespace-nowrap ${
+                className={`h-7 min-w-7 rounded-[8px] px-1.5 @[960px]/obs:px-2.5 text-[11px] font-mono gap-1.5 whitespace-nowrap ${
                   photonPulseActive
                     ? 'bg-[#FA500F] text-white font-semibold'
                     : 'text-[#F5F2EB] hover:bg-[#FFF8E7]/[0.08]'
                 }`}
               >
                 <Zap className="w-3 h-3 text-[#FFD800] shrink-0" />
-                <span>{photonPulseActive ? copy.photonStopBtn : copy.photonPulseBtn}</span>
+                <span className="hidden @[960px]/obs:inline">
+                  {photonPulseActive ? copy.photonStopBtn : copy.photonPulseBtn}
+                </span>
               </Button>
               {photonPulseActive && (
                 <span
                   data-testid="photon-pulse-readout"
-                  className="pr-1.5 text-[10px] font-mono tabular-nums text-[#FFAF00] whitespace-nowrap"
+                  className="hidden @[560px]/obs:inline pr-1.5 text-[10px] font-mono tabular-nums text-[#FFAF00] whitespace-nowrap"
                 >
                   {formatLightTravelTime(photonElapsedSec)} ·{' '}
                   {photonAu < 0.01 ? `${(photonRadiusM / 1e6).toFixed(1)} Mm` : `${photonAu.toFixed(2)} AU`}
@@ -260,8 +265,8 @@ export default function ScaleHudBar({
           </Card>
 
           {/* Logarithmic Zoom Controls */}
-          <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] p-0">
-            <Card.Content className="px-2.5 py-1.5 flex flex-row items-center gap-1.5 overflow-visible">
+          <Card className="hidden @[740px]/obs:block pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] shrink-0 p-0">
+            <Card.Content className="px-2 py-1.5 flex flex-row items-center gap-1.5 overflow-visible">
               <Button
                 isIconOnly
                 size="sm"
@@ -283,7 +288,7 @@ export default function ScaleHudBar({
                 onChange={(val) =>
                   onLogZoomSliderChange(Array.isArray(val) ? val[0] : val)
                 }
-                className="w-20 sm:w-28"
+                className="w-16 @[960px]/obs:w-24 @[1200px]/obs:w-28"
               >
                 <Slider.Track className="h-1 bg-[#FFF8E7]/14 rounded-[4px]">
                   <Slider.Fill className="bg-[#FA500F] rounded-[4px]" />
@@ -307,11 +312,11 @@ export default function ScaleHudBar({
       </div>
 
       {/* Row 2: Scale Presets + Layer Toggles + Cinema Mode */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col @[680px]/obs:flex-row items-stretch @[680px]/obs:items-center justify-between gap-1.5 @[680px]/obs:gap-2">
         {/* Multi-Scale Presets Bar */}
-        <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-full p-0">
-          <Card.Content className="p-1.5 flex flex-row items-center gap-0.5 overflow-x-auto">
-            <nav aria-label={copy.scalePresetsTitle} className="flex items-center gap-1">
+        <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] min-w-0 max-w-full p-0">
+          <Card.Content className="p-1 @[680px]/obs:p-1.5 flex flex-row items-center gap-0.5 overflow-x-auto no-scrollbar">
+            <nav aria-label={copy.scalePresetsTitle} className="flex items-center gap-0.5 @[680px]/obs:gap-1">
               {PRESET_ORDER.map((preset) => {
                 const isActive = activePreset === preset;
                 return (
@@ -321,7 +326,7 @@ export default function ScaleHudBar({
                     variant={isActive ? 'primary' : 'ghost'}
                     data-testid={`preset-btn-${preset}`}
                     onPress={() => onSelectPreset(preset)}
-                    className={`h-7 min-w-0 rounded-[8px] px-3 text-[12px] font-medium whitespace-nowrap ${
+                    className={`h-7 min-w-0 rounded-[8px] px-2 @[840px]/obs:px-3 text-[11px] @[840px]/obs:text-[12px] font-medium whitespace-nowrap ${
                       isActive
                         ? 'bg-[#FA500F] text-white font-semibold'
                         : 'text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]'
@@ -336,22 +341,23 @@ export default function ScaleHudBar({
         </Card>
 
         {/* Layer Toggles + Cinema Mode */}
-        <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-full p-0">
-          <Card.Content className="p-1.5 flex flex-row items-center gap-0.5 overflow-x-auto">
+        <Card className="pointer-events-auto rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] min-w-0 max-w-full shrink-0 p-0">
+          <Card.Content className="p-1 @[680px]/obs:p-1.5 flex flex-row items-center justify-between @[680px]/obs:justify-start gap-0.5 overflow-x-auto no-scrollbar">
             <Button
               size="sm"
               variant="ghost"
               data-testid="toggle-orbits-btn"
               aria-pressed={showOrbits}
+              aria-label={copy.layerToggles.orbits}
               onPress={onToggleOrbits}
-              className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
+              className={`h-7 min-w-7 rounded-[8px] px-2 @[1240px]/obs:px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
                 showOrbits
                   ? 'bg-[#FFF8E7]/[0.10] text-[#FFF8E7]'
                   : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
               }`}
             >
               <Orbit className={`w-3 h-3 shrink-0 ${showOrbits ? 'text-[#FA500F]' : ''}`} />
-              <span className="hidden md:inline">{copy.layerToggles.orbits}</span>
+              <span className="hidden @[1240px]/obs:inline">{copy.layerToggles.orbits}</span>
             </Button>
 
             <Button
@@ -361,14 +367,14 @@ export default function ScaleHudBar({
               aria-pressed={showTrails}
               onPress={onToggleTrails}
               aria-label={copy.layerToggles.trails}
-              className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
+              className={`h-7 min-w-7 rounded-[8px] px-2 @[1240px]/obs:px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
                 showTrails
                   ? 'bg-[#FFF8E7]/[0.10] text-[#FFF8E7]'
                   : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
               }`}
             >
               <Wind className={`w-3 h-3 shrink-0 ${showTrails ? 'text-[#FA500F]' : ''}`} />
-              <span className="hidden md:inline">{copy.layerToggles.trails}</span>
+              <span className="hidden @[1240px]/obs:inline">{copy.layerToggles.trails}</span>
             </Button>
 
             <Button
@@ -378,14 +384,14 @@ export default function ScaleHudBar({
               aria-pressed={clusterMode}
               onPress={onToggleClusterMode}
               aria-label={copy.layerToggles.clusters}
-              className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
+              className={`h-7 min-w-7 rounded-[8px] px-2 @[1240px]/obs:px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
                 clusterMode
                   ? 'bg-[#FFF8E7]/[0.10] text-[#FFF8E7]'
                   : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
               }`}
             >
               <Network className={`w-3 h-3 shrink-0 ${clusterMode ? 'text-[#FA500F]' : ''}`} />
-              <span className="hidden md:inline">{copy.layerToggles.clusters}</span>
+              <span className="hidden @[1240px]/obs:inline">{copy.layerToggles.clusters}</span>
             </Button>
 
             <Button
@@ -393,15 +399,16 @@ export default function ScaleHudBar({
               variant="ghost"
               data-testid="toggle-labels-btn"
               aria-pressed={showLabels}
+              aria-label={copy.layerToggles.labels}
               onPress={onToggleLabels}
-              className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
+              className={`h-7 min-w-7 rounded-[8px] px-2 @[1240px]/obs:px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
                 showLabels
                   ? 'bg-[#FFF8E7]/[0.10] text-[#FFF8E7]'
                   : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
               }`}
             >
               <Tag className={`w-3 h-3 shrink-0 ${showLabels ? 'text-[#FA500F]' : ''}`} />
-              <span className="hidden md:inline">{copy.layerToggles.labels}</span>
+              <span className="hidden @[1240px]/obs:inline">{copy.layerToggles.labels}</span>
             </Button>
 
             <Button
@@ -409,15 +416,16 @@ export default function ScaleHudBar({
               variant="ghost"
               data-testid="toggle-grid-btn"
               aria-pressed={showGrid}
+              aria-label={copy.layerToggles.grid}
               onPress={onToggleGrid}
-              className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
+              className={`h-7 min-w-7 rounded-[8px] px-2 @[1240px]/obs:px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
                 showGrid
                   ? 'bg-[#FFF8E7]/[0.10] text-[#FFF8E7]'
                   : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
               }`}
             >
               <Grid className={`w-3 h-3 shrink-0 ${showGrid ? 'text-[#FA500F]' : ''}`} />
-              <span className="hidden md:inline">{copy.layerToggles.grid}</span>
+              <span className="hidden @[1240px]/obs:inline">{copy.layerToggles.grid}</span>
             </Button>
 
             <Button
@@ -425,15 +433,16 @@ export default function ScaleHudBar({
               variant="ghost"
               data-testid="toggle-galaxies-btn"
               aria-pressed={showGalaxies}
+              aria-label={copy.layerToggles.galaxies}
               onPress={onToggleGalaxies}
-              className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
+              className={`h-7 min-w-7 rounded-[8px] px-2 @[1240px]/obs:px-2.5 text-[11px] font-medium gap-1 whitespace-nowrap ${
                 showGalaxies
                   ? 'bg-[#FFF8E7]/[0.10] text-[#FFF8E7]'
                   : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.06]'
               }`}
             >
               <Sparkles className={`w-3 h-3 shrink-0 ${showGalaxies ? 'text-[#FA500F]' : ''}`} />
-              <span className="hidden md:inline">{copy.layerToggles.galaxies}</span>
+              <span className="hidden @[1240px]/obs:inline">{copy.layerToggles.galaxies}</span>
             </Button>
 
             <Tooltip delay={250}>
@@ -455,13 +464,15 @@ export default function ScaleHudBar({
               </Button>
               <Tooltip.Content
                 placement="top"
-                className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                data-theme="dark"
+                data-mw-observatory="true"
+                className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
               >
                 {copy.layerToggles.reducedMotion}
               </Tooltip.Content>
             </Tooltip>
 
-            <Separator orientation="vertical" className="mx-0.5 h-4 bg-[#FFF8E7]/12" />
+            <Separator orientation="vertical" className="mx-0.5 h-4 bg-[#FFF8E7]/12 shrink-0" />
 
             <Button
               size="sm"
@@ -469,10 +480,10 @@ export default function ScaleHudBar({
               data-testid="cinema-mode-btn"
               onPress={onToggleCinemaMode}
               aria-label={copy.cinemaMode}
-              className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-mono text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] gap-1 whitespace-nowrap"
+              className="h-7 min-w-7 rounded-[8px] px-2 @[1360px]/obs:px-2.5 text-[11px] font-mono text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] gap-1 whitespace-nowrap"
             >
               <EyeOff className="w-3 h-3 shrink-0" />
-              <span className="hidden xl:inline">{copy.cinemaMode}</span>
+              <span className="hidden @[1360px]/obs:inline">{copy.cinemaMode}</span>
             </Button>
           </Card.Content>
         </Card>

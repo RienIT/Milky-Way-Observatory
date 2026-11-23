@@ -59,6 +59,7 @@ Copy the entire `plugin/` directory into your host project (for example `./plugi
   "dependencies": {
     "@milky-way/observatory-plugin": "file:./plugins/milky-way-observatory",
     "@heroui/react": "^3.2.8",
+    "@heroui/styles": "^3.2.8",
     "three": "^0.187.0",
     "astronomy-engine": "^2.1.19",
     "lucide-react": "^1.78.0",
@@ -69,7 +70,14 @@ Copy the entire `plugin/` directory into your host project (for example `./plugi
 }
 ```
 
-> **Tailwind CSS v4 Note:** The plugin UI uses Tailwind CSS utility classes. In a Tailwind v4 host project, include `@source "../plugins/milky-way-observatory/src";` in your global stylesheet (`globals.css` or `index.css`) so utility classes inside the plugin are scanned.
+Then import the plugin's scoped stylesheet **once** in your host global CSS (`app/globals.css` or `src/index.css`) right after `@import "tailwindcss";`:
+
+```css
+@import "tailwindcss";
+@import "@milky-way/observatory-plugin/styles.css";
+```
+
+> **Responsive Embedded Containers:** All Observatory HUD overlays, drawers, and catalog grids use **CSS Container Queries (`@container`)** instead of viewport breakpoints, so the plugin automatically adapts whether rendered fullscreen (`100vw × 100vh`) or embedded inside a narrow dashboard card (`420px–960px`) without overlapping panels or leaking styles onto your host `:root`.
 
 ### Step 2: Copy Star Catalog Tiles & Web Worker into Host `public/`
 

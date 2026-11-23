@@ -4295,7 +4295,9 @@ export default function UniverseCanvas({
       data-testid="universe-stage"
       data-boot-stage={bootState.stage}
       data-boot-ready={bootReady ? 'true' : 'false'}
-      className="relative w-full h-full overflow-hidden bg-[#05060a] select-none"
+      data-theme="dark"
+      data-mw-observatory="true"
+      className="mw-observatory-root @container/obs relative w-full h-full overflow-hidden bg-[#05060a] select-none"
     >
       {/* WebGL2 Canvas Mount */}
       <div
@@ -4318,7 +4320,7 @@ export default function UniverseCanvas({
       {bootReady && !tilesReady && !cinemaMode && (
         <div
           data-testid="tile-loading-banner"
-          className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 px-3.5 py-2 flex items-center gap-2.5 shadow-lg"
+          className="pointer-events-none absolute bottom-[144px] @[680px]/obs:bottom-[104px] left-1/2 -translate-x-1/2 z-30 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 px-3.5 py-2 flex items-center gap-2.5 shadow-lg max-w-[calc(100%-24px)]"
         >
           <span className="text-[11px] font-mono text-[#FFF8E7]/85">
             {hudCopy.loadingTiles}

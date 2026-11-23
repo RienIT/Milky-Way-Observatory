@@ -17,6 +17,7 @@
       "types": "./src/components/UniverseCanvas.tsx",
       "import": "./src/components/UniverseCanvas.tsx"
     },
+    "./styles.css": "./src/styles.css",
     "./assets/*": "./public/*"
   },
   "files": [
@@ -25,7 +26,9 @@
     "README.md",
     "tsconfig.json"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -35,6 +38,7 @@
   },
   "dependencies": {
     "@heroui/react": "^3.2.8",
+    "@heroui/styles": "^3.2.8",
     "astronomy-engine": "^2.1.19",
     "clsx": "^2.1.1",
     "lucide-react": "^1.78.0",

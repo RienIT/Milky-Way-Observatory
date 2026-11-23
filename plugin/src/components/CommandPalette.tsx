@@ -317,11 +317,13 @@ export default function CommandPalette({
       isDismissable
       className="bg-black/75 z-50"
     >
-      <Modal.Container placement="top" size="lg" className="pt-[8vh]">
+      <Modal.Container placement="top" size="lg" className="pt-[8vh] px-3">
         <Modal.Dialog
           aria-label={hud.searchTrigger}
           data-testid="command-palette-dialog"
-          className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[620px] w-full p-0 overflow-hidden"
+          data-theme="dark"
+          data-mw-observatory="true"
+          className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[620px] w-full p-0 overflow-hidden"
         >
           <SunsetStripeBand variant="hairline" />
           <Modal.Body className="p-0 gap-0">

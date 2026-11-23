@@ -575,8 +575,9 @@ export const MilkyWayObservatoryPlugin = forwardRef<
   return (
     <div
       data-theme="dark"
+      data-mw-observatory="true"
       data-testid="milky-way-observatory-plugin"
-      className={`dark relative w-full h-full min-h-[480px] flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4] ${className}`.trim()}
+      className={`mw-observatory-root @container/root dark relative w-full h-full min-h-[420px] flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4] ${className}`.trim()}
       style={style}
     >
       {activeView === 'catalog' ? (
@@ -647,7 +648,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
             />
           )}
 
-          <main className="relative flex-1 h-full overflow-hidden">
+          <main className="@container/obs relative flex-1 min-w-0 h-full overflow-hidden">
             {isClientMounted ? (
               <UniverseCanvas
                 memories={memories}
@@ -696,12 +697,13 @@ export const MilkyWayObservatoryPlugin = forwardRef<
             {/* Floating Top-Left Precision Instrument Strip (Mistral Dark Studio + HeroUI v3) */}
             {showTopBar && (
               <header
-                className={`absolute top-3 left-3 z-30 flex flex-wrap items-center gap-2 max-w-[calc(100%-380px)] transition-opacity duration-300 ${
+                data-testid="floating-instrument-strip"
+                className={`absolute top-3 left-3 right-3 @[1220px]/obs:right-auto @[1220px]/obs:max-w-[calc(100%-404px)] z-30 flex flex-nowrap items-center gap-1.5 @[680px]/obs:gap-2 overflow-x-auto no-scrollbar transition-opacity duration-300 ${
                   cinemaMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 }`}
               >
-                <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.45)] p-0">
-                  <Card.Content className="p-1.5 flex flex-row items-center gap-1.5 overflow-visible">
+                <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.45)] shrink-0 p-0">
+                  <Card.Content className="p-1 @[680px]/obs:p-1.5 flex flex-row items-center gap-1 @[680px]/obs:gap-1.5 overflow-visible">
                     <Button
                       size="sm"
                       variant="ghost"
@@ -709,40 +711,44 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         handleSelectNode(null);
                         setCameraResetTrigger((c) => c + 1);
                       }}
-                      className="h-7 min-w-0 rounded-[8px] px-2 text-[13px] font-medium tracking-[-0.01em] text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-2"
+                      aria-label={t.brandTitle}
+                      className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[13px] font-medium tracking-[-0.01em] text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5 @[680px]/obs:gap-2"
                     >
                       <ObservatoryLogo size={20} assetBasePath={assetBasePath} />
-                      <span className="hidden sm:inline font-display text-[15px] font-normal tracking-[-0.01em]">
+                      <span className="hidden @[840px]/obs:inline font-display text-[15px] font-normal tracking-[-0.01em]">
                         {t.brandTitle}
                       </span>
                     </Button>
 
-                    <Separator orientation="vertical" className="h-4 bg-[#FFF8E7]/12" />
+                    <Separator orientation="vertical" className="h-4 bg-[#FFF8E7]/12 shrink-0" />
 
                     <Button
                       size="sm"
                       variant="ghost"
+                      data-testid="open-command-palette-btn"
+                      aria-label={hud.searchTrigger}
                       onPress={() => setIsPaletteOpen(true)}
-                      className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] text-[#B8B4AA] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-2"
+                      className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[11px] text-[#B8B4AA] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5 @[680px]/obs:gap-2"
                     >
                       <Search className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
-                      <span className="hidden md:inline max-w-[160px] truncate">
+                      <span className="hidden @[1480px]/obs:inline max-w-[130px] truncate">
                         {hud.searchTrigger}
                       </span>
-                      <Kbd className="px-1.5 py-0 rounded-[4px] border border-[#FFF8E7]/15 bg-white/[0.05] font-mono text-[9px] text-[#FFF8E7]/80 shadow-none">
+                      <Kbd className="hidden @[440px]/obs:inline-flex px-1.5 py-0 rounded-[4px] border border-[#FFF8E7]/15 bg-white/[0.05] font-mono text-[9px] text-[#FFF8E7]/80 shadow-none">
                         <Kbd.Content>/</Kbd.Content>
                       </Kbd>
                     </Button>
                   </Card.Content>
                 </Card>
 
-                <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.45)] p-0">
-                  <Card.Content className="p-1.5 flex flex-row items-center gap-1 overflow-visible">
+                <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.45)] shrink-0 p-0">
+                  <Card.Content className="p-1 @[680px]/obs:p-1.5 flex flex-row items-center gap-0.5 @[680px]/obs:gap-1 overflow-visible">
                     <Button
                       size="sm"
                       variant={selectedId === 'BLACK_HOLE_CORE' ? 'primary' : 'ghost'}
+                      data-testid="inspect-blackhole-btn"
                       onPress={() => handleSelectNode('BLACK_HOLE_CORE')}
-                      className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium whitespace-nowrap gap-1.5 ${
+                      className={`h-7 min-w-0 rounded-[8px] px-2 @[680px]/obs:px-2.5 text-[11px] font-medium whitespace-nowrap gap-1 @[680px]/obs:gap-1.5 ${
                         selectedId === 'BLACK_HOLE_CORE'
                           ? 'bg-[#FA500F] hover:bg-[#D93D04] text-[#FFFFFF] font-semibold'
                           : 'text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
@@ -755,40 +761,48 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                     <Button
                       size="sm"
                       variant="ghost"
+                      data-testid="nav-catalog-btn"
+                      aria-label={t.navCatalog}
                       onPress={() => setActiveView('catalog')}
-                      className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5"
+                      className="h-7 min-w-7 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[11px] font-medium text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5"
                     >
                       <LayoutGrid className="w-3 h-3 shrink-0 text-[#9A968C]" />
-                      <span className="hidden lg:inline">{t.navCatalog}</span>
+                      <span className="hidden @[1340px]/obs:inline">{t.navCatalog}</span>
                     </Button>
 
                     <Button
                       size="sm"
                       variant="ghost"
+                      data-testid="nav-simulator-btn"
+                      aria-label={hud.worldLabLabel}
                       onPress={() => setIsAddModalOpen(true)}
-                      className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5"
+                      className="h-7 min-w-7 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[11px] font-medium text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5"
                     >
                       <Plus className="w-3 h-3 text-[#FA500F] shrink-0" />
-                      <span className="hidden xl:inline">{hud.worldLabLabel}</span>
+                      <span className="hidden @[1600px]/obs:inline">{hud.worldLabLabel}</span>
                     </Button>
 
                     <Dropdown>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium whitespace-nowrap gap-1 ${
+                        data-testid="guided-tours-trigger"
+                        aria-label={extra.toursBtn}
+                        className={`h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[11px] font-medium whitespace-nowrap gap-1 ${
                           activeTour
                             ? 'bg-[#FA500F]/18 text-[#FFAF00]'
                             : 'text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
                         }`}
                       >
                         <Compass className="w-3 h-3 shrink-0 text-[#FA500F]" />
-                        <span>{extra.toursBtn}</span>
+                        <span className="hidden @[640px]/obs:inline">{extra.toursBtn}</span>
                         <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0" />
                       </Button>
                       <Dropdown.Popover
                         placement="bottom start"
-                        className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80"
+                        data-theme="dark"
+                        data-mw-observatory="true"
+                        className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80 max-w-[calc(100vw-24px)]"
                       >
                         <Dropdown.Menu
                           aria-label={extra.toursBtn}
@@ -820,28 +834,31 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                       </Dropdown.Popover>
                     </Dropdown>
 
-                    <Separator orientation="vertical" className="mx-0.5 h-3.5 bg-[#FFF8E7]/12" />
+                    <Separator orientation="vertical" className="mx-0.5 h-3.5 bg-[#FFF8E7]/12 shrink-0" />
 
                     <Tooltip delay={250}>
                       <Button
                         size="sm"
                         variant="ghost"
                         aria-pressed={isTrue1To1}
+                        aria-label={isTrue1To1 ? extra.scaleTrue1to1 : extra.scaleAtlas}
                         onPress={() =>
                           setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
                         }
-                        className={`h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono whitespace-nowrap gap-1 ${
+                        className={`h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono whitespace-nowrap gap-1 ${
                           isTrue1To1
                             ? 'text-[#FFAF00] bg-[#FA500F]/16'
                             : 'text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
                         }`}
                       >
                         <Scaling className="w-3 h-3 shrink-0" />
-                        <span>{isTrue1To1 ? '1:1' : 'ATLAS'}</span>
+                        <span className="hidden @[620px]/obs:inline">{isTrue1To1 ? '1:1' : 'ATLAS'}</span>
                       </Button>
                       <Tooltip.Content
                         placement="bottom"
-                        className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                        data-theme="dark"
+                        data-mw-observatory="true"
+                        className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                       >
                         {isTrue1To1 ? extra.scaleTrue1to1 : extra.scaleAtlas}
                       </Tooltip.Content>
@@ -852,10 +869,10 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                       variant="ghost"
                       onPress={() => setIsGraphicsOpen(true)}
                       aria-label={extra.graphicsAria}
-                      className="h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                      className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
                     >
                       <SlidersHorizontal className="w-3 h-3 text-[#FA500F] shrink-0" />
-                      <span>{graphicsSettings.resolutionScale}x</span>
+                      <span className="hidden @[460px]/obs:inline">{graphicsSettings.resolutionScale}x</span>
                     </Button>
 
                     <Tooltip delay={250}>
@@ -865,13 +882,15 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         variant="ghost"
                         onPress={handleCapturePng}
                         aria-label={extra.captureAria}
-                        className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                        className="hidden @[460px]/obs:inline-flex w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
                       >
                         <Camera className="w-3 h-3 shrink-0" />
                       </Button>
                       <Tooltip.Content
                         placement="bottom"
-                        className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                        data-theme="dark"
+                        data-mw-observatory="true"
+                        className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                       >
                         {extra.captureTooltip}
                       </Tooltip.Content>
@@ -884,13 +903,15 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                         variant="ghost"
                         onPress={() => setIsShortcutsOpen(true)}
                         aria-label={extra.shortcutsAria}
-                        className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                        className="hidden @[600px]/obs:inline-flex w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
                       >
                         <HelpCircle className="w-3 h-3 shrink-0" />
                       </Button>
                       <Tooltip.Content
                         placement="bottom"
-                        className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                        data-theme="dark"
+                        data-mw-observatory="true"
+                        className="dark bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
                       >
                         {extra.shortcutsTooltip}
                       </Tooltip.Content>
@@ -900,15 +921,18 @@ export const MilkyWayObservatoryPlugin = forwardRef<
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                        data-testid="lang-dropdown-trigger"
+                        className="h-7 min-w-0 rounded-[8px] px-1.5 @[680px]/obs:px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
                       >
                         <Globe className="w-3 h-3 text-[#9A968C] shrink-0" />
                         <span>{activeLangOption.shortCode}</span>
                         <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0" />
                       </Button>
                       <Dropdown.Popover
-                        placement="bottom start"
-                        className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
+                        placement="bottom end"
+                        data-theme="dark"
+                        data-mw-observatory="true"
+                        className="dark bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
                       >
                         <Dropdown.Menu
                           aria-label="Language"

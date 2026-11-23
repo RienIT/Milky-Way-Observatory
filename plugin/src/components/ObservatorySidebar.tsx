@@ -62,13 +62,13 @@ export default function ObservatorySidebar({
 
   if (!isOpen) {
     return (
-      <div className="absolute left-3 top-3 z-20">
+      <div className="absolute left-3 top-[60px] z-20">
         <Button
           size="sm"
           variant="outline"
           onPress={onToggleOpen}
           data-testid="expand-sidebar-btn"
-          className="rounded-[8px] bg-[#0a0c10]/95 hover:bg-[#12151c] border-white/[0.12] px-3.5 gap-1.5 text-xs font-semibold text-[#ECEAE4] shadow-xl"
+          className="rounded-[8px] bg-[#0a0c10]/95 hover:bg-[#12151c] border-white/[0.12] px-3 gap-1.5 text-xs font-semibold text-[#ECEAE4] shadow-xl"
         >
           <ChevronRight className="w-4 h-4 text-[#FA500F] shrink-0" />
           <span>
@@ -83,7 +83,7 @@ export default function ObservatorySidebar({
     <aside
       aria-label={t.sidebarTitle}
       data-testid="observatory-sidebar"
-      className="relative z-20 w-72 lg:w-[308px] shrink-0 h-full bg-[#0a0c10] border-r border-white/[0.08] flex flex-col overflow-hidden"
+      className="absolute inset-y-0 left-0 z-40 @[960px]/root:relative @[960px]/root:z-20 w-[min(288px,calc(100%-24px))] @[960px]/root:w-72 @[1200px]/root:w-[308px] shrink-0 h-full bg-[#0a0c10] border-r border-white/[0.08] shadow-2xl @[960px]/root:shadow-none flex flex-col overflow-hidden"
     >
       {/* Sidebar Header */}
       <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between gap-2">
