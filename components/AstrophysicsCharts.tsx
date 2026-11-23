@@ -199,7 +199,7 @@ export default function AstrophysicsCharts({
       : copy.rockyLayers;
 
   const layerColors = isStarLike
-    ? ['#fff7ed', '#f59e0b', planetSpec.atmosphereColorHex || '#E88B38']
+    ? ['#fff7ed', '#f59e0b', planetSpec.atmosphereColorHex || '#FA500F']
     : isGasLike
       ? ['#94a3b8', '#475569', planetSpec.atmosphereColorHex || '#d4a373']
       : ['#d97706', '#9a3412', planetSpec.atmosphereColorHex || '#3b82f6'];
@@ -228,7 +228,7 @@ export default function AstrophysicsCharts({
             <h3 className="text-[11px] font-mono uppercase tracking-[0.06em] text-[#ECEAE4]">
               {copy.hrTitle}
             </h3>
-            <span className="text-[10px] font-mono tabular-nums text-[#E88B38]">
+            <span className="text-[10px] font-mono tabular-nums text-[#FA500F]">
               {Math.round(hrPoint.tempK).toLocaleString()} K · L ={' '}
               {hrPoint.luminositySolar >= 100
                 ? `${Math.round(hrPoint.luminositySolar).toLocaleString()} L☉`
@@ -236,7 +236,7 @@ export default function AstrophysicsCharts({
             </span>
           </div>
 
-          <div className="rounded-[4px] bg-[#06080c] border border-white/[0.08] p-2">
+          <div className="rounded-[8px] bg-[#101012] border border-[#FFF8E7]/10 p-2">
             <svg
               viewBox="0 0 344 156"
               className="w-full h-auto block"
@@ -335,7 +335,7 @@ export default function AstrophysicsCharts({
                       y1="14"
                       x2={sx}
                       y2="138"
-                      stroke="#E88B38"
+                      stroke="#FA500F"
                       strokeOpacity="0.35"
                       strokeDasharray="2 2"
                     />
@@ -344,7 +344,7 @@ export default function AstrophysicsCharts({
                       y1={sy}
                       x2="326"
                       y2={sy}
-                      stroke="#E88B38"
+                      stroke="#FA500F"
                       strokeOpacity="0.35"
                       strokeDasharray="2 2"
                     />
@@ -353,7 +353,7 @@ export default function AstrophysicsCharts({
                       cy={sy}
                       r="5.5"
                       fill="none"
-                      stroke="#E88B38"
+                      stroke="#FA500F"
                       strokeWidth="1.2"
                     />
                     <circle cx={sx} cy={sy} r="2.5" fill={hrPoint.colorHex} />
@@ -405,12 +405,12 @@ export default function AstrophysicsCharts({
             <h3 className="text-[11px] font-mono uppercase tracking-[0.06em] text-[#ECEAE4]">
               {copy.planckTitle}
             </h3>
-            <span className="text-[10px] font-mono tabular-nums text-[#E88B38]">
+            <span className="text-[10px] font-mono tabular-nums text-[#FA500F]">
               {Math.round(tempK).toLocaleString()} K
             </span>
           </div>
 
-          <div className="rounded-[4px] bg-[#06080c] border border-white/[0.08] p-2">
+          <div className="rounded-[8px] bg-[#101012] border border-[#FFF8E7]/10 p-2">
             <svg
               viewBox="0 0 344 92"
               className="w-full h-auto block"
@@ -454,7 +454,7 @@ export default function AstrophysicsCharts({
                 y1="12"
                 x2={planckData.clampedPeakX}
                 y2="76"
-                stroke="#E88B38"
+                stroke="#FA500F"
                 strokeDasharray="2 2"
                 strokeWidth="1"
               />
@@ -504,12 +504,12 @@ export default function AstrophysicsCharts({
           <h3 className="text-[11px] font-mono uppercase tracking-[0.06em] text-[#ECEAE4]">
             {copy.structureTitle}
           </h3>
-          <span className="text-[10px] font-mono tabular-nums text-[#E88B38]">
+          <span className="text-[10px] font-mono tabular-nums text-[#FA500F]">
             {radiusReadout}
           </span>
         </div>
 
-        <div className="rounded-[4px] bg-[#06080c] border border-white/[0.08] p-3 flex items-center gap-3.5">
+        <div className="rounded-[8px] bg-[#101012] border border-[#FFF8E7]/10 p-3 flex items-center gap-3.5">
           <svg
             viewBox="0 0 84 84"
             className="w-[74px] h-[74px] shrink-0"
@@ -569,7 +569,7 @@ export default function AstrophysicsCharts({
               </div>
               <div className="h-1.5 w-full bg-white/[0.07] rounded-[1px] overflow-hidden">
                 <div
-                  className="h-full bg-[#E88B38]"
+                  className="h-full bg-[#FA500F]"
                   style={{ width: `${logWidthPct.toFixed(1)}%` }}
                 />
               </div>

@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Check, Circle, Loader2, Orbit } from 'lucide-react';
+import { Card, ProgressBar, Separator } from '@heroui/react';
+import { Check, Circle, Loader2 } from 'lucide-react';
+import ObservatoryLogo from '@/components/ObservatoryLogo';
+import SunsetStripeBand from '@/components/SunsetStripeBand';
 import {
   BOOT_MILESTONES,
   BOOT_STAGE_PROGRESS,
@@ -16,17 +19,20 @@ export interface ObservatoryBootOverlayProps {
   progress?: number;
   lang?: LanguageCode;
   isFadingOut?: boolean;
+  assetBasePath?: string;
 }
 
 /**
- * Clean, compositor-friendly startup loading overlay for the WebGL2 observatory.
- * Precision aerospace monochrome surface (zero backdrop-blur over WebGL) with optical amber signal.
+ * Mistral-editorial dark studio startup overlay for the WebGL2 observatory.
+ * Features ObservatoryLogo, Playfair Display editorial title, Sunset Stripe accent,
+ * and monotonic HeroUI v3 ProgressBar.
  */
 export default function ObservatoryBootOverlay({
   stage,
   progress,
   lang = 'en',
   isFadingOut = false,
+  assetBasePath = '',
 }: ObservatoryBootOverlayProps) {
   const copy = getBootCopy(lang);
   const clampedProgress = Math.min(
@@ -46,101 +52,103 @@ export default function ObservatoryBootOverlay({
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       }`}
     >
-      <div className="w-full max-w-[420px] rounded-[4px] bg-[#0a0c10] border border-white/[0.11] p-6 sm:p-7 shadow-2xl">
-        {/* Header & Precision Orbital Emblem */}
-        <div className="flex items-center gap-3.5">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] bg-[#10131a] border border-white/[0.10]">
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 rounded-[4px] border border-transparent border-t-[#E88B38] animate-spin motion-reduce:animate-none"
-              style={{ animationDuration: '4.5s' }}
-            />
-            <Orbit className="h-4 w-4 text-[#E88B38]" strokeWidth={1.75} />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[#ECEAE4] truncate">
-              {copy.title}
-            </h2>
-            <p className="text-[11px] font-mono text-[#8A8D96] mt-0.5 truncate">
-              {copy.subtitle}
-            </p>
-          </div>
-        </div>
-
-        {/* Active Stage & Monotonic Progress Bar */}
-        <div className="mt-6">
-          <div className="flex items-baseline justify-between gap-3">
-            <span
-              data-testid="boot-stage-label"
-              className="text-xs font-medium text-[#ECEAE4] truncate"
-            >
-              {activeStageLabel}
-            </span>
-            <span
-              data-testid="boot-progress-percent"
-              className="shrink-0 font-mono text-xs font-medium text-[#E88B38] tabular-nums"
-            >
-              {clampedProgress}%
-            </span>
+      <Card className="w-full max-w-[440px] rounded-[12px] bg-[#141416] border border-[#FFF8E7]/12 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] p-0 overflow-hidden">
+        <SunsetStripeBand variant="hairline" />
+        <Card.Content className="p-6 sm:p-7 space-y-5">
+          {/* Header & Brand Logo Mark */}
+          <div className="flex items-center gap-3.5">
+            <ObservatoryLogo size={42} assetBasePath={assetBasePath} />
+            <div className="min-w-0">
+              <h2 className="font-display text-[20px] font-normal tracking-[-0.015em] text-[#FFF8E7] truncate">
+                {copy.title}
+              </h2>
+              <p className="text-[12px] text-[#A19F99] mt-0.5 truncate">
+                {copy.subtitle}
+              </p>
+            </div>
           </div>
 
-          <div
-            role="progressbar"
-            aria-label={copy.title}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={clampedProgress}
-            className="mt-2.5 h-1 w-full overflow-hidden rounded-[1px] bg-white/[0.08]"
-          >
-            <div
-              className="h-full w-full origin-left bg-[#E88B38] transition-transform duration-300 ease-out"
-              style={{ transform: `scaleX(${clampedProgress / 100})` }}
-            />
-          </div>
-        </div>
-
-        {/* Real Engine Initialization Milestones */}
-        <ul className="mt-5 grid grid-cols-1 gap-2 border-t border-white/[0.08] pt-4">
-          {BOOT_MILESTONES.map((milestoneId) => {
-            const status = getBootMilestoneStatus(stage, milestoneId);
-            return (
-              <li
-                key={milestoneId}
-                data-milestone={milestoneId}
-                data-status={status}
-                className="flex items-center gap-2.5 text-xs"
+          {/* Active Stage & Sunset-Gradient HeroUI ProgressBar */}
+          <div className="space-y-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span
+                data-testid="boot-stage-label"
+                className="text-[13px] font-medium text-[#F5F2EB] truncate"
               >
-                {status === 'done' ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] bg-[#E88B38]/18 text-[#E88B38]">
-                    <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
-                  </span>
-                ) : status === 'active' ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#E88B38]">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-                  </span>
-                ) : (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#4F5460]">
-                    <Circle className="h-2.5 w-2.5" strokeWidth={2} />
-                  </span>
-                )}
-                <span
-                  className={
-                    status === 'done'
-                      ? 'text-[#C8C6C0]'
-                      : status === 'active'
-                        ? 'text-[#ECEAE4] font-medium'
-                        : 'text-[#6B707B]'
-                  }
-                >
-                  {copy.milestones[milestoneId]}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+                {activeStageLabel}
+              </span>
+              <span
+                data-testid="boot-progress-percent"
+                className="shrink-0 font-mono text-[13px] font-semibold text-[#FA500F] tabular-nums"
+              >
+                {clampedProgress}%
+              </span>
+            </div>
 
-        <p className="mt-4 text-[11px] leading-relaxed text-[#6B707B]">{copy.reassurance}</p>
-      </div>
+            <ProgressBar
+              aria-label={copy.title}
+              value={clampedProgress}
+              minValue={0}
+              maxValue={100}
+              className="w-full"
+            >
+              <ProgressBar.Track className="h-1.5 rounded-[4px] bg-white/[0.08] overflow-hidden">
+                <ProgressBar.Fill
+                  className="rounded-[4px]"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, #E10500 0%, #FA500F 45%, #FFAF00 80%, #FFD800 100%)',
+                  }}
+                />
+              </ProgressBar.Track>
+            </ProgressBar>
+          </div>
+
+          <Separator className="bg-[#FFF8E7]/10" />
+
+          {/* Real Engine Initialization Milestones */}
+          <ul className="grid grid-cols-1 gap-2.5">
+            {BOOT_MILESTONES.map((milestoneId) => {
+              const status = getBootMilestoneStatus(stage, milestoneId);
+              return (
+                <li
+                  key={milestoneId}
+                  data-milestone={milestoneId}
+                  data-status={status}
+                  className="flex items-center gap-2.5 text-[13px]"
+                >
+                  {status === 'done' ? (
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-[#FA500F] text-white">
+                      <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
+                    </span>
+                  ) : status === 'active' ? (
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#FFAF00]">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                    </span>
+                  ) : (
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#525252]">
+                      <Circle className="h-2.5 w-2.5" strokeWidth={2} />
+                    </span>
+                  )}
+                  <span
+                    className={
+                      status === 'done'
+                        ? 'text-[#D6D3CB]'
+                        : status === 'active'
+                          ? 'text-[#FFF8E7] font-medium'
+                          : 'text-[#7C7A74]'
+                    }
+                  >
+                    {copy.milestones[milestoneId]}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="text-[12px] leading-relaxed text-[#7C7A74]">{copy.reassurance}</p>
+        </Card.Content>
+      </Card>
     </div>
   );
 }

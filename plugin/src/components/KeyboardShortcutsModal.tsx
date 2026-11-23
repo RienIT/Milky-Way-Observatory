@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Keyboard, X } from 'lucide-react';
+import React from 'react';
+import { Kbd, Modal } from '@heroui/react';
+import { Keyboard } from 'lucide-react';
+import SunsetStripeBand from './SunsetStripeBand';
 import { LanguageCode } from '../lib/i18n';
 
 export interface KeyboardShortcutsModalProps {
@@ -101,73 +103,54 @@ export default function KeyboardShortcutsModal({
   onClose,
   lang,
 }: KeyboardShortcutsModalProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      data-testid="shortcuts-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Modal.Backdrop
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
+      isDismissable
+      className="bg-black/75 z-50"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={MODAL_TITLE[lang]}
-        data-testid="shortcuts-modal-dialog"
-        className="w-full max-w-[520px] rounded-[4px] bg-[#0a0c10] border border-white/[0.14] shadow-2xl overflow-hidden"
-      >
-        <div className="px-4 py-3 border-b border-white/[0.09] flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Keyboard className="w-4 h-4 text-[#E88B38]" />
-            <h2 className="text-[13px] font-semibold text-[#ECEAE4]">
+      <Modal.Container placement="center" size="lg">
+        <Modal.Dialog
+          aria-label={MODAL_TITLE[lang]}
+          data-testid="shortcuts-modal-dialog"
+          className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] max-w-[540px] w-full p-0 overflow-hidden"
+        >
+          <SunsetStripeBand variant="hairline" />
+          <Modal.CloseTrigger className="top-3.5 right-3.5 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] rounded-[8px]" />
+          <Modal.Header className="px-5 py-4 border-b border-[#FFF8E7]/10 flex flex-row items-center gap-2.5">
+            <Keyboard className="w-4 h-4 text-[#FA500F] shrink-0" />
+            <Modal.Heading className="font-display text-[20px] font-normal text-[#FFF8E7]">
               {MODAL_TITLE[lang]}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            </Modal.Heading>
+          </Modal.Header>
 
-        <div className="divide-y divide-white/[0.06]">
-          {SHORTCUT_ROWS.map((row) => (
-            <div
-              key={row.keys.join('-')}
-              className="px-4 py-2.5 flex items-center justify-between gap-4"
-            >
-              <span className="text-[12px] text-[#C8C6C0]">{row.label[lang]}</span>
-              <div className="flex items-center gap-1 shrink-0">
-                {row.keys.map((k) => (
-                  <kbd
-                    key={k}
-                    className="px-1.5 py-0.5 rounded-[2px] border border-white/[0.14] bg-white/[0.05] font-mono text-[10px] text-[#ECEAE4]"
-                  >
-                    {k}
-                  </kbd>
-                ))}
-              </div>
+          <Modal.Body className="p-0">
+            <div className="divide-y divide-[#FFF8E7]/[0.07]">
+              {SHORTCUT_ROWS.map((row) => (
+                <div
+                  key={row.keys.join('-')}
+                  className="px-5 py-3 flex items-center justify-between gap-4"
+                >
+                  <span className="text-[13px] text-[#D6D3CB]">{row.label[lang]}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {row.keys.map((k) => (
+                      <Kbd
+                        key={k}
+                        className="px-2 py-0.5 rounded-[4px] border border-[#FFF8E7]/16 bg-[#FFF8E7]/[0.07] font-mono text-[11px] text-[#FFF8E7] shadow-none"
+                      >
+                        <Kbd.Content>{k}</Kbd.Content>
+                      </Kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
+          </Modal.Body>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

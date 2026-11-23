@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
+import { Button, Card, Chip, Dropdown } from '@heroui/react';
 import { ChevronDown, Clock, Eclipse, Pause, Play, RotateCcw } from 'lucide-react';
 import {
   SOLAR_ECLIPSE_PRESETS,
@@ -57,141 +58,154 @@ export default function TimeControlPanel({
   onResetToNow,
   onJumpToEclipse,
 }: TimeControlPanelProps) {
-  const [eclipseMenuOpen, setEclipseMenuOpen] = useState(false);
   const copy = UNIVERSE_HUD_COPY[lang];
   const moonPct = Math.round(Math.max(0, Math.min(1, moonPhaseFraction)) * 100);
 
   return (
-    <div
+    <Card
       data-testid="time-control-panel"
-      className="pointer-events-auto absolute top-3 right-3 z-20 rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.09] px-3 py-2 flex flex-col gap-1.5 max-w-[348px]"
+      className="pointer-events-auto absolute top-3 right-3 z-20 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-[380px] p-0"
     >
-      {/* Top Line: Ephemeris Date + Moon Illumination + Eclipse Jump + Reset to Now */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <Clock className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
-          <span
-            data-testid="sim-date-readout"
-            className="text-[11px] font-mono tabular-nums font-semibold text-[#ECEAE4] whitespace-nowrap"
-          >
-            {formatUtcTimestamp(simDateMs)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {eclipseActive ? (
+      <Card.Content className="px-3.5 py-2.5 flex flex-col gap-2 overflow-visible">
+        {/* Top Line: Ephemeris Date + Moon Illumination + Reset to Now */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Clock className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
             <span
-              data-testid="eclipse-active-indicator"
-              className="text-[10px] font-mono text-[#E88B38] whitespace-nowrap"
+              data-testid="sim-date-readout"
+              className="text-[11px] font-mono tabular-nums font-semibold text-[#FFF8E7] whitespace-nowrap"
             >
-              {copy.eclipseActiveBadge}
+              {formatUtcTimestamp(simDateMs)}
             </span>
-          ) : (
-            <span
-              className="hidden sm:inline text-[10px] font-mono tabular-nums text-[#8A8D96]"
-              title={copy.moonPhaseLabel}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {eclipseActive ? (
+              <Chip
+                data-testid="eclipse-active-indicator"
+                size="sm"
+                variant="soft"
+                color="accent"
+                className="h-5 rounded-full bg-[#FA500F] px-2 text-[10px] font-mono font-semibold text-white"
+              >
+                {copy.eclipseActiveBadge}
+              </Chip>
+            ) : (
+              <span
+                className="hidden sm:inline text-[10px] font-mono tabular-nums text-[#A19F99]"
+                title={copy.moonPhaseLabel}
+              >
+                {copy.moonPhaseLabel} {moonPct}%
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant="secondary"
+              data-testid="time-reset-now-btn"
+              onPress={onResetToNow}
+              className="h-6 min-w-0 rounded-[8px] px-2 bg-[#FFF8E7]/[0.08] hover:bg-[#FFF8E7]/[0.14] text-[10px] font-mono text-[#F5F2EB] gap-1"
             >
-              {copy.moonPhaseLabel} {moonPct}%
-            </span>
-          )}
-          <button
-            type="button"
-            data-testid="time-reset-now-btn"
-            onClick={onResetToNow}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] bg-white/[0.06] hover:bg-white/[0.11] text-[10px] font-mono text-[#C8C6C0] hover:text-[#ECEAE4] transition-colors"
-          >
-            <RotateCcw className="w-2.5 h-2.5" />
-            <span>{copy.resetToNow}</span>
-          </button>
+              <RotateCcw className="w-2.5 h-2.5 shrink-0" />
+              <span>{copy.resetToNow}</span>
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Bottom Line: Play/Pause + Speed Presets + Solar Eclipse Quick-Jump */}
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          data-testid="time-play-pause-btn"
-          onClick={onTogglePlay}
-          aria-label={isPlaying ? copy.pause : copy.play}
-          className="inline-flex items-center justify-center w-6 h-6 rounded-[2px] bg-[#E88B38] hover:bg-[#f09b4e] text-[#050608] transition-colors shrink-0"
-        >
-          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-        </button>
+        {/* Bottom Line: Play/Pause + Speed Presets + Solar Eclipse Quick-Jump */}
+        <div className="flex items-center gap-1">
+          <Button
+            isIconOnly
+            size="sm"
+            variant="primary"
+            data-testid="time-play-pause-btn"
+            onPress={onTogglePlay}
+            aria-label={isPlaying ? copy.pause : copy.play}
+            className="w-7 h-7 min-w-7 rounded-[8px] bg-[#FA500F] hover:bg-[#D93D04] text-white shrink-0 p-0"
+          >
+            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+          </Button>
 
-        <div className="flex items-center gap-0.5 flex-1">
-          {TIME_SPEED_PRESETS.map((preset) => {
-            const active = Math.abs(speedSecondsPerSec - preset.secondsPerSecond) < 0.5;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                data-testid={`time-speed-${preset.id}`}
-                onClick={() => onChangeSpeed(preset.secondsPerSecond)}
-                className={`flex-1 px-1.5 py-1 rounded-[2px] text-[10px] font-mono transition-colors whitespace-nowrap ${
-                  active
-                    ? 'bg-white/[0.10] text-[#E88B38] font-semibold border border-[#E88B38]/40'
-                    : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] border border-transparent'
+          <div className="flex items-center gap-0.5 flex-1">
+            {TIME_SPEED_PRESETS.map((preset) => {
+              const active = Math.abs(speedSecondsPerSec - preset.secondsPerSecond) < 0.5;
+              return (
+                <Button
+                  key={preset.id}
+                  size="sm"
+                  variant={active ? 'outline' : 'ghost'}
+                  data-testid={`time-speed-${preset.id}`}
+                  onPress={() => onChangeSpeed(preset.secondsPerSecond)}
+                  className={`flex-1 h-7 min-w-0 rounded-[8px] px-1.5 text-[10px] font-mono whitespace-nowrap ${
+                    active
+                      ? 'bg-[#FA500F]/18 text-[#FFD800] font-semibold border-[#FA500F]/60'
+                      : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.07] border-transparent'
+                  }`}
+                >
+                  {copy.timeSpeeds[preset.id]}
+                </Button>
+              );
+            })}
+          </div>
+
+          {/* Timeless Real Solar Eclipse Presets Dropdown */}
+          {onJumpToEclipse && (
+            <Dropdown>
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="eclipse-presets-trigger"
+                className={`h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono gap-1 whitespace-nowrap ${
+                  eclipseActive
+                    ? 'bg-[#FA500F]/20 text-[#FFD800] border-[#FA500F]/60'
+                    : 'bg-[#FFF8E7]/[0.06] text-[#F5F2EB] hover:bg-[#FFF8E7]/[0.12] border-[#FFF8E7]/12'
                 }`}
               >
-                {copy.timeSpeeds[preset.id]}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Timeless Real Solar Eclipse Presets Dropdown */}
-        {onJumpToEclipse && (
-          <div className="relative">
-            <button
-              type="button"
-              data-testid="eclipse-presets-trigger"
-              onClick={() => setEclipseMenuOpen((v) => !v)}
-              className={`inline-flex items-center gap-1 px-1.5 py-1 rounded-[2px] text-[10px] font-mono border transition-colors whitespace-nowrap ${
-                eclipseActive || eclipseMenuOpen
-                  ? 'bg-[#E88B38]/18 text-[#E88B38] border-[#E88B38]/45'
-                  : 'bg-white/[0.05] text-[#C8C6C0] hover:text-[#ECEAE4] border-white/[0.08]'
-              }`}
-            >
-              <Eclipse className="w-3 h-3" />
-              <span className="hidden sm:inline">{copy.eclipseBtn}</span>
-              <ChevronDown className="w-2.5 h-2.5" />
-            </button>
-
-            {eclipseMenuOpen && (
-              <div
-                data-testid="eclipse-presets-menu"
-                className="absolute right-0 top-full mt-1.5 w-64 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl divide-y divide-white/[0.06] z-40"
+                <Eclipse className="w-3 h-3 text-[#FFAF00] shrink-0" />
+                <span className="hidden sm:inline">{copy.eclipseBtn}</span>
+                <ChevronDown className="w-2.5 h-2.5 shrink-0" />
+              </Button>
+              <Dropdown.Popover
+                placement="bottom end"
+                className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[270px]"
               >
-                {SOLAR_ECLIPSE_PRESETS.map((preset) => {
-                  const mins = Math.floor(preset.durationSec / 60);
-                  const secs = String(preset.durationSec % 60).padStart(2, '0');
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      data-testid={`eclipse-preset-${preset.id}`}
-                      onClick={() => {
-                        onJumpToEclipse(preset);
-                        setEclipseMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-white/[0.06] transition-colors space-y-0.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-mono font-medium text-[#ECEAE4]">
-                          {preset.shortLabel}
-                        </span>
-                        <span className="text-[10px] font-mono text-[#E88B38] tabular-nums">
-                          {mins}m {secs}s
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-[#8A8D96]">{preset.region[lang]}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+                <Dropdown.Menu
+                  aria-label={copy.eclipseBtn}
+                  data-testid="eclipse-presets-menu"
+                  onAction={(key) => {
+                    const found = SOLAR_ECLIPSE_PRESETS.find((p) => p.id === String(key));
+                    if (found) onJumpToEclipse(found);
+                  }}
+                >
+                  {SOLAR_ECLIPSE_PRESETS.map((preset) => {
+                    const mins = Math.floor(preset.durationSec / 60);
+                    const secs = String(preset.durationSec % 60).padStart(2, '0');
+                    return (
+                      <Dropdown.Item
+                        key={preset.id}
+                        id={preset.id}
+                        data-testid={`eclipse-preset-${preset.id}`}
+                        textValue={`${preset.shortLabel} ${preset.region[lang]}`}
+                        className="rounded-[8px] px-3 py-2 data-[hovered=true]:bg-[#FFF8E7]/[0.07]"
+                      >
+                        <div className="space-y-0.5 w-full">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-mono font-medium text-[#FFF8E7]">
+                              {preset.shortLabel}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#FFAF00] tabular-nums">
+                              {mins}m {secs}s
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#A19F99]">{preset.region[lang]}</p>
+                        </div>
+                      </Dropdown.Item>
+                    );
+                  })}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
   );
 }

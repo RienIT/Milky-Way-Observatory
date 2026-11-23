@@ -9,6 +9,14 @@ import React, {
   useState,
 } from 'react';
 import {
+  Button,
+  Card,
+  Dropdown,
+  Kbd,
+  Separator,
+  Tooltip,
+} from '@heroui/react';
+import {
   Camera,
   ChevronDown,
   CircleDot,
@@ -20,7 +28,6 @@ import {
   Scaling,
   Search,
   SlidersHorizontal,
-  Telescope,
 } from 'lucide-react';
 import AddMemoryModal from './components/AddMemoryModal';
 import CommandPalette from './components/CommandPalette';
@@ -30,6 +37,7 @@ import GuidedTourBar from './components/GuidedTourBar';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import MemoryDetailDrawer from './components/MemoryDetailDrawer';
 import ObservatoryBootOverlay from './components/ObservatoryBootOverlay';
+import ObservatoryLogo from './components/ObservatoryLogo';
 import ObservatorySidebar from './components/ObservatorySidebar';
 import TopSearchBar, { ActiveWebView } from './components/TopSearchBar';
 import UniverseCanvas from './components/UniverseCanvas';
@@ -55,6 +63,7 @@ import {
   GuidedTourStop,
 } from './lib/guided-tours';
 import { LanguageCode, SUPPORTED_LANGUAGES, UI_STRINGS } from './lib/i18n';
+import { OBSERVATORY_EXTRA_COPY } from './lib/localized-telemetry';
 import { computeConstellationLinks, filterMemories } from './lib/memory-logic';
 import { MemoryCategory, MemoryNode } from './lib/memory-types';
 import { INITIAL_MEMORIES } from './lib/mock-memories';
@@ -81,7 +90,7 @@ const DEFAULT_HARDWARE_PROFILE: HardwareProfile = {
 
 /**
  * Drop-in React plugin wrapping the complete WebGL2 Multi-Scale Milky Way Observatory.
- * Framework-agnostic (works in Next.js App/Pages Router, Vite + React, Remix, CRA) with zero Next.js runtime imports.
+ * Built with HeroUI v3 + Tailwind CSS v4 and zero Next.js runtime imports.
  */
 export const MilkyWayObservatoryPlugin = forwardRef<
   MilkyWayPluginHandle,
@@ -119,7 +128,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
     [initialObjects]
   );
 
-  // SSR-safe client mount gate (avoids needing next/dynamic in non-Next hosts)
+  // SSR-safe client mount gate
   const [isClientMounted, setIsClientMounted] = useState(false);
 
   const [memories, setMemories] = useState<MemoryNode[]>(baseCatalog);
@@ -140,7 +149,6 @@ export const MilkyWayObservatoryPlugin = forwardRef<
   const [wavelengthBand, setWavelengthBand] = useState<WavelengthBandId>(initialWavelengthBand);
   const [cinemaMode, setCinemaMode] = useState<boolean>(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false);
-  const [langMenuOpen, setLangMenuOpen] = useState<boolean>(false);
   const [eclipseRequest, setEclipseRequest] = useState<{
     preset: SolarEclipsePreset;
     seq: number;
@@ -153,7 +161,6 @@ export const MilkyWayObservatoryPlugin = forwardRef<
   const [activeTourId, setActiveTourId] = useState<GuidedTourId | null>(null);
   const [tourStopIndex, setTourStopIndex] = useState<number>(0);
   const [tourAutoPlay, setTourAutoPlay] = useState<boolean>(true);
-  const [tourMenuOpen, setTourMenuOpen] = useState<boolean>(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -436,7 +443,6 @@ export const MilkyWayObservatoryPlugin = forwardRef<
     (tourId: GuidedTourId) => {
       const tour = getGuidedTourById(tourId);
       if (!tour || tour.stops.length === 0) return;
-      setTourMenuOpen(false);
       setActiveTourId(tourId);
       setTourStopIndex(0);
       setTourAutoPlay(true);
@@ -561,14 +567,16 @@ export const MilkyWayObservatoryPlugin = forwardRef<
 
   const t = UI_STRINGS[lang];
   const hud = UNIVERSE_HUD_COPY[lang];
+  const extra = OBSERVATORY_EXTRA_COPY[lang];
   const activeLangOption =
     SUPPORTED_LANGUAGES.find((l) => l.code === lang) || SUPPORTED_LANGUAGES[0];
   const isTrue1To1 = scaleMode === 'true-1to1';
 
   return (
     <div
+      data-theme="dark"
       data-testid="milky-way-observatory-plugin"
-      className={`relative w-full h-full min-h-[480px] flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4] ${className}`.trim()}
+      className={`dark relative w-full h-full min-h-[480px] flex flex-col overflow-hidden bg-[#030406] text-[#ECEAE4] ${className}`.trim()}
       style={style}
     >
       {activeView === 'catalog' ? (
@@ -597,6 +605,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
               onOpenGraphicsSettings={() => setIsGraphicsOpen(true)}
               lang={lang}
               onChangeLang={handleChangeLang}
+              assetBasePath={assetBasePath}
             />
           )}
           <ExoplanetCatalogView
@@ -616,6 +625,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
             }}
             onOpenSimulator={() => setIsAddModalOpen(true)}
             lang={lang}
+            assetBasePath={assetBasePath}
           />
         </>
       ) : (
@@ -674,205 +684,262 @@ export const MilkyWayObservatoryPlugin = forwardRef<
               />
             ) : (
               <div className="relative w-full h-full bg-[#030406]">
-                <ObservatoryBootOverlay stage="bundle" progress={12} lang={lang} />
+                <ObservatoryBootOverlay
+                  stage="bundle"
+                  progress={12}
+                  lang={lang}
+                  assetBasePath={assetBasePath}
+                />
               </div>
             )}
 
-            {/* Floating Top-Left Precision Instrument Strip */}
+            {/* Floating Top-Left Precision Instrument Strip (Mistral Dark Studio + HeroUI v3) */}
             {showTopBar && (
               <header
-                className={`absolute top-3 left-3 z-30 flex flex-wrap items-center gap-1.5 max-w-[calc(100%-380px)] transition-opacity duration-300 ${
+                className={`absolute top-3 left-3 z-30 flex flex-wrap items-center gap-2 max-w-[calc(100%-380px)] transition-opacity duration-300 ${
                   cinemaMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 }`}
               >
-                <div className="rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.09] p-1 flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSelectNode(null);
-                      setCameraResetTrigger((c) => c + 1);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] text-[12px] font-semibold tracking-[-0.01em] text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
-                  >
-                    <Telescope className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
-                    <span className="hidden sm:inline">{t.brandTitle}</span>
-                  </button>
+                <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.45)] p-0">
+                  <Card.Content className="p-1.5 flex flex-row items-center gap-1.5 overflow-visible">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => {
+                        handleSelectNode(null);
+                        setCameraResetTrigger((c) => c + 1);
+                      }}
+                      className="h-7 min-w-0 rounded-[8px] px-2 text-[13px] font-medium tracking-[-0.01em] text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-2"
+                    >
+                      <ObservatoryLogo size={20} assetBasePath={assetBasePath} />
+                      <span className="hidden sm:inline font-display text-[15px] font-normal tracking-[-0.01em]">
+                        {t.brandTitle}
+                      </span>
+                    </Button>
 
-                  <span className="h-4 w-px bg-white/[0.09]" aria-hidden="true" />
+                    <Separator orientation="vertical" className="h-4 bg-[#FFF8E7]/12" />
 
-                  <button
-                    type="button"
-                    onClick={() => setIsPaletteOpen(true)}
-                    className="inline-flex items-center gap-2 px-2 py-1 rounded-[2px] text-[11px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
-                  >
-                    <Search className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
-                    <span className="hidden md:inline max-w-[160px] truncate">
-                      {hud.searchTrigger}
-                    </span>
-                    <kbd className="px-1 rounded-[2px] border border-white/[0.12] bg-white/[0.04] font-mono text-[9px] text-[#C8C6C0]">
-                      /
-                    </kbd>
-                  </button>
-                </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => setIsPaletteOpen(true)}
+                      className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] text-[#B8B4AA] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-2"
+                    >
+                      <Search className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
+                      <span className="hidden md:inline max-w-[160px] truncate">
+                        {hud.searchTrigger}
+                      </span>
+                      <Kbd className="px-1.5 py-0 rounded-[4px] border border-[#FFF8E7]/15 bg-white/[0.05] font-mono text-[9px] text-[#FFF8E7]/80 shadow-none">
+                        <Kbd.Content>/</Kbd.Content>
+                      </Kbd>
+                    </Button>
+                  </Card.Content>
+                </Card>
 
-                <div className="rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.09] p-1 flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectNode('BLACK_HOLE_CORE')}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium transition-colors whitespace-nowrap ${
-                      selectedId === 'BLACK_HOLE_CORE'
-                        ? 'bg-[#E88B38] text-[#050608] font-semibold'
-                        : 'text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <CircleDot className="w-3 h-3 shrink-0" />
-                    <span>Sgr A*</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveView('catalog')}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
-                  >
-                    <LayoutGrid className="w-3 h-3 shrink-0 text-[#8A8D96]" />
-                    <span className="hidden lg:inline">{t.navCatalog}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
-                  >
-                    <Plus className="w-3 h-3 text-[#E88B38] shrink-0" />
-                    <span className="hidden xl:inline">{hud.worldLabLabel}</span>
-                  </button>
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setTourMenuOpen((v) => !v)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[11px] font-medium transition-colors whitespace-nowrap ${
-                        activeTour || tourMenuOpen
-                          ? 'bg-[#E88B38]/15 text-[#E88B38]'
-                          : 'text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
+                <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.45)] p-0">
+                  <Card.Content className="p-1.5 flex flex-row items-center gap-1 overflow-visible">
+                    <Button
+                      size="sm"
+                      variant={selectedId === 'BLACK_HOLE_CORE' ? 'primary' : 'ghost'}
+                      onPress={() => handleSelectNode('BLACK_HOLE_CORE')}
+                      className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium whitespace-nowrap gap-1.5 ${
+                        selectedId === 'BLACK_HOLE_CORE'
+                          ? 'bg-[#FA500F] hover:bg-[#D93D04] text-[#FFFFFF] font-semibold'
+                          : 'text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
                       }`}
                     >
-                      <Compass className="w-3 h-3 shrink-0 text-[#E88B38]" />
-                      <span>Tours</span>
-                      <ChevronDown className="w-2.5 h-2.5 text-[#6B707B]" />
-                    </button>
+                      <CircleDot className="w-3 h-3 shrink-0" />
+                      <span>Sgr A*</span>
+                    </Button>
 
-                    {tourMenuOpen && (
-                      <div className="absolute left-0 top-full mt-1.5 w-80 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl divide-y divide-white/[0.06] z-50">
-                        {GUIDED_TOURS.map((tour) => (
-                          <button
-                            key={tour.id}
-                            type="button"
-                            onClick={() => handleStartTour(tour.id)}
-                            className="w-full text-left px-3 py-2.5 hover:bg-white/[0.06] transition-colors space-y-0.5"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[12px] font-medium text-[#ECEAE4]">
-                                {tour.title[lang]}
-                              </span>
-                              <span className="font-mono text-[9px] text-[#E88B38] shrink-0">
-                                {tour.stops.length} stops
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[#8A8D96] leading-snug">
-                              {tour.subtitle[lang]}
-                            </p>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <span className="mx-0.5 h-3.5 w-px bg-white/[0.09]" aria-hidden="true" />
-
-                  <button
-                    type="button"
-                    aria-pressed={isTrue1To1}
-                    onClick={() =>
-                      setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
-                    }
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[10px] font-mono transition-colors whitespace-nowrap ${
-                      isTrue1To1
-                        ? 'text-[#E88B38] bg-[#E88B38]/12'
-                        : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <Scaling className="w-3 h-3 shrink-0" />
-                    <span>{isTrue1To1 ? '1:1' : 'ATLAS'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsGraphicsOpen(true)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[10px] font-mono text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
-                  >
-                    <SlidersHorizontal className="w-3 h-3 text-[#E88B38] shrink-0" />
-                    <span>{graphicsSettings.resolutionScale}x</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCapturePng}
-                    aria-label="Capture clean PNG snapshot"
-                    className="inline-flex items-center justify-center p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors"
-                  >
-                    <Camera className="w-3 h-3 shrink-0" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsShortcutsOpen(true)}
-                    aria-label="Keyboard shortcuts"
-                    className="inline-flex items-center justify-center p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors"
-                  >
-                    <HelpCircle className="w-3 h-3 shrink-0" />
-                  </button>
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setLangMenuOpen((v) => !v)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] text-[10px] font-mono text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => setActiveView('catalog')}
+                      className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5"
                     >
-                      <Globe className="w-3 h-3 text-[#8A8D96]" />
-                      <span>{activeLangOption.shortCode}</span>
-                      <ChevronDown className="w-2.5 h-2.5 text-[#6B707B]" />
-                    </button>
+                      <LayoutGrid className="w-3 h-3 shrink-0 text-[#9A968C]" />
+                      <span className="hidden lg:inline">{t.navCatalog}</span>
+                    </Button>
 
-                    {langMenuOpen && (
-                      <div className="absolute left-0 top-full mt-1.5 w-44 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl p-1 z-50">
-                        {SUPPORTED_LANGUAGES.map((opt) => {
-                          const active = opt.code === lang;
-                          return (
-                            <button
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => setIsAddModalOpen(true)}
+                      className="h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1.5"
+                    >
+                      <Plus className="w-3 h-3 text-[#FA500F] shrink-0" />
+                      <span className="hidden xl:inline">{hud.worldLabLabel}</span>
+                    </Button>
+
+                    <Dropdown>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-medium whitespace-nowrap gap-1 ${
+                          activeTour
+                            ? 'bg-[#FA500F]/18 text-[#FFAF00]'
+                            : 'text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <Compass className="w-3 h-3 shrink-0 text-[#FA500F]" />
+                        <span>{extra.toursBtn}</span>
+                        <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0" />
+                      </Button>
+                      <Dropdown.Popover
+                        placement="bottom start"
+                        className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl w-80"
+                      >
+                        <Dropdown.Menu
+                          aria-label={extra.toursBtn}
+                          onAction={(key) => handleStartTour(String(key) as GuidedTourId)}
+                        >
+                          {GUIDED_TOURS.map((tour) => (
+                            <Dropdown.Item
+                              key={tour.id}
+                              id={tour.id}
+                              textValue={tour.title[lang]}
+                              className="rounded-[8px] px-2.5 py-2 data-[hovered=true]:bg-white/[0.06]"
+                            >
+                              <div className="space-y-0.5 w-full">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[12px] font-medium text-[#FFF8E7]">
+                                    {tour.title[lang]}
+                                  </span>
+                                  <span className="font-mono text-[9px] text-[#FA500F] shrink-0">
+                                    {tour.stops.length} {extra.stopsUnit}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-[#9A968C] leading-snug whitespace-normal">
+                                  {tour.subtitle[lang]}
+                                </p>
+                              </div>
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown>
+
+                    <Separator orientation="vertical" className="mx-0.5 h-3.5 bg-[#FFF8E7]/12" />
+
+                    <Tooltip delay={250}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-pressed={isTrue1To1}
+                        onPress={() =>
+                          setScaleMode((prev) => (prev === 'atlas' ? 'true-1to1' : 'atlas'))
+                        }
+                        className={`h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono whitespace-nowrap gap-1 ${
+                          isTrue1To1
+                            ? 'text-[#FFAF00] bg-[#FA500F]/16'
+                            : 'text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <Scaling className="w-3 h-3 shrink-0" />
+                        <span>{isTrue1To1 ? '1:1' : 'ATLAS'}</span>
+                      </Button>
+                      <Tooltip.Content
+                        placement="bottom"
+                        className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                      >
+                        {isTrue1To1 ? extra.scaleTrue1to1 : extra.scaleAtlas}
+                      </Tooltip.Content>
+                    </Tooltip>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => setIsGraphicsOpen(true)}
+                      aria-label={extra.graphicsAria}
+                      className="h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                    >
+                      <SlidersHorizontal className="w-3 h-3 text-[#FA500F] shrink-0" />
+                      <span>{graphicsSettings.resolutionScale}x</span>
+                    </Button>
+
+                    <Tooltip delay={250}>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="ghost"
+                        onPress={handleCapturePng}
+                        aria-label={extra.captureAria}
+                        className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                      >
+                        <Camera className="w-3 h-3 shrink-0" />
+                      </Button>
+                      <Tooltip.Content
+                        placement="bottom"
+                        className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                      >
+                        {extra.captureTooltip}
+                      </Tooltip.Content>
+                    </Tooltip>
+
+                    <Tooltip delay={250}>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="ghost"
+                        onPress={() => setIsShortcutsOpen(true)}
+                        aria-label={extra.shortcutsAria}
+                        className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#9A968C] hover:text-[#FFF8E7] hover:bg-white/[0.06]"
+                      >
+                        <HelpCircle className="w-3 h-3 shrink-0" />
+                      </Button>
+                      <Tooltip.Content
+                        placement="bottom"
+                        className="bg-[#141416] border border-[#FFF8E7]/14 text-[#FFF8E7] text-[11px] rounded-[8px] px-2.5 py-1"
+                      >
+                        {extra.shortcutsTooltip}
+                      </Tooltip.Content>
+                    </Tooltip>
+
+                    <Dropdown>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 min-w-0 rounded-[8px] px-2 text-[10px] font-mono text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-white/[0.06] whitespace-nowrap gap-1"
+                      >
+                        <Globe className="w-3 h-3 text-[#9A968C] shrink-0" />
+                        <span>{activeLangOption.shortCode}</span>
+                        <ChevronDown className="w-2.5 h-2.5 text-[#8A867C] shrink-0" />
+                      </Button>
+                      <Dropdown.Popover
+                        placement="bottom start"
+                        className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-2xl min-w-[176px]"
+                      >
+                        <Dropdown.Menu
+                          aria-label="Language"
+                          selectionMode="single"
+                          selectedKeys={new Set([lang])}
+                          onAction={(key) => handleChangeLang(String(key) as LanguageCode)}
+                        >
+                          {SUPPORTED_LANGUAGES.map((opt) => (
+                            <Dropdown.Item
                               key={opt.code}
-                              type="button"
-                              onClick={() => {
-                                handleChangeLang(opt.code);
-                                setLangMenuOpen(false);
-                              }}
-                              className={`w-full text-left px-2.5 py-1.5 rounded-[2px] text-xs font-medium flex items-center justify-between transition-colors ${
-                                active
-                                  ? 'bg-[#E88B38]/15 text-[#E88B38]'
-                                  : 'text-[#C8C6C0] hover:bg-white/[0.06]'
+                              id={opt.code}
+                              textValue={opt.nativeLabel}
+                              className={`rounded-[8px] px-2.5 py-1.5 data-[hovered=true]:bg-white/[0.06] ${
+                                opt.code === lang
+                                  ? 'bg-[#FA500F]/18 text-[#FFAF00] font-medium'
+                                  : 'text-[#D6D3CB]'
                               }`}
                             >
-                              <span>{opt.nativeLabel}</span>
-                              <span className="font-mono text-[10px] text-[#6B707B]">
-                                {opt.shortCode}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                              <div className="flex items-center justify-between gap-2 w-full">
+                                <span className="text-xs">{opt.nativeLabel}</span>
+                                <span className="font-mono text-[10px] text-[#8A867C]">
+                                  {opt.shortCode}
+                                </span>
+                              </div>
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown>
+                  </Card.Content>
+                </Card>
               </header>
             )}
 
@@ -952,6 +1019,7 @@ export const MilkyWayObservatoryPlugin = forwardRef<
         onAddMemory={handleAddMemory}
         lang={lang}
         summarizeApiUrl={summarizeApiUrl}
+        assetBasePath={assetBasePath}
       />
 
       <GraphicsSettingsModal

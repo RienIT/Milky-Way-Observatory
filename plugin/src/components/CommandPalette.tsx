@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Chip, Input, Modal, Tabs } from '@heroui/react';
 import {
   CircleDot,
   Compass,
@@ -15,6 +16,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import SunsetStripeBand from './SunsetStripeBand';
 import {
   SOLAR_ECLIPSE_PRESETS,
   SolarEclipsePreset,
@@ -23,7 +25,8 @@ import {
 import { getLocalizedNode } from '../lib/celestial-translations';
 import { EXTRAGALACTIC_CATALOG } from '../lib/extragalactic-catalog';
 import { GUIDED_TOURS, GuidedTourId } from '../lib/guided-tours';
-import { LanguageCode } from '../lib/i18n';
+import { LanguageCode, UI_STRINGS } from '../lib/i18n';
+import { OBSERVATORY_EXTRA_COPY } from '../lib/localized-telemetry';
 import { MemoryNode } from '../lib/memory-types';
 import { ScalePresetId, UNIVERSE_HUD_COPY } from '../lib/universe-i18n';
 
@@ -176,6 +179,8 @@ export default function CommandPalette({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const copy = PALETTE_COPY[lang];
   const hud = UNIVERSE_HUD_COPY[lang];
+  const extra = OBSERVATORY_EXTRA_COPY[lang];
+  const t = UI_STRINGS[lang];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -215,7 +220,7 @@ export default function CommandPalette({
         id: `tour-${tour.id}`,
         title: tour.title[lang],
         subtitle: tour.subtitle[lang],
-        meta: `${tour.stops.length} stops · ${tour.badgeMetric}`,
+        meta: `${tour.stops.length} ${extra.stopsUnit} · ${tour.badgeMetric}`,
         group: 'events' as const,
         kind: 'tour' as const,
         tourId: tour.id,
@@ -241,10 +246,11 @@ export default function CommandPalette({
 
     for (const node of memories) {
       const loc = getLocalizedNode(node, lang);
+      const catLabel = t.categories[node.category]?.shortLabel || node.category;
       entries.push({
         id: `obj-${node.id}`,
         title: loc.title,
-        subtitle: loc.summary[0] || node.category,
+        subtitle: loc.summary[0] || catLabel,
         meta: node.tags.slice(0, 2).join(' · '),
         group: 'catalog',
         kind: 'object',
@@ -265,7 +271,7 @@ export default function CommandPalette({
     }
 
     return entries;
-  }, [copy, lang, memories]);
+  }, [copy, extra.stopsUnit, lang, memories, t.categories]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -302,161 +308,177 @@ export default function CommandPalette({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      data-testid="command-palette-backdrop"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 px-4 pt-[11vh]"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Modal.Backdrop
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
+      isDismissable
+      className="bg-black/75 z-50"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={hud.searchTrigger}
-        data-testid="command-palette-dialog"
-        className="w-full max-w-[600px] rounded-[4px] bg-[#0a0c10] border border-white/[0.14] shadow-2xl overflow-hidden flex flex-col"
-      >
-        {/* Search Input Row */}
-        <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-white/[0.09]">
-          <Search className="w-4 h-4 text-[#E88B38] shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            data-testid="command-palette-input"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setCursor(0);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-              } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setCursor((c) => Math.min(Math.max(0, filtered.length - 1), c + 1));
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setCursor((c) => Math.max(0, c - 1));
-              } else if (e.key === 'Enter' && filtered[safeCursor]) {
-                e.preventDefault();
-                executeEntry(filtered[safeCursor]);
-              }
-            }}
-            placeholder={copy.placeholder}
-            className="flex-1 bg-transparent text-[13px] text-[#ECEAE4] placeholder-[#6B707B] focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="p-1 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Category Filter Tabs */}
-        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-white/[0.07] bg-[#07090d]">
-          {(['all', 'events', 'catalog', 'galaxies'] as FilterTab[]).map((tab) => {
-            const active = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab);
+      <Modal.Container placement="top" size="lg" className="pt-[8vh]">
+        <Modal.Dialog
+          aria-label={hud.searchTrigger}
+          data-testid="command-palette-dialog"
+          className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[620px] w-full p-0 overflow-hidden"
+        >
+          <SunsetStripeBand variant="hairline" />
+          <Modal.Body className="p-0 gap-0">
+            {/* Search Input Row */}
+            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#FFF8E7]/10">
+              <Search className="w-4 h-4 text-[#FA500F] shrink-0" />
+              <Input
+                ref={inputRef}
+                data-testid="command-palette-input"
+                aria-label={hud.searchTrigger}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
                   setCursor(0);
                 }}
-                className={`px-2 py-0.5 rounded-[2px] text-[11px] font-mono transition-colors ${
-                  active
-                    ? 'bg-[#E88B38]/18 text-[#E88B38] border border-[#E88B38]/40'
-                    : 'text-[#8A8D96] hover:text-[#ECEAE4] border border-transparent'
-                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    onClose();
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setCursor((c) => Math.min(Math.max(0, filtered.length - 1), c + 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setCursor((c) => Math.max(0, c - 1));
+                  } else if (e.key === 'Enter' && filtered[safeCursor]) {
+                    e.preventDefault();
+                    executeEntry(filtered[safeCursor]);
+                  }
+                }}
+                placeholder={copy.placeholder}
+                fullWidth
+                className="bg-transparent border-none shadow-none px-1 h-9 text-[14px] text-[#FFF8E7] placeholder:text-[#7C7A74] focus:outline-none focus:ring-0"
+              />
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                onPress={onClose}
+                aria-label={extra.close}
+                className="w-8 h-8 min-w-8 rounded-[8px] p-0 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] shrink-0"
               >
-                {copy.tabs[tab]}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Result List */}
-        <div className="max-h-[54vh] overflow-y-auto divide-y divide-white/[0.05]">
-          {filtered.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-[#8A8D96]">
-              {copy.empty}
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-          ) : (
-            filtered.map((entry, idx) => {
-              const active = idx === safeCursor;
-              return (
-                <button
-                  key={entry.id}
-                  type="button"
-                  data-testid={`palette-item-${entry.id}`}
-                  onMouseEnter={() => setCursor(idx)}
-                  onClick={() => executeEntry(entry)}
-                  className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-3 transition-colors ${
-                    active ? 'bg-[#141820]' : 'hover:bg-[#0f1218]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="shrink-0 text-[#E88B38]">
-                      {entry.kind === 'tour' ? (
-                        <Compass className="w-3.5 h-3.5" />
-                      ) : entry.kind === 'eclipse' ? (
-                        <Eclipse className="w-3.5 h-3.5" />
-                      ) : entry.kind === 'spectral' ? (
-                        <Radio className="w-3.5 h-3.5" />
-                      ) : entry.kind === 'photon' ? (
-                        <Zap className="w-3.5 h-3.5" />
-                      ) : entry.objectId === 'BLACK_HOLE_CORE' ? (
-                        <CircleDot className="w-3.5 h-3.5" />
-                      ) : entry.group === 'galaxies' ? (
-                        <Sparkles className="w-3.5 h-3.5 text-[#8A8D96]" />
-                      ) : entry.title.toLowerCase().includes('sun') ? (
-                        <Sun className="w-3.5 h-3.5 text-[#E88B38]" />
-                      ) : entry.group === 'catalog' ? (
-                        <Globe2 className="w-3.5 h-3.5 text-[#8A8D96]" />
-                      ) : (
-                        <Orbit className="w-3.5 h-3.5 text-[#8A8D96]" />
-                      )}
-                    </span>
-                    <div className="min-w-0">
-                      <p
-                        className={`text-[13px] truncate ${
-                          active ? 'text-[#ECEAE4] font-medium' : 'text-[#D6D4CE]'
-                        }`}
+
+            {/* Category Filter Tabs (HeroUI v3 Tabs — 8px editorial tabs) */}
+            <div className="px-4 py-2 border-b border-[#FFF8E7]/08 bg-[#101012]">
+              <Tabs
+                selectedKey={activeTab}
+                onSelectionChange={(key) => {
+                  setActiveTab(String(key) as FilterTab);
+                  setCursor(0);
+                }}
+              >
+                <Tabs.ListContainer>
+                  <Tabs.List
+                    aria-label={hud.searchTrigger}
+                    className="flex items-center gap-1 p-0 bg-transparent"
+                  >
+                    {(['all', 'events', 'catalog', 'galaxies'] as FilterTab[]).map((tab) => (
+                      <Tabs.Tab
+                        key={tab}
+                        id={tab}
+                        className="h-7 px-3 text-[12px] font-medium rounded-[8px] text-[#A19F99] data-[selected=true]:text-white data-[selected=true]:font-semibold"
                       >
-                        {entry.title}
-                      </p>
-                      <p className="text-[11px] text-[#8A8D96] truncate">
-                        {entry.subtitle}
-                      </p>
-                    </div>
-                  </div>
+                        {copy.tabs[tab]}
+                        <Tabs.Indicator className="bg-[#FA500F] rounded-[8px] shadow-none" />
+                      </Tabs.Tab>
+                    ))}
+                  </Tabs.List>
+                </Tabs.ListContainer>
+              </Tabs>
+            </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-[10px] tabular-nums text-[#8A8D96]">
-                      {entry.meta}
-                    </span>
-                    {active && <CornerDownLeft className="w-3 h-3 text-[#E88B38]" />}
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
+            {/* Result List */}
+            <div className="max-h-[54vh] overflow-y-auto divide-y divide-[#FFF8E7]/[0.06]">
+              {filtered.length === 0 ? (
+                <div className="px-4 py-10 text-center text-[13px] text-[#A19F99]">
+                  {copy.empty}
+                </div>
+              ) : (
+                filtered.map((entry, idx) => {
+                  const active = idx === safeCursor;
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      data-testid={`palette-item-${entry.id}`}
+                      onMouseEnter={() => setCursor(idx)}
+                      onClick={() => executeEntry(entry)}
+                      className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-colors ${
+                        active ? 'bg-[#FFF8E7]/[0.08]' : 'hover:bg-[#FFF8E7]/[0.04]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="shrink-0 text-[#FA500F]">
+                          {entry.kind === 'tour' ? (
+                            <Compass className="w-4 h-4" />
+                          ) : entry.kind === 'eclipse' ? (
+                            <Eclipse className="w-4 h-4 text-[#FFAF00]" />
+                          ) : entry.kind === 'spectral' ? (
+                            <Radio className="w-4 h-4" />
+                          ) : entry.kind === 'photon' ? (
+                            <Zap className="w-4 h-4 text-[#FFD800]" />
+                          ) : entry.objectId === 'BLACK_HOLE_CORE' ? (
+                            <CircleDot className="w-4 h-4" />
+                          ) : entry.group === 'galaxies' ? (
+                            <Sparkles className="w-4 h-4 text-[#A19F99]" />
+                          ) : entry.title.toLowerCase().includes('sun') ? (
+                            <Sun className="w-4 h-4 text-[#FFAF00]" />
+                          ) : entry.group === 'catalog' ? (
+                            <Globe2 className="w-4 h-4 text-[#A19F99]" />
+                          ) : (
+                            <Orbit className="w-4 h-4 text-[#A19F99]" />
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          <p
+                            className={`text-[14px] truncate ${
+                              active ? 'text-[#FFF8E7] font-medium' : 'text-[#E6E3DB]'
+                            }`}
+                          >
+                            {entry.title}
+                          </p>
+                          <p className="text-[12px] text-[#A19F99] truncate">
+                            {entry.subtitle}
+                          </p>
+                        </div>
+                      </div>
 
-        {/* Footer Hints */}
-        <div className="px-3.5 py-1.5 border-t border-white/[0.07] bg-[#07090d] flex items-center justify-between text-[10px] font-mono text-[#6B707B]">
-          <span>{copy.hints}</span>
-          <span className="tabular-nums">{filtered.length}</span>
-        </div>
-      </div>
-    </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono text-[11px] tabular-nums text-[#A19F99]">
+                          {entry.meta}
+                        </span>
+                        {active && <CornerDownLeft className="w-3.5 h-3.5 text-[#FA500F]" />}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer Hints */}
+            <div className="px-4 py-2 border-t border-[#FFF8E7]/08 bg-[#101012] flex items-center justify-between text-[11px] font-mono text-[#8F8D87]">
+              <span>{copy.hints}</span>
+              <Chip
+                size="sm"
+                variant="secondary"
+                className="h-5 rounded-full bg-[#FFF8E7]/[0.08] px-2 text-[10px] font-mono tabular-nums text-[#D6D3CB]"
+              >
+                {filtered.length}
+              </Chip>
+            </div>
+          </Modal.Body>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

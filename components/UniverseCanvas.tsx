@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { Button } from '@heroui/react';
 import {
   AU_IN_METERS,
   EARTH_MEAN_RADIUS_M,
@@ -4289,6 +4290,7 @@ export default function UniverseCanvas({
           progress={bootState.progress}
           lang={lang}
           isFadingOut={bootReady}
+          assetBasePath={assetBasePath}
         />
       )}
 
@@ -4296,15 +4298,19 @@ export default function UniverseCanvas({
       {bootReady && !tilesReady && !cinemaMode && (
         <div
           data-testid="tile-loading-banner"
-          className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.10] px-3 py-1.5 flex items-center gap-2.5"
+          className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 px-3.5 py-2 flex items-center gap-2.5 shadow-lg"
         >
-          <span className="text-[11px] font-mono text-[#C8C6C0]">
+          <span className="text-[11px] font-mono text-[#FFF8E7]/85">
             {hudCopy.loadingTiles}
           </span>
-          <div className="w-24 h-1 rounded-[1px] bg-white/[0.08] overflow-hidden">
+          <div className="w-24 h-1.5 rounded-[4px] bg-white/[0.08] overflow-hidden">
             <div
-              className="h-full bg-[#E88B38] transition-all duration-200"
-              style={{ width: `${Math.max(12, Math.round(tileLoadProgress * 100))}%` }}
+              className="h-full transition-all duration-200"
+              style={{
+                width: `${Math.max(12, Math.round(tileLoadProgress * 100))}%`,
+                backgroundImage:
+                  'linear-gradient(90deg, #E10500 0%, #FA500F 45%, #FFAF00 100%)',
+              }}
             />
           </div>
         </div>
@@ -4316,7 +4322,7 @@ export default function UniverseCanvas({
           role="alert"
           className="absolute inset-0 z-40 flex items-center justify-center bg-[#030406]/90"
         >
-          <div className="rounded-[4px] bg-[#0a0c10] border border-white/[0.12] px-5 py-3 text-sm font-mono text-[#ECEAE4]">
+          <div className="rounded-[12px] bg-[#141416] border border-[#FFF8E7]/14 px-5 py-3.5 text-sm font-mono text-[#FFF8E7]">
             {hudCopy.webglRestoring}
           </div>
         </div>
@@ -4332,10 +4338,10 @@ export default function UniverseCanvas({
           }}
           className="pointer-events-none absolute top-0 left-0 z-10 w-[72px] h-[72px]"
         >
-          <span className="absolute top-0 left-0 w-3 h-3 border-t border-l border-[#E88B38]/80" />
-          <span className="absolute top-0 right-0 w-3 h-3 border-t border-r border-[#E88B38]/80" />
-          <span className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-[#E88B38]/80" />
-          <span className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-[#E88B38]/80" />
+          <span className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#FA500F]/90" />
+          <span className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#FA500F]/90" />
+          <span className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#FA500F]/90" />
+          <span className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#FA500F]/90" />
         </div>
       )}
 
@@ -4353,10 +4359,10 @@ export default function UniverseCanvas({
               style={{
                 transform: `translate3d(${lbl.x}px, ${lbl.y}px, 0) translate(-50%, -120%)`,
               }}
-              className="pointer-events-auto absolute top-0 left-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#0a0c10]/85 hover:bg-[#141822] border border-white/[0.11] text-[10px] font-medium text-[#ECEAE4] whitespace-nowrap transition-colors"
+              className="pointer-events-auto absolute top-0 left-0 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[8px] bg-[#141416]/90 hover:bg-[#1E1E22] border border-[#FFF8E7]/14 hover:border-[#FA500F]/60 text-[10px] font-medium text-[#FFF8E7] whitespace-nowrap transition-colors"
             >
               <span
-                className="w-1.5 h-1.5 rounded-[1px] shrink-0"
+                className="w-1.5 h-1.5 rounded-full shrink-0"
                 style={{ backgroundColor: lbl.accent }}
               />
               <span>{lbl.text}</span>
@@ -4437,14 +4443,15 @@ export default function UniverseCanvas({
 
       {/* Subtle Unobtrusive Restore Trigger in Cinema / Telescope Mode */}
       {cinemaMode && (
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="outline"
           data-testid="restore-hud-btn"
-          onClick={toggleCinemaModeState}
-          className="pointer-events-auto absolute bottom-3 right-3 z-30 rounded-[2px] bg-[#0a0c10]/85 hover:bg-[#141820] border border-white/[0.12] px-2.5 py-1 text-[10px] font-mono text-[#ECEAE4] transition-colors"
+          onPress={toggleCinemaModeState}
+          className="pointer-events-auto absolute bottom-3 right-3 z-30 h-8 min-w-0 rounded-[8px] bg-[#141416]/95 hover:bg-[#1E1E22] border border-[#FFF8E7]/16 hover:border-[#FA500F] px-3 text-[11px] font-mono text-[#FFF8E7]"
         >
           {hudCopy.showHud}
-        </button>
+        </Button>
       )}
     </div>
   );

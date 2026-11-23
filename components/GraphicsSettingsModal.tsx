@@ -1,6 +1,14 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
+import {
+  Button,
+  Card,
+  Chip,
+  Modal,
+  ProgressBar,
+  Switch,
+} from '@heroui/react';
 import {
   Check,
   Cpu,
@@ -8,8 +16,8 @@ import {
   Monitor,
   SlidersHorizontal,
   Sparkles,
-  X,
 } from 'lucide-react';
+import SunsetStripeBand from '@/components/SunsetStripeBand';
 import {
   ASTEROID_COUNT_OPTIONS,
   FPS_CAP_OPTIONS,
@@ -25,6 +33,7 @@ import {
   TESSELLATION_OPTIONS,
 } from '@/lib/graphics-settings';
 import { LanguageCode } from '@/lib/i18n';
+import { OBSERVATORY_EXTRA_COPY } from '@/lib/localized-telemetry';
 
 interface GraphicsSettingsModalProps {
   isOpen: boolean;
@@ -320,20 +329,8 @@ export default function GraphicsSettingsModal({
   recommendation,
   lang,
 }: GraphicsSettingsModalProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const copy = LABELS[lang];
+  const extra = OBSERVATORY_EXTRA_COPY[lang];
   const baseW =
     typeof window !== 'undefined' ? window.innerWidth : hardwareProfile.screenWidth;
   const baseH =
@@ -361,463 +358,474 @@ export default function GraphicsSettingsModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={copy.title}
-      data-testid="graphics-settings-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Modal.Backdrop
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
+      isDismissable
+      className="bg-black/75 z-50"
     >
-      <div className="w-full max-w-[780px] max-h-[90vh] rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-white/[0.08] flex items-start justify-between gap-4 bg-[#07090d]">
-          <div className="flex items-start gap-3">
-            <span className="w-9 h-9 rounded-[2px] bg-[#E88B38]/15 border border-[#E88B38]/35 text-[#E88B38] inline-flex items-center justify-center shrink-0 mt-0.5">
+      <Modal.Container placement="center" size="lg" scroll="inside">
+        <Modal.Dialog
+          aria-label={copy.title}
+          data-testid="graphics-settings-modal"
+          className="bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)] max-w-[780px] w-full p-0 overflow-hidden"
+        >
+          <SunsetStripeBand variant="hairline" />
+          <Modal.CloseTrigger className="top-4 right-4 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] rounded-[8px]" />
+          <Modal.Header className="px-6 py-4 border-b border-[#FFF8E7]/10 bg-[#101012] flex flex-row items-start gap-3">
+            <span className="w-9 h-9 rounded-[8px] bg-[#FA500F]/15 border border-[#FA500F]/40 text-[#FA500F] inline-flex items-center justify-center shrink-0 mt-0.5">
               <SlidersHorizontal className="w-4 h-4" />
             </span>
             <div>
-              <h2 className="text-[16px] font-semibold tracking-[-0.015em] text-[#ECEAE4]">
+              <Modal.Heading className="font-display text-[22px] font-normal leading-[1.2] tracking-[-0.015em] text-[#FFF8E7]">
                 {copy.title}
-              </h2>
-              <p className="text-xs text-[#8A8D96] mt-0.5">{copy.subtitle}</p>
+              </Modal.Heading>
+              <p className="text-[12px] font-normal text-[#A19F99] mt-0.5">{copy.subtitle}</p>
             </div>
-          </div>
+          </Modal.Header>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={copy.closeBtn}
-            className="p-1.5 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.06] transition-colors shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+          <Modal.Body className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            {/* 1. Hardware Auto-Detection & Recommendation Banner */}
+            <Card
+              data-testid="hardware-recommendation-card"
+              className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0"
+            >
+              <Card.Content className="p-4 space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-[#FA500F] shrink-0" />
+                    <h3 className="text-[13px] font-semibold text-[#FFF8E7]">
+                      {copy.hardwareHeading}
+                    </h3>
+                  </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* 1. Hardware Auto-Detection & Recommendation Banner */}
-          <section
-            data-testid="hardware-recommendation-card"
-            className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-4 space-y-3.5"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-[#E88B38] shrink-0" />
-                <h3 className="text-xs font-semibold text-[#ECEAE4]">
-                  {copy.hardwareHeading}
+                  <div className="flex items-center gap-2">
+                    <Chip
+                      size="sm"
+                      variant="soft"
+                      color="accent"
+                      className="h-7 rounded-full bg-[#FA500F]/15 border border-[#FA500F]/40 px-2.5 text-[11px] font-mono font-semibold text-[#FFD800] gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-[#FFAF00] shrink-0" />
+                      <span>
+                        {copy.recommendedBadge}: {copy.tierNames[recommendation.recommendedTier]}
+                      </span>
+                    </Chip>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      data-testid="apply-recommended-graphics-btn"
+                      onPress={applyRecommended}
+                      className="h-8 rounded-[8px] px-3.5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[12px] font-medium"
+                    >
+                      {copy.applyRecommended}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Hardware Specs Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
+                  <div className="col-span-2 sm:col-span-3 lg:col-span-2 rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block">{copy.gpuLabel}</span>
+                    <span
+                      data-testid="detected-gpu-name"
+                      className="font-mono text-[11px] text-[#FFF8E7] break-words line-clamp-2"
+                    >
+                      {hardwareProfile.gpuRenderer}
+                    </span>
+                  </div>
+
+                  <div className="rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block">{copy.cpuLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFF8E7] font-semibold">
+                      {hardwareProfile.cpuCores} {extra.threadsUnit}
+                    </span>
+                  </div>
+
+                  <div className="rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block">{copy.ramLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFF8E7] font-semibold">
+                      {hardwareProfile.deviceMemoryGb
+                        ? `${hardwareProfile.deviceMemoryGb} GB`
+                        : extra.autoLabel}
+                    </span>
+                  </div>
+
+                  <div className="rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block">{copy.displayLabel}</span>
+                    <span className="font-mono tabular-nums text-[#D6D3CB]">
+                      {hardwareProfile.screenWidth}×{hardwareProfile.screenHeight} ·{' '}
+                      {hardwareProfile.devicePixelRatio.toFixed(1)}x
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score Bar + Localized Explanation */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#A19F99] inline-flex items-center gap-1.5">
+                      <Gauge className="w-3.5 h-3.5 text-[#FA500F]" />
+                      <span>{copy.scoreLabel}</span>
+                    </span>
+                    <span
+                      data-testid="hardware-score-value"
+                      className="font-mono tabular-nums font-semibold text-[#FFF8E7]"
+                    >
+                      {recommendation.score} / 100
+                    </span>
+                  </div>
+                  <ProgressBar
+                    aria-label={copy.scoreLabel}
+                    value={recommendation.score}
+                    minValue={0}
+                    maxValue={100}
+                    className="w-full"
+                  >
+                    <ProgressBar.Track className="h-1.5 rounded-[4px] bg-[#101012] border border-[#FFF8E7]/08 overflow-hidden">
+                      <ProgressBar.Fill
+                        className="rounded-[4px]"
+                        style={{
+                          background:
+                            'linear-gradient(90deg, #E10500 0%, #FA500F 45%, #FFAF00 80%, #FFD800 100%)',
+                        }}
+                      />
+                    </ProgressBar.Track>
+                  </ProgressBar>
+                  <p className="text-xs text-[#A19F99] leading-relaxed">
+                    {recommendation.summaryByLang[lang]}
+                  </p>
+                </div>
+              </Card.Content>
+            </Card>
+
+            {/* 2. Quick Quality Tier Selector */}
+            <section className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[13px] font-semibold text-[#D6D3CB]">
+                  {copy.presetsHeading}
                 </h3>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] bg-[#E88B38]/12 border border-[#E88B38]/35 text-[11px] font-mono font-semibold text-[#E88B38]">
-                  <Sparkles className="w-3 h-3" />
-                  <span>
-                    {copy.recommendedBadge}:{' '}
-                    {copy.tierNames[recommendation.recommendedTier]}
+                {settings.tier === 'custom' && (
+                  <span className="text-[11px] font-mono text-[#FFAF00]">
+                    {copy.customActive}
                   </span>
-                </span>
-                <button
-                  type="button"
-                  data-testid="apply-recommended-graphics-btn"
-                  onClick={applyRecommended}
-                  className="px-3 py-1 rounded-[2px] bg-[#E88B38] hover:bg-[#f09b4e] text-[#050608] text-xs font-semibold transition-colors"
-                >
-                  {copy.applyRecommended}
-                </button>
-              </div>
-            </div>
-
-            {/* Hardware Specs Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
-              <div className="col-span-2 sm:col-span-3 lg:col-span-2 rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
-                <span className="text-[11px] text-[#6B707B] block">
-                  {copy.gpuLabel}
-                </span>
-                <span
-                  data-testid="detected-gpu-name"
-                  className="font-mono text-[11px] text-[#ECEAE4] break-words line-clamp-2"
-                >
-                  {hardwareProfile.gpuRenderer}
-                </span>
+                )}
               </div>
 
-              <div className="rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
-                <span className="text-[11px] text-[#6B707B] block">
-                  {copy.cpuLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#ECEAE4] font-semibold">
-                  {hardwareProfile.cpuCores} threads
-                </span>
-              </div>
-
-              <div className="rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
-                <span className="text-[11px] text-[#6B707B] block">
-                  {copy.ramLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#ECEAE4] font-semibold">
-                  {hardwareProfile.deviceMemoryGb
-                    ? `${hardwareProfile.deviceMemoryGb} GB`
-                    : 'Auto'}
-                </span>
-              </div>
-
-              <div className="rounded-[2px] bg-[#0a0c10] border border-white/[0.07] px-3 py-2">
-                <span className="text-[11px] text-[#6B707B] block">
-                  {copy.displayLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#C8C6C0]">
-                  {hardwareProfile.screenWidth}×{hardwareProfile.screenHeight} ·{' '}
-                  {hardwareProfile.devicePixelRatio.toFixed(1)}x
-                </span>
-              </div>
-            </div>
-
-            {/* Score Bar + Localized Explanation */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#8A8D96] inline-flex items-center gap-1.5">
-                  <Gauge className="w-3.5 h-3.5 text-[#E88B38]" />
-                  <span>{copy.scoreLabel}</span>
-                </span>
-                <span
-                  data-testid="hardware-score-value"
-                  className="font-mono tabular-nums font-semibold text-[#ECEAE4]"
-                >
-                  {recommendation.score} / 100
-                </span>
-              </div>
-              <div className="h-1.5 w-full rounded-[2px] bg-[#07090d] overflow-hidden border border-white/[0.06]">
-                <div
-                  className="h-full bg-[#E88B38] transition-all duration-300"
-                  style={{ width: `${recommendation.score}%` }}
-                />
-              </div>
-              <p className="text-xs text-[#8A8D96] leading-relaxed">
-                {recommendation.summaryByLang[lang]}
-              </p>
-            </div>
-          </section>
-
-          {/* 2. Quick Quality Tier Selector */}
-          <section className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-[#8A8D96]">
-                {copy.presetsHeading}
-              </h3>
-              {settings.tier === 'custom' && (
-                <span className="text-[11px] font-mono text-[#E88B38]">
-                  {copy.customActive}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {TIER_ORDER.map((tierId) => {
-                const isSelected = settings.tier === tierId;
-                const isRecommended = recommendation.recommendedTier === tierId;
-                const isRtxTier = tierId === 'rtx';
-                return (
-                  <button
-                    key={tierId}
-                    type="button"
-                    data-testid={`preset-tier-${tierId}`}
-                    onClick={() => applyPreset(tierId)}
-                    className={`rounded-[4px] p-2.5 text-left border transition-colors relative ${
-                      isSelected
-                        ? 'bg-[#E88B38]/15 border-[#E88B38] text-[#ECEAE4]'
-                        : isRtxTier
-                          ? 'bg-[#12151c] hover:bg-[#191d26] border-[#E88B38]/30 text-[#ECEAE4]'
-                          : 'bg-[#12151c] hover:bg-[#191d26] border-white/[0.08] text-[#C8C6C0]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-semibold flex items-center gap-1.5">
-                        <span>{copy.tierNames[tierId]}</span>
-                        {isRtxTier && (
-                          <span className="px-1.5 py-0.5 rounded-[2px] bg-[#E88B38]/15 text-[#E88B38] font-mono text-[9px] font-semibold">
-                            4–8GB
-                          </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {TIER_ORDER.map((tierId) => {
+                  const isSelected = settings.tier === tierId;
+                  const isRecommended = recommendation.recommendedTier === tierId;
+                  const isRtxTier = tierId === 'rtx';
+                  return (
+                    <button
+                      key={tierId}
+                      type="button"
+                      data-testid={`preset-tier-${tierId}`}
+                      onClick={() => applyPreset(tierId)}
+                      className={`text-left rounded-[12px] border p-3 transition-colors ${
+                        isSelected
+                          ? 'bg-[#FA500F]/15 border-[#FA500F] text-[#FFF8E7]'
+                          : isRtxTier
+                            ? 'bg-[#1B1B1F] hover:bg-[#232328] border-[#FFAF00]/35 text-[#FFF8E7]'
+                            : 'bg-[#1B1B1F] hover:bg-[#232328] border-[#FFF8E7]/10 text-[#D6D3CB]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[13px] font-semibold flex items-center gap-1.5">
+                          <span>{copy.tierNames[tierId]}</span>
+                          {isRtxTier && (
+                            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#FA500F]/20 text-[#FFD800] font-mono text-[9px] font-semibold">
+                              4–8GB
+                            </span>
+                          )}
+                        </span>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 shrink-0 text-[#FA500F]" />
                         )}
-                      </span>
-                      {isSelected && (
-                        <Check className="w-3.5 h-3.5 shrink-0 text-[#E88B38]" />
+                      </div>
+                      <p className="text-[11px] font-mono text-[#A19F99] mt-1 leading-snug">
+                        {copy.tierDescs[tierId]}
+                      </p>
+                      {isRecommended && (
+                        <span className="inline-block mt-1.5 text-[10px] font-mono font-medium text-[#FFAF00]">
+                          {extra.autoBadge}
+                        </span>
                       )}
-                    </div>
-                    <p className="text-[10px] font-mono text-[#8A8D96] mt-1 leading-snug">
-                      {copy.tierDescs[tierId]}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* 3. Render Resolution Scale */}
+            <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+              <Card.Content className="p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[#FFF8E7]">
+                    <Monitor className="w-4 h-4 text-[#FA500F]" />
+                    <span>{copy.resolutionLabel}</span>
+                  </div>
+                  <span
+                    data-testid="live-render-resolution"
+                    className="font-mono tabular-nums text-xs text-[#FFAF00] font-semibold"
+                  >
+                    {copy.liveRenderSize}: {renderPxW} × {renderPxH} px ({settings.resolutionScale}x)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                  {RESOLUTION_OPTIONS.map((opt) => {
+                    const active = settings.resolutionScale === opt.scale;
+                    return (
+                      <Button
+                        key={opt.scale}
+                        size="sm"
+                        variant={active ? 'primary' : 'outline'}
+                        data-testid={`res-scale-${opt.scale}`}
+                        onPress={() =>
+                          updateField('resolutionScale', opt.scale as ResolutionScaleOption)
+                        }
+                        className={`h-8 min-w-0 rounded-[8px] font-mono text-[11px] ${
+                          active
+                            ? 'bg-[#FA500F] text-white font-semibold'
+                            : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#D6D3CB]'
+                        }`}
+                      >
+                        {opt.badge}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </Card.Content>
+            </Card>
+
+            {/* 4. Granular GPU & Scene Complexity Controls */}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Milky Way Star Count */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#FFF8E7]">{copy.starCountLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                      {(settings.starfieldCount / 1000).toFixed(0)}k
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                    {STAR_COUNT_OPTIONS.map((cnt) => {
+                      const active = settings.starfieldCount === cnt;
+                      return (
+                        <Button
+                          key={cnt}
+                          size="sm"
+                          variant={active ? 'primary' : 'outline'}
+                          onPress={() => updateField('starfieldCount', cnt)}
+                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                            active
+                              ? 'bg-[#FA500F] text-white font-semibold'
+                              : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
+                          }`}
+                        >
+                          {cnt / 1000}k
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </Card.Content>
+              </Card>
+
+              {/* Asteroid & Kuiper Belt Particle Count */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#FFF8E7]">{copy.asteroidCountLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                      {settings.asteroidBeltCount === 0
+                        ? copy.disabled
+                        : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                    {ASTEROID_COUNT_OPTIONS.map((cnt) => {
+                      const active = settings.asteroidBeltCount === cnt;
+                      return (
+                        <Button
+                          key={cnt}
+                          size="sm"
+                          variant={active ? 'primary' : 'outline'}
+                          onPress={() => updateField('asteroidBeltCount', cnt)}
+                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                            active
+                              ? 'bg-[#FA500F] text-white font-semibold'
+                              : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
+                          }`}
+                        >
+                          {cnt === 0 ? '0' : `${cnt / 1000}k`}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </Card.Content>
+              </Card>
+
+              {/* Planet Tessellation */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#FFF8E7]">{copy.tessellationLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                      {settings.planetSegments} {extra.segUnit}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                    {TESSELLATION_OPTIONS.map((seg) => {
+                      const active = settings.planetSegments === seg;
+                      return (
+                        <Button
+                          key={seg}
+                          size="sm"
+                          variant={active ? 'primary' : 'outline'}
+                          onPress={() => updateField('planetSegments', seg)}
+                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                            active
+                              ? 'bg-[#FA500F] text-white font-semibold'
+                              : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
+                          }`}
+                        >
+                          {seg}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </Card.Content>
+              </Card>
+
+              {/* Black Hole Raymarch Steps */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#FFF8E7]">{copy.rayStepsLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                      {settings.blackHoleRaySteps} {extra.stepsUnit}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {RAYMARCH_STEP_OPTIONS.map((steps) => {
+                      const active = settings.blackHoleRaySteps === steps;
+                      return (
+                        <Button
+                          key={steps}
+                          size="sm"
+                          variant={active ? 'primary' : 'outline'}
+                          onPress={() => updateField('blackHoleRaySteps', steps)}
+                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                            active
+                              ? 'bg-[#FA500F] text-white font-semibold'
+                              : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
+                          }`}
+                        >
+                          {steps}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </Card.Content>
+              </Card>
+            </section>
+
+            {/* 5. Toggles & FPS Cap */}
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* FPS Cap */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 space-y-2.5">
+                  <span className="text-xs font-medium text-[#FFF8E7] block">
+                    {copy.fpsCapLabel}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {FPS_CAP_OPTIONS.map((fps) => {
+                      const active = settings.fpsCap === fps;
+                      return (
+                        <Button
+                          key={fps}
+                          size="sm"
+                          variant={active ? 'primary' : 'outline'}
+                          onPress={() => updateField('fpsCap', fps)}
+                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                            active
+                              ? 'bg-[#FA500F] text-white font-semibold'
+                              : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
+                          }`}
+                        >
+                          {fps === 0 ? copy.fpsUncapped : `${fps}`}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </Card.Content>
+              </Card>
+
+              {/* Antialiasing Switch */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-[#FFF8E7]">{copy.antialiasLabel}</p>
+                    <p className="text-[11px] text-[#8F8D87] leading-snug mt-0.5">
+                      {copy.antialiasHint}
                     </p>
-                    {isRecommended && (
-                      <span className="inline-block mt-1.5 text-[10px] font-mono font-medium text-[#E88B38]">
-                        ★ Auto
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* 3. Render Resolution Scale */}
-          <section className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#ECEAE4]">
-                <Monitor className="w-3.5 h-3.5 text-[#E88B38]" />
-                <span>{copy.resolutionLabel}</span>
-              </div>
-              <span
-                data-testid="live-render-resolution"
-                className="font-mono tabular-nums text-xs text-[#E88B38] font-semibold"
-              >
-                {copy.liveRenderSize}: {renderPxW} × {renderPxH} px (
-                {settings.resolutionScale}x)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-              {RESOLUTION_OPTIONS.map((opt) => {
-                const active = settings.resolutionScale === opt.scale;
-                return (
-                  <button
-                    key={opt.scale}
-                    type="button"
-                    data-testid={`res-scale-${opt.scale}`}
-                    onClick={() =>
-                      updateField(
-                        'resolutionScale',
-                        opt.scale as ResolutionScaleOption
-                      )
-                    }
-                    className={`px-2 py-2 rounded-[2px] text-center font-mono text-[11px] border transition-colors ${
-                      active
-                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#C8C6C0]'
-                    }`}
+                  </div>
+                  <Switch
+                    aria-label={copy.antialiasLabel}
+                    isSelected={settings.antialias}
+                    onChange={(v) => updateField('antialias', v)}
                   >
-                    {opt.badge}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+                    <Switch.Control className="bg-[#141416] border border-[#FFF8E7]/16 data-[selected=true]:bg-[#FA500F]">
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
+                </Card.Content>
+              </Card>
 
-          {/* 4. Granular GPU & Scene Complexity Controls */}
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Milky Way Star Count */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#ECEAE4]">
-                  {copy.starCountLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#E88B38]">
-                  {(settings.starfieldCount / 1000).toFixed(0)}k
-                </span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
-                {STAR_COUNT_OPTIONS.map((cnt) => (
-                  <button
-                    key={cnt}
-                    type="button"
-                    onClick={() => updateField('starfieldCount', cnt)}
-                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
-                      settings.starfieldCount === cnt
-                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
-                    }`}
+              {/* Atmosphere & Nebulae Switch */}
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-[#FFF8E7]">{copy.atmosphereLabel}</p>
+                    <p className="text-[11px] text-[#8F8D87] leading-snug mt-0.5">
+                      {copy.atmosphereHint}
+                    </p>
+                  </div>
+                  <Switch
+                    aria-label={copy.atmosphereLabel}
+                    isSelected={settings.showAtmosphereAndNebulae}
+                    onChange={(v) => updateField('showAtmosphereAndNebulae', v)}
                   >
-                    {cnt / 1000}k
-                  </button>
-                ))}
-              </div>
-            </div>
+                    <Switch.Control className="bg-[#141416] border border-[#FFF8E7]/16 data-[selected=true]:bg-[#FA500F]">
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
+                </Card.Content>
+              </Card>
+            </section>
+          </Modal.Body>
 
-            {/* Asteroid & Kuiper Belt Particle Count */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#ECEAE4]">
-                  {copy.asteroidCountLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#E88B38]">
-                  {settings.asteroidBeltCount === 0
-                    ? copy.disabled
-                    : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
-                {ASTEROID_COUNT_OPTIONS.map((cnt) => (
-                  <button
-                    key={cnt}
-                    type="button"
-                    onClick={() => updateField('asteroidBeltCount', cnt)}
-                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
-                      settings.asteroidBeltCount === cnt
-                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
-                    }`}
-                  >
-                    {cnt === 0 ? '0' : `${cnt / 1000}k`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Planet Tessellation */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#ECEAE4]">
-                  {copy.tessellationLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#E88B38]">
-                  {settings.planetSegments} seg
-                </span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
-                {TESSELLATION_OPTIONS.map((seg) => (
-                  <button
-                    key={seg}
-                    type="button"
-                    onClick={() => updateField('planetSegments', seg)}
-                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
-                      settings.planetSegments === seg
-                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
-                    }`}
-                  >
-                    {seg}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Black Hole Raymarch Steps */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-[#ECEAE4]">
-                  {copy.rayStepsLabel}
-                </span>
-                <span className="font-mono tabular-nums text-[#E88B38]">
-                  {settings.blackHoleRaySteps} steps
-                </span>
-              </div>
-              <div className="grid grid-cols-5 gap-1">
-                {RAYMARCH_STEP_OPTIONS.map((steps) => (
-                  <button
-                    key={steps}
-                    type="button"
-                    onClick={() => updateField('blackHoleRaySteps', steps)}
-                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
-                      settings.blackHoleRaySteps === steps
-                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
-                    }`}
-                  >
-                    {steps}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* 5. Toggles & FPS Cap */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* FPS Cap */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 space-y-2">
-              <span className="text-xs font-medium text-[#ECEAE4] block">
-                {copy.fpsCapLabel}
-              </span>
-              <div className="grid grid-cols-3 gap-1">
-                {FPS_CAP_OPTIONS.map((fps) => (
-                  <button
-                    key={fps}
-                    type="button"
-                    onClick={() => updateField('fpsCap', fps)}
-                    className={`py-1.5 rounded-[2px] font-mono text-[11px] border transition-colors ${
-                      settings.fpsCap === fps
-                        ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-                        : 'bg-[#0a0c10] hover:bg-white/[0.06] border-white/[0.08] text-[#8A8D96]'
-                    }`}
-                  >
-                    {fps === 0 ? copy.fpsUncapped : `${fps}`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Antialiasing Toggle */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[#ECEAE4]">
-                  {copy.antialiasLabel}
-                </p>
-                <p className="text-[10px] text-[#6B707B] leading-snug mt-0.5">
-                  {copy.antialiasHint}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-pressed={settings.antialias}
-                onClick={() => updateField('antialias', !settings.antialias)}
-                className={`px-3 py-1.5 rounded-[2px] text-xs font-semibold shrink-0 transition-colors ${
-                  settings.antialias
-                    ? 'bg-[#E88B38] text-[#050608]'
-                    : 'bg-[#0a0c10] border border-white/[0.10] text-[#8A8D96]'
-                }`}
-              >
-                {settings.antialias ? copy.enabled : copy.disabled}
-              </button>
-            </div>
-
-            {/* Atmosphere & Nebulae Toggle */}
-            <div className="rounded-[4px] bg-[#12151c] border border-white/[0.08] p-3.5 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[#ECEAE4]">
-                  {copy.atmosphereLabel}
-                </p>
-                <p className="text-[10px] text-[#6B707B] leading-snug mt-0.5">
-                  {copy.atmosphereHint}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-pressed={settings.showAtmosphereAndNebulae}
-                onClick={() =>
-                  updateField(
-                    'showAtmosphereAndNebulae',
-                    !settings.showAtmosphereAndNebulae
-                  )
-                }
-                className={`px-3 py-1.5 rounded-[2px] text-xs font-semibold shrink-0 transition-colors ${
-                  settings.showAtmosphereAndNebulae
-                    ? 'bg-[#E88B38] text-[#050608]'
-                    : 'bg-[#0a0c10] border border-white/[0.10] text-[#8A8D96]'
-                }`}
-              >
-                {settings.showAtmosphereAndNebulae
-                  ? copy.enabled
-                  : copy.disabled}
-              </button>
-            </div>
-          </section>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-white/[0.08] bg-[#07090d] flex items-center justify-between">
-          <span className="text-[11px] font-mono text-[#6B707B]">
-            WebGL{hardwareProfile.webgl2Supported ? '2' : '1'} · MaxTex{' '}
-            {hardwareProfile.maxTextureSize}px
-          </span>
-          <button
-            type="button"
-            data-testid="close-graphics-settings-btn"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-[2px] bg-[#E88B38] hover:bg-[#f09b4e] text-[#050608] text-xs font-semibold transition-colors"
-          >
-            {copy.closeBtn}
-          </button>
-        </div>
-      </div>
-    </div>
+          <Modal.Footer className="px-6 py-4 border-t border-[#FFF8E7]/10 bg-[#101012] flex items-center justify-between">
+            <span className="text-[11px] font-mono text-[#8F8D87]">
+              WebGL{hardwareProfile.webgl2Supported ? '2' : '1'} · MaxTex{' '}
+              {hardwareProfile.maxTextureSize}px
+            </span>
+            <Button
+              size="sm"
+              variant="primary"
+              data-testid="close-graphics-settings-btn"
+              onPress={onClose}
+              className="h-9 rounded-[8px] px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[13px] font-medium"
+            >
+              {copy.closeBtn}
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

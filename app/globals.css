@@ -1,29 +1,133 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@heroui/styles";
 
 @theme inline {
-  --font-sans: var(--font-sans), "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-display), "PP Editorial Old", "Playfair Display", "Times New Roman", Georgia, serif;
+  --font-sans: var(--font-sans), "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono), "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
 }
 
-:root {
+/* Mistral Editorial Observatory Design System + HeroUI v3 Tokens */
+:root,
+.dark,
+[data-theme="dark"] {
   color-scheme: dark;
+
+  /* Mistral Core Brand & Sunset Spectrum */
+  --mistral-primary: #FA500F;
+  --mistral-primary-deep: #D93D04;
+  --mistral-vermilion: #E10500;
+  --sunshine-900: #FF8205;
+  --sunshine-700: #FFAF00;
+  --sunshine-500: #FFD800;
+  --sunshine-300: #FFE84D;
+  --yellow-saturated: #FFD800;
+
+  /* Mistral Warm Cream Editorial Neutrals */
+  --cream: #FFF8E7;
+  --cream-soft: #FFFDF5;
+  --cream-deeper: #FEF0C7;
+  --beige-deep: #E9DFC6;
+  --canvas: #FFFFFF;
+  --surface-warm: #FAF7F0;
+  --surface-code: #141416;
+  --ink: #111111;
+  --ink-tint: #262626;
+  --slate-editorial: #525252;
+  --steel-editorial: #737373;
+  --hairline: #E5E0D5;
+  --hairline-soft: #EFECE4;
+  --hairline-strong: #D4CFC3;
+
+  /* Sober Editorial Geometry: 12px cards/modals, 8px buttons/inputs */
+  --radius: 0.75rem;
+  --field-radius: 0.5rem;
+  --field-border-width: 1px;
+
+  /* HeroUI v3 Dark Observatory Tokens (over 3D WebGL Space Canvas) */
+  --background: #030406;
+  --foreground: #F5F2EB;
+
+  --surface: #141416;
+  --surface-foreground: #F5F2EB;
+  --surface-secondary: #1B1B1F;
+  --surface-secondary-foreground: #F5F2EB;
+  --surface-tertiary: #232328;
+  --surface-tertiary-foreground: #F5F2EB;
+
+  --overlay: #141416;
+  --overlay-foreground: #F5F2EB;
+
+  --default: #1B1B1F;
+  --default-foreground: #F5F2EB;
+  --muted: #A19F99;
+
+  --accent: #FA500F;
+  --accent-foreground: #FFFFFF;
+  --focus: #FA500F;
+  --link: #FA500F;
+
+  --warning: #FFAF00;
+  --warning-foreground: #111111;
+  --danger: #E10500;
+  --danger-foreground: #FFFFFF;
+  --success: #FA500F;
+  --success-foreground: #FFFFFF;
+
+  --field-background: #1B1B1F;
+  --field-foreground: #F5F2EB;
+  --field-placeholder: #7C7A74;
+  --field-border: rgba(255, 248, 231, 0.14);
+
+  --segment: #1B1B1F;
+  --segment-foreground: #F5F2EB;
+
+  --border: rgba(255, 248, 231, 0.12);
+  --separator: rgba(255, 248, 231, 0.09);
+  --backdrop: rgba(17, 17, 17, 0.74);
+}
+
+/* Light Cream Editorial Scope (Catalog, Contact/World Lab Form Panels, 404) */
+.mistral-editorial-light {
+  color-scheme: light;
+  --background: #FFFFFF;
+  --foreground: #111111;
+  --surface: #FFFFFF;
+  --surface-foreground: #111111;
+  --surface-secondary: #FFF8E7;
+  --surface-secondary-foreground: #111111;
+  --overlay: #FFFFFF;
+  --overlay-foreground: #111111;
+  --default: #FFF8E7;
+  --default-foreground: #111111;
+  --muted: #525252;
+  --field-background: #FFFFFF;
+  --field-foreground: #111111;
+  --field-placeholder: #737373;
+  --field-border: #D4CFC3;
+  --border: #EFECE4;
+  --separator: #E9DFC6;
 }
 
 body {
-  font-family: var(--font-sans), "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans), "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   background-color: #030406;
-  color: #ECEAE4;
+  color: #F5F2EB;
+}
+
+.font-display {
+  font-family: var(--font-display), "PP Editorial Old", "Playfair Display", "Times New Roman", Georgia, serif;
 }
 
 .font-mono {
-  font-family: var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono), "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
 }
 
-/* Precision Observatory subtle dark scrollbar */
+/* Subtle editorial scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -31,10 +135,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(236, 234, 228, 0.14);
-  border-radius: 2px;
+  background: rgba(161, 159, 153, 0.25);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(232, 139, 56, 0.45);
+  background: rgba(250, 80, 15, 0.55);
 }

@@ -1,4 +1,8 @@
-# @milky-way/observatory-plugin
+<p align="center">
+  <img src="./public/logo.jpg" alt="Milky Way Observatory Logo" width="72" height="72" style="border-radius: 14px;" />
+</p>
+
+<h1 align="center">@milky-way/observatory-plugin</h1>
 
 A self-contained React + Three.js WebGL2 plugin package for **Milky Way Observatory** — a continuous multi-scale 3D universe observatory spanning **Earth → Solar System → Nearby Gaia DR3 Stars → Multi-Wavelength Milky Way & Fermi Bubbles → Sagittarius A\* → Local Group & Galaxy Clusters**.
 
@@ -24,7 +28,10 @@ plugin/
 ├── package.json                      # Package metadata (@milky-way/observatory-plugin)
 ├── tsconfig.json                     # Standalone TypeScript configuration
 ├── README.md                         # Integration documentation
-├── public/                           # Static star catalog tiles & Web Worker
+├── public/                           # Static star catalog tiles, brand assets & Web Worker
+│   ├── logo.jpg                      # Observatory emblem
+│   ├── logo.svg                      # Vector observatory mark
+│   ├── sunset-hero.jpg               # Editorial catalog hero banner
 │   ├── data/
 │   │   ├── stars-manifest.json
 │   │   ├── stars-tier0.bin

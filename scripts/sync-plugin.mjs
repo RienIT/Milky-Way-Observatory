@@ -71,12 +71,18 @@ for (const file of libFiles) {
   fs.writeFileSync(path.join(PLUGIN_LIB_DIR, file), rewritten, 'utf8');
 }
 
-// 3. Sync static star tiles & Web Worker assets
+// 3. Sync static star tiles, Web Worker, and brand logo assets
 ensureCleanDir(PLUGIN_PUBLIC_DIR);
 for (const sub of ['data', 'workers']) {
   const srcSub = path.join(ROOT_DIR, 'public', sub);
   if (fs.existsSync(srcSub)) {
     copyDirectoryRecursive(srcSub, path.join(PLUGIN_PUBLIC_DIR, sub));
+  }
+}
+for (const assetFile of ['logo.jpg', 'logo.svg', 'sunset-hero.jpg']) {
+  const srcAsset = path.join(ROOT_DIR, 'public', assetFile);
+  if (fs.existsSync(srcAsset)) {
+    fs.copyFileSync(srcAsset, path.join(PLUGIN_PUBLIC_DIR, assetFile));
   }
 }
 

@@ -1,21 +1,34 @@
-# Milky Way Observatory
+<p align="center">
+  <img src="./public/logo.jpg" alt="Milky Way Observatory Logo" width="88" height="88" style="border-radius: 16px;" />
+</p>
 
-**A real-time, continuous multi-scale WebGL2 universe observatory spanning 23+ orders of magnitude — from 600 m above Earth's surface to the Coma Galaxy Cluster — built on peer-reviewed NASA/JPL, ESA Gaia DR3, GRAVITY Collaboration, and McConnachie/NED datasets.**
+<h1 align="center">Milky Way Observatory</h1>
 
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](./.github/workflows/ci.yml)
-[![CodeQL](https://img.shields.io/badge/Security-CodeQL-2ea44f?logo=github&logoColor=white)](./.github/workflows/codeql.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Next.js 15](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org)
-[![Three.js WebGL2](https://img.shields.io/badge/Three.js-WebGL2%20GLSL-049EF4?logo=threedotjs)](https://threejs.org)
+<p align="center">
+  <strong>A real-time, continuous multi-scale WebGL2 universe observatory spanning 23+ orders of magnitude — from 600 m above Earth's surface to the Coma Galaxy Cluster — built on peer-reviewed NASA/JPL, ESA Gaia DR3, GRAVITY Collaboration, and McConnachie/NED datasets.</strong>
+</p>
+
+<p align="center">
+  <a href="./.github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white" alt="CI" /></a>
+  <a href="./.github/workflows/codeql.yml"><img src="https://img.shields.io/badge/Security-CodeQL-2ea44f?logo=github&logoColor=white" alt="CodeQL" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-FA500F.svg" alt="License: MIT" /></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js 15" /></a>
+  <a href="https://threejs.org"><img src="https://img.shields.io/badge/Three.js-WebGL2%20GLSL-FA500F?logo=threedotjs" alt="Three.js WebGL2" /></a>
+  <a href="https://heroui.com"><img src="https://img.shields.io/badge/UI-HeroUI%20v3-111111" alt="HeroUI v3" /></a>
+</p>
 
 ---
 
 ## Preview
 
-<!-- Drop your recorded demo video, GIF, or screenshots here -->
+<p align="center">
+  <img src="./public/og-banner.jpg" alt="Milky Way Observatory — Editorial Sunset Horizon & WebGL2 Observatory" width="100%" />
+</p>
+
+<!-- Drop your recorded demo video or GIF below -->
 <!-- Example: ![Milky Way Observatory Demo](./docs/media/demo.gif) -->
 
-> *Interactive full-bleed WebGL2 observatory viewport featuring precision aerospace telemetry, multi-wavelength Galactic imaging, real-time lunar eclipse umbra projection, Schwarzschild black-hole lensing, and interactive scientific guided expeditions.*
+> *Interactive full-bleed WebGL2 observatory viewport paired with an editorial sunset-and-cream planet atlas, HeroUI v3 instrument controls, multi-wavelength Galactic imaging, real-time lunar eclipse umbra projection, Schwarzschild black-hole lensing, and interactive scientific guided expeditions.*
 
 ---
 
@@ -34,13 +47,14 @@
 - **Real-Time Schwarzschild Gravitational Lensing (Sagittarius A\*)**: 2nd-order Velocity-Verlet null-geodesic raymarching shader ($r_s = 2GM/c^2$ derived from $4.297 \times 10^6 M_\odot$, GRAVITY 2022) with two-pass 3D background lensing capture and exact per-fragment logarithmic `gl_FragDepth`.
 - **Orbital Wakes & Gravitational Star Clustering**: Fading historical orbital trails and toggleable category-based gravitational clustering dynamics across the 48+ catalog objects.
 
-### 3. Precision Observatory Instrument Interface
-- **Full-Bleed Viewport & Minimal Floating HUD**: Unobstructed `100vw × 100vh` 3D viewport framed by a compact top-left instrument strip, top-right ephemeris clock, and bottom telemetry dock using `IBM Plex Sans` + `IBM Plex Mono` (`tabular-nums`).
+### 3. Editorial Observatory Design System & HeroUI v3 Interface
+- **Full-Bleed Studio HUD & Warm-Cream Editorial Atlas**: Unobstructed `100vw × 100vh` 3D viewport framed by `#141416` dark studio HeroUI v3 instrument panels with `#FA500F` primary accents, paired with a warm-cream (`#FFF8E7`) editorial Planet Catalog, Sunset Stripe bands, `Playfair Display` display typography, `Inter` UI prose, and `JetBrains Mono` telemetry (`tabular-nums`).
 - **Keyboard-Driven Command Palette (`/` or `⌘K` / `Ctrl+K`)**: Instant fuzzy jump across all 48+ stars/planets/exoplanets, Local Group galaxies, Sagittarius A\*, Total Solar Eclipses, spectral bands, photon pulse, and Guided Expeditions.
 - **Scientific Astrophysics Charts**: Built-in SVG **Hertzsprung–Russell (H-R) Diagram** (Stefan–Boltzmann locus + 10 benchmark stars), **Planck Blackbody Radiation Spectrum** (visible `380–750 nm` band + Wien $\lambda_{\max}$), and **Interior Cross-Section & Logarithmic Radius Comparator**.
 - **Interactive Guided Expeditions (`Tours`)**: Three choreographed multi-chapter scientific tours (*Powers of Ten*, *The Multi-Wavelength Milky Way*, and *Gravity, Shadows & Event Horizons*) with automated camera/spectrum/epoch transitions and chapter narration in 5 languages.
 - **Telescope Reticle, Cinema Mode (`H`), Deep-Linking & Clean PNG Capture**: Live 3D-projected optical corner-bracket reticle, single-key HUD hide (`H`), shareable `#target=...&band=...&date=...&logd=...` URL coordinates, and one-click HUD-free WebGL2 PNG export.
-- **Hardware Auto-Profiler & 5-Language Localization**: Six graphics presets (`Potato`, `Low`, `Medium`, `High`, `RTX 3050–4050`, `Ultra 4K`) with automatic GPU/CPU/RAM detection; defaults to **English (`en`)** with instant switching to `vi`, `ja`, `zh`, and `ko`.
+- **Hardware Auto-Profiler & 5-Language Localization**: Six graphics presets (`Potato`, `Low`, `Medium`, `High`, `RTX 3050–4050`, `Ultra 4K`) with automatic GPU/CPU/RAM detection; defaults to **English (`en`)** and **`1h/s`** ephemeris speed, with instant switching to `vi`, `ja`, `zh`, and `ko`.
+- **Vercel & Deployment Branding Ready**: Includes vector SVG favicon (`app/icon.svg`), Apple/Vercel dashboard touch icon (`app/apple-icon.jpg`), bespoke emblem (`public/logo.jpg`), and OpenGraph / Twitter social card (`public/og-banner.jpg`) wired directly in Next.js App Router metadata.
 
 ### 4. Drop-In Standalone React Plugin (`/plugin`)
 - Self-contained `@milky-way/observatory-plugin` package with zero Next.js runtime dependencies and an imperative `ref` controller (`flyToTarget`, `flyToPreset`, `setWavelengthBand`, `jumpToEclipse`, `triggerPhotonPulse`, `setCinemaMode`, `startTour`, `stopTour`, `captureSnapshot`, `setGraphicsTier`, `setLanguage`). See [`plugin/README.md`](./plugin/README.md).
@@ -66,7 +80,7 @@
 - **Framework**: Next.js 15 (App Router) · React 19 · TypeScript 5
 - **3D & Shaders**: Three.js WebGL2 · Custom GLSL shaders (Schwarzschild geodesic lensing, 4-band multi-wavelength disk, Fermi Bubbles, Earth eclipse umbra/penumbra, photon wavefront) · Logarithmic depth buffer
 - **Ephemeris & Catalogs**: `astronomy-engine` (VSOP87 / ELP2000) · Off-main-thread Web Worker binary star tiles (`Float32Array`)
-- **Styling & Icons**: Tailwind CSS v4 · `IBM Plex Sans` / `IBM Plex Mono` · Lucide React · Motion
+- **Styling & Icons**: Tailwind CSS v4 · HeroUI v3 (`@heroui/react`) · `Playfair Display` / `Inter` / `JetBrains Mono` · Lucide React · Motion
 - **Testing & CI/CD**: Node built-in `node:test` (`tsx`) · ESLint 9 · GitHub Actions CI · CodeQL · Dependabot
 
 ---

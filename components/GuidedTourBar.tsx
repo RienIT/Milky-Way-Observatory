@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { Button, Card, Chip, ProgressBar, Separator } from '@heroui/react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,6 +10,7 @@ import {
   Play,
   X,
 } from 'lucide-react';
+import SunsetStripeBand from '@/components/SunsetStripeBand';
 import { GuidedTourDefinition } from '@/lib/guided-tours';
 import { LanguageCode } from '@/lib/i18n';
 
@@ -100,7 +102,6 @@ export default function GuidedTourBar({
   const stop = tour.stops[stopIndex] ?? tour.stops[0];
   const total = tour.stops.length;
 
-  // Keyboard navigation while a guided tour is active: Left/Right arrows & Escape
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -129,129 +130,170 @@ export default function GuidedTourBar({
 
   if (!stop || hiddenInCinemaMode) return null;
 
+  const pct = total > 0 ? ((stopIndex + 1) / total) * 100 : 0;
+
   return (
     <aside
       aria-label={tour.title[lang]}
       data-testid="guided-tour-bar"
-      className="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[106px] z-30 w-[calc(100%-24px)] max-w-[580px] rounded-[4px] bg-[#0a0c10]/95 border border-white/[0.12] shadow-2xl px-4 py-3 flex flex-col gap-2"
+      className="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-[118px] z-30 w-[calc(100%-24px)] max-w-[600px]"
     >
-      {/* Top Header Row: Tour Name + Chapter Counter + Controls */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Compass className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
-          <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[#E88B38] shrink-0">
-            {copy.expeditionLabel}
-          </span>
-          <span className="text-white/20 text-xs">/</span>
-          <span className="text-[11px] font-medium text-[#C8C6C0] truncate">
-            {tour.title[lang]}
-          </span>
-        </div>
+      <Card className="rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/14 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] p-0 overflow-hidden">
+        <SunsetStripeBand variant="hairline" />
+        <Card.Content className="px-5 py-3.5 flex flex-col gap-2.5">
+          {/* Top Header Row */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Compass className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[#FFAF00] shrink-0">
+                {copy.expeditionLabel}
+              </span>
+              <span className="text-[#FFF8E7]/25 text-xs">/</span>
+              <span className="text-[12px] font-medium text-[#D6D3CB] truncate">
+                {tour.title[lang]}
+              </span>
+            </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <span
-            data-testid="tour-step-counter"
-            className="font-mono text-[10px] tabular-nums text-[#8A8D96] mr-1"
-          >
-            {String(stopIndex + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-          </span>
-          <button
-            type="button"
-            data-testid="tour-prev-btn"
-            onClick={onPrev}
-            disabled={stopIndex === 0}
-            aria-label={copy.prevAria}
-            className="p-1 rounded-[2px] text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.07] disabled:opacity-30 disabled:pointer-events-none transition-colors"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            data-testid="tour-autoplay-btn"
-            aria-pressed={isAutoPlaying}
-            onClick={onToggleAutoPlay}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] text-[10px] font-mono transition-colors ${
-              isAutoPlaying
-                ? 'bg-[#E88B38] text-[#050608] font-semibold'
-                : 'bg-white/[0.06] text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.10]'
-            }`}
-          >
-            {isAutoPlaying ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
-            <span>{isAutoPlaying ? copy.pauseAuto : copy.playAuto}</span>
-          </button>
-          <button
-            type="button"
-            data-testid="tour-next-btn"
-            onClick={onNext}
-            aria-label={copy.nextAria}
-            className="p-1 rounded-[2px] text-[#C8C6C0] hover:text-[#ECEAE4] hover:bg-white/[0.07] transition-colors"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            data-testid="tour-close-btn"
-            onClick={onClose}
-            aria-label={copy.exitTour}
-            className="p-1 ml-0.5 rounded-[2px] text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.07] transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Chapter Title + Physical Telemetry Metric */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3
-          data-testid="tour-stop-title"
-          className="text-[13px] font-semibold text-[#ECEAE4] tracking-[-0.01em]"
-        >
-          {stop.title[lang]}
-        </h3>
-        <span className="text-[10px] font-mono tabular-nums text-[#E88B38]">
-          {stop.metricLabel}
-        </span>
-      </div>
-
-      {/* Concise Scientific Narrative */}
-      <p
-        data-testid="tour-stop-narrative"
-        className="text-[12px] leading-relaxed text-[#C8C6C0]"
-      >
-        {stop.narrative[lang]}
-      </p>
-
-      {/* Segmented Chapter Ticks + Keyboard Hint */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-1 flex-1">
-          {tour.stops.map((item, idx) => {
-            const active = idx === stopIndex;
-            const passed = idx < stopIndex;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-label={item.title[lang]}
-                onClick={() => onJumpToStop(idx)}
-                className="flex-1 py-1 group focus:outline-none"
+            <div className="flex items-center gap-1 shrink-0">
+              <span
+                data-testid="tour-step-counter"
+                className="font-mono text-[11px] tabular-nums text-[#A19F99] mr-1"
               >
-                <div
-                  className={`h-[3px] rounded-[1px] transition-colors ${
-                    active
-                      ? 'bg-[#E88B38]'
-                      : passed
-                        ? 'bg-[#E88B38]/45 group-hover:bg-[#E88B38]/75'
-                        : 'bg-white/[0.12] group-hover:bg-white/[0.28]'
-                  }`}
+                {String(stopIndex + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+              </span>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                data-testid="tour-prev-btn"
+                onPress={onPrev}
+                isDisabled={stopIndex === 0}
+                aria-label={copy.prevAria}
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant={isAutoPlaying ? 'primary' : 'secondary'}
+                data-testid="tour-autoplay-btn"
+                aria-pressed={isAutoPlaying}
+                onPress={onToggleAutoPlay}
+                className={`h-7 min-w-0 rounded-[8px] px-2.5 text-[11px] font-mono gap-1 ${
+                  isAutoPlaying
+                    ? 'bg-[#FA500F] hover:bg-[#D93D04] text-white font-semibold'
+                    : 'bg-[#FFF8E7]/[0.08] text-[#F5F2EB] hover:bg-[#FFF8E7]/[0.14]'
+                }`}
+              >
+                {isAutoPlaying ? (
+                  <Pause className="w-2.5 h-2.5 shrink-0" />
+                ) : (
+                  <Play className="w-2.5 h-2.5 shrink-0" />
+                )}
+                <span>{isAutoPlaying ? copy.pauseAuto : copy.playAuto}</span>
+              </Button>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                data-testid="tour-next-btn"
+                onPress={onNext}
+                aria-label={copy.nextAria}
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#D6D3CB] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                data-testid="tour-close-btn"
+                onPress={onClose}
+                aria-label={copy.exitTour}
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          <Separator className="bg-[#FFF8E7]/10" />
+
+          {/* Chapter Title (Editorial Serif) + Physical Telemetry Metric Badge */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3
+              data-testid="tour-stop-title"
+              className="font-display text-[19px] font-normal leading-[1.2] text-[#FFF8E7] tracking-[-0.01em]"
+            >
+              {stop.title[lang]}
+            </h3>
+            <Chip
+              size="sm"
+              variant="soft"
+              color="accent"
+              className="h-6 rounded-full bg-[#FFF8E7]/[0.09] border border-[#FFAF00]/35 px-2.5 text-[11px] font-mono tabular-nums text-[#FFD800]"
+            >
+              {stop.metricLabel}
+            </Chip>
+          </div>
+
+          {/* Concise Scientific Narrative */}
+          <p
+            data-testid="tour-stop-narrative"
+            className="text-[13px] leading-[1.55] text-[#D6D3CB]"
+          >
+            {stop.narrative[lang]}
+          </p>
+
+          {/* HeroUI ProgressBar + Interactive Chapter Ticks + Keyboard Hint */}
+          <div className="space-y-1.5 pt-1">
+            <ProgressBar
+              aria-label={tour.title[lang]}
+              value={pct}
+              minValue={0}
+              maxValue={100}
+              className="w-full"
+            >
+              <ProgressBar.Track className="h-[3px] rounded-[2px] bg-[#FFF8E7]/10 overflow-hidden">
+                <ProgressBar.Fill
+                  className="rounded-[2px]"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, #E10500 0%, #FA500F 45%, #FFAF00 80%, #FFD800 100%)',
+                  }}
                 />
-              </button>
-            );
-          })}
-        </div>
-        <span className="hidden sm:inline text-[10px] font-mono text-[#6B707B] whitespace-nowrap">
-          {copy.keysHint}
-        </span>
-      </div>
+              </ProgressBar.Track>
+            </ProgressBar>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1 flex-1">
+                {tour.stops.map((item, idx) => {
+                  const active = idx === stopIndex;
+                  const passed = idx < stopIndex;
+                  return (
+                    <Button
+                      key={item.id}
+                      size="sm"
+                      variant="ghost"
+                      aria-label={item.title[lang]}
+                      onPress={() => onJumpToStop(idx)}
+                      className={`flex-1 h-2 min-w-0 rounded-[2px] p-0 ${
+                        active
+                          ? 'bg-[#FA500F]'
+                          : passed
+                            ? 'bg-[#FFAF00]/60 hover:bg-[#FFAF00]'
+                            : 'bg-[#FFF8E7]/12 hover:bg-[#FFF8E7]/25'
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+              <span className="hidden sm:inline text-[10px] font-mono text-[#8F8D87] whitespace-nowrap">
+                {copy.keysHint}
+              </span>
+            </div>
+          </div>
+        </Card.Content>
+      </Card>
     </aside>
   );
 }

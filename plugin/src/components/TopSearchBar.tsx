@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
+import { Button, Dropdown } from '@heroui/react';
 import {
   ChevronDown,
   CircleDot,
@@ -10,8 +11,8 @@ import {
   Plus,
   Scaling,
   SlidersHorizontal,
-  Telescope,
 } from 'lucide-react';
+import ObservatoryLogo from './ObservatoryLogo';
 import {
   LanguageCode,
   SUPPORTED_LANGUAGES,
@@ -36,6 +37,7 @@ interface TopNavBarProps {
   onOpenGraphicsSettings: () => void;
   lang: LanguageCode;
   onChangeLang: (lang: LanguageCode) => void;
+  assetBasePath?: string;
 }
 
 const SCALE_LABELS: Record<
@@ -82,8 +84,8 @@ export default function TopSearchBar({
   onOpenGraphicsSettings,
   lang,
   onChangeLang,
+  assetBasePath = '',
 }: TopNavBarProps) {
-  const [langMenuOpen, setLangMenuOpen] = useState(false);
   const t = UI_STRINGS[lang];
   const hud = UNIVERSE_HUD_COPY[lang];
   const extraCopy = SCALE_LABELS[lang];
@@ -96,159 +98,159 @@ export default function TopSearchBar({
   const isTrue1To1 = scaleMode === 'true-1to1';
 
   return (
-    <header className="relative z-40 h-12 shrink-0 bg-[#0a0c10] border-b border-white/[0.09] px-3 lg:px-4 flex items-center justify-between gap-2.5">
-      {/* Zone 1: Clean Brand Wordmark */}
-      <button
-        type="button"
-        onClick={onSelectExplorer}
-        className="inline-flex items-center gap-2 text-[13px] font-semibold tracking-[-0.01em] text-[#ECEAE4] hover:text-white transition-colors whitespace-nowrap shrink-0"
+    <header className="mistral-editorial-light relative z-40 h-16 shrink-0 bg-[#FFFFFF] border-b border-[#EFECE4] px-4 lg:px-8 flex items-center justify-between gap-6 text-[#111111]">
+      {/* Zone 1: Brand Mark + Editorial Wordmark */}
+      <Button
+        size="sm"
+        variant="ghost"
+        onPress={onSelectExplorer}
+        className="h-10 rounded-[8px] px-2 gap-2.5 text-[15px] font-semibold tracking-[-0.015em] text-[#111111] hover:bg-[#FAF7F0] whitespace-nowrap shrink-0"
       >
-        <span className="w-6 h-6 rounded-[2px] bg-[#E88B38] text-[#050608] inline-flex items-center justify-center shrink-0">
-          <Telescope className="w-3.5 h-3.5" />
+        <ObservatoryLogo size={28} assetBasePath={assetBasePath} />
+        <span className="font-display text-[18px] font-medium tracking-[-0.01em] text-[#111111]">
+          {t.brandTitle}
         </span>
-        <span>{t.brandTitle}</span>
-      </button>
+      </Button>
 
-      {/* Zone 2: Navigation Tabs */}
+      {/* Zone 2: Clean Editorial Segmented Navigation Links */}
       <nav
         aria-label="Primary navigation"
-        className="flex items-center gap-1 overflow-x-auto no-scrollbar"
+        className="hidden md:flex items-center gap-1 overflow-x-auto no-scrollbar"
       >
-        <button
-          type="button"
-          onClick={onSelectExplorer}
+        <Button
+          size="sm"
+          variant="ghost"
+          onPress={onSelectExplorer}
           data-testid="nav-explorer-btn"
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+          className={`h-10 rounded-[8px] px-3.5 gap-1.5 text-[14px] font-medium whitespace-nowrap shrink-0 ${
             isExplorerActive
-              ? 'bg-white/[0.09] text-[#ECEAE4]'
-              : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05]'
+              ? 'text-[#FA500F] bg-[#FFF8E7]'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-[#FAF7F0]'
           }`}
         >
-          <Compass
-            className={`w-3.5 h-3.5 shrink-0 ${
-              isExplorerActive ? 'text-[#E88B38]' : 'text-[#6B707B]'
-            }`}
-          />
+          <Compass className="w-3.5 h-3.5 shrink-0" />
           <span>{t.navExplorer}</span>
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          onClick={onSelectBlackHoleLab}
+        <Button
+          size="sm"
+          variant="ghost"
+          onPress={onSelectBlackHoleLab}
           data-testid="inspect-blackhole-btn"
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+          className={`h-10 rounded-[8px] px-3.5 gap-1.5 text-[14px] font-medium whitespace-nowrap shrink-0 ${
             isBlackHoleActive
-              ? 'bg-[#E88B38]/18 text-[#E88B38] border border-[#E88B38]/40'
-              : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05] border border-transparent'
+              ? 'text-[#FA500F] bg-[#FFF8E7]'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-[#FAF7F0]'
           }`}
         >
-          <CircleDot
-            className={`w-3.5 h-3.5 shrink-0 ${
-              isBlackHoleActive ? 'text-[#E88B38]' : 'text-[#8A8D96]'
-            }`}
-          />
+          <CircleDot className="w-3.5 h-3.5 shrink-0" />
           <span>{t.navBlackHole}</span>
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          onClick={onSelectCatalog}
+        <Button
+          size="sm"
+          variant="ghost"
+          onPress={onSelectCatalog}
           data-testid="nav-catalog-btn"
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+          className={`h-10 rounded-[8px] px-3.5 gap-1.5 text-[14px] font-medium whitespace-nowrap shrink-0 ${
             isCatalogActive
-              ? 'bg-white/[0.09] text-[#ECEAE4]'
-              : 'text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05]'
+              ? 'text-[#FA500F] bg-[#FFF8E7] font-semibold'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-[#FAF7F0]'
           }`}
         >
-          <LayoutGrid
-            className={`w-3.5 h-3.5 shrink-0 ${
-              isCatalogActive ? 'text-[#E88B38]' : 'text-[#6B707B]'
-            }`}
-          />
+          <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
           <span>{t.navCatalog}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenSimulator}
-          data-testid="nav-simulator-btn"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[12px] font-medium text-[#8A8D96] hover:text-[#ECEAE4] hover:bg-white/[0.05] transition-colors whitespace-nowrap shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5 text-[#E88B38] shrink-0" />
-          <span>{hud.worldLabLabel}</span>
-        </button>
+        </Button>
       </nav>
 
-      {/* Zone 3: Scale + Graphics + Language */}
-      <div className="relative flex items-center gap-1.5 shrink-0">
-        <button
-          type="button"
+      {/* Zone 3: Scale + Graphics + Language + Editorial Dark Primary CTA */}
+      <div className="relative flex items-center gap-2 shrink-0">
+        <Button
+          size="sm"
+          variant="outline"
           data-testid="scale-mode-toggle"
           aria-pressed={isTrue1To1}
-          onClick={onToggleScaleMode}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] text-[11px] font-mono border transition-colors whitespace-nowrap shrink-0 ${
+          onPress={onToggleScaleMode}
+          className={`h-9 rounded-[8px] px-3 gap-1.5 text-[12px] font-mono whitespace-nowrap shrink-0 ${
             isTrue1To1
-              ? 'bg-[#E88B38] border-[#E88B38] text-[#050608] font-semibold'
-              : 'bg-white/[0.05] hover:bg-white/[0.09] border-white/[0.09] text-[#ECEAE4]'
+              ? 'bg-[#FFF8E7] border-[#E9DFC6] text-[#FA500F] font-semibold'
+              : 'bg-[#FFFFFF] border-[#D4CFC3] text-[#262626] hover:bg-[#FAF7F0]'
           }`}
         >
-          <Scaling className="w-3 h-3 shrink-0" />
-          <span>{isTrue1To1 ? extraCopy.true1to1 : extraCopy.atlas}</span>
-        </button>
+          <Scaling className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden sm:inline">
+            {isTrue1To1 ? extraCopy.true1to1 : extraCopy.atlas}
+          </span>
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="outline"
           data-testid="open-graphics-settings-btn"
-          onClick={onOpenGraphicsSettings}
+          onPress={onOpenGraphicsSettings}
           aria-label={extraCopy.graphics}
-          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] text-[11px] font-mono text-[#ECEAE4] transition-colors whitespace-nowrap shrink-0"
+          className="h-9 rounded-[8px] px-3 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-[#D4CFC3] text-[12px] font-mono text-[#262626] whitespace-nowrap shrink-0 gap-1.5"
         >
-          <SlidersHorizontal className="w-3 h-3 text-[#E88B38] shrink-0" />
-          <span className="hidden md:inline">{extraCopy.graphics}</span>
-          <span className="text-[#E88B38]">{resolutionScale}x</span>
-        </button>
+          <SlidersHorizontal className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
+          <span className="hidden lg:inline">{extraCopy.graphics}</span>
+          <span className="text-[#FA500F] font-semibold">{resolutionScale}x</span>
+        </Button>
 
-        <div className="relative">
-          <button
-            type="button"
+        <Dropdown>
+          <Button
+            size="sm"
+            variant="outline"
             data-testid="lang-dropdown-trigger"
-            onClick={() => setLangMenuOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[2px] bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] text-[11px] font-mono text-[#ECEAE4] transition-colors whitespace-nowrap shrink-0"
+            className="h-9 min-w-0 rounded-[8px] px-3 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-[#D4CFC3] text-[12px] font-mono text-[#262626] whitespace-nowrap shrink-0 gap-1.5"
           >
-            <Globe className="w-3 h-3 text-[#E88B38]" />
+            <Globe className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
             <span>{activeLangOption.shortCode}</span>
-            <ChevronDown className="w-3 h-3 text-[#8A8D96]" />
-          </button>
-
-          {langMenuOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-[4px] bg-[#0a0c10] border border-white/[0.12] shadow-2xl p-1 z-50">
-              {SUPPORTED_LANGUAGES.map((opt) => {
-                const active = opt.code === lang;
-                return (
-                  <button
-                    key={opt.code}
-                    type="button"
-                    data-testid={`lang-option-${opt.code}`}
-                    onClick={() => {
-                      onChangeLang(opt.code);
-                      setLangMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-[2px] text-xs font-medium flex items-center justify-between transition-colors ${
-                      active
-                        ? 'bg-[#E88B38]/15 text-[#E88B38]'
-                        : 'text-[#C8C6C0] hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <span>{opt.nativeLabel}</span>
-                    <span className="font-mono text-[10px] text-[#6B707B]">
+            <ChevronDown className="w-3 h-3 text-[#737373] shrink-0" />
+          </Button>
+          <Dropdown.Popover
+            placement="bottom end"
+            className="mistral-editorial-light bg-[#FFFFFF] border border-[#E5E0D5] rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.12)] min-w-[184px]"
+          >
+            <Dropdown.Menu
+              aria-label="Language"
+              selectionMode="single"
+              selectedKeys={new Set([lang])}
+              onAction={(key) => onChangeLang(String(key) as LanguageCode)}
+            >
+              {SUPPORTED_LANGUAGES.map((opt) => (
+                <Dropdown.Item
+                  key={opt.code}
+                  id={opt.code}
+                  data-testid={`lang-option-${opt.code}`}
+                  textValue={opt.nativeLabel}
+                  className={`rounded-[8px] px-3 py-2 data-[hovered=true]:bg-[#FAF7F0] ${
+                    opt.code === lang
+                      ? 'bg-[#FFF8E7] text-[#FA500F] font-semibold'
+                      : 'text-[#262626]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="text-[13px]">{opt.nativeLabel}</span>
+                    <span className="font-mono text-[11px] text-[#737373]">
                       {opt.shortCode}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  </div>
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown>
+
+        <Button
+          size="sm"
+          variant="primary"
+          onPress={onOpenSimulator}
+          data-testid="nav-simulator-btn"
+          className="h-9 rounded-[8px] px-4 gap-1.5 bg-[#111111] hover:bg-[#262626] text-white text-[13px] font-medium whitespace-nowrap shrink-0"
+        >
+          <Plus className="w-3.5 h-3.5 text-[#FFD800] shrink-0" />
+          <span>{hud.worldLabLabel}</span>
+        </Button>
       </div>
     </header>
   );
