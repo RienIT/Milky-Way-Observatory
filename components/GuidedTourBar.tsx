@@ -145,10 +145,10 @@ export default function GuidedTourBar({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 @[640px]/obs:gap-2 min-w-0">
               <Compass className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[#FFAF00] shrink-0">
+              <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[#FFAF00] truncate">
                 {copy.expeditionLabel}
               </span>
-              <span className="hidden @[500px]/obs:inline text-[#FFF8E7]/25 text-xs">/</span>
+              <span className="hidden @[500px]/obs:inline text-[#FFF8E7]/25 text-xs shrink-0">/</span>
               <span className="hidden @[500px]/obs:inline text-[12px] font-medium text-[#D6D3CB] truncate">
                 {tour.title[lang]}
               </span>
@@ -265,7 +265,10 @@ export default function GuidedTourBar({
               </ProgressBar.Track>
             </ProgressBar>
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1 flex-1">
+              <div
+                className="grid gap-1 flex-1 min-w-0"
+                style={{ gridTemplateColumns: `repeat(${Math.max(1, tour.stops.length)}, minmax(0, 1fr))` }}
+              >
                 {tour.stops.map((item, idx) => {
                   const active = idx === stopIndex;
                   const passed = idx < stopIndex;
@@ -273,10 +276,11 @@ export default function GuidedTourBar({
                     <Button
                       key={item.id}
                       size="sm"
+                      fullWidth
                       variant="ghost"
                       aria-label={item.title[lang]}
                       onPress={() => onJumpToStop(idx)}
-                      className={`flex-1 h-2 min-w-0 rounded-[2px] p-0 ${
+                      className={`w-full h-2 min-w-0 rounded-[2px] p-0 ${
                         active
                           ? 'bg-[#FA500F]'
                           : passed

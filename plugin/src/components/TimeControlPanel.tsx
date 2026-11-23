@@ -64,11 +64,11 @@ export default function TimeControlPanel({
   return (
     <Card
       data-testid="time-control-panel"
-      className="pointer-events-auto absolute top-[60px] inset-x-3 @[540px]/obs:left-auto @[540px]/obs:right-3 @[1220px]/obs:top-3 z-20 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-[calc(100%-24px)] @[540px]/obs:max-w-[380px] p-0"
+      className="pointer-events-auto absolute top-[60px] inset-x-3 @[540px]/obs:left-auto @[540px]/obs:right-3 @[1220px]/obs:top-3 z-20 rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/12 shadow-[0_12px_24px_-4px_rgba(0,0,0,0.35)] max-w-[calc(100%-24px)] @[540px]/obs:max-w-[420px] p-0 overflow-hidden"
     >
       <Card.Content className="px-3 py-2 @[540px]/obs:px-3.5 @[540px]/obs:py-2.5 flex flex-col gap-1.5 @[540px]/obs:gap-2 overflow-visible">
         {/* Top Line: Ephemeris Date + Moon Illumination + Reset to Now */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <Clock className="w-3.5 h-3.5 text-[#FA500F] shrink-0" />
             <span
@@ -91,7 +91,7 @@ export default function TimeControlPanel({
               </Chip>
             ) : (
               <span
-                className="hidden @[440px]/obs:inline text-[10px] font-mono tabular-nums text-[#A19F99]"
+                className="hidden @[440px]/obs:inline text-[10px] font-mono tabular-nums text-[#A19F99] whitespace-nowrap"
                 title={copy.moonPhaseLabel}
               >
                 {copy.moonPhaseLabel} {moonPct}%
@@ -102,7 +102,7 @@ export default function TimeControlPanel({
               variant="secondary"
               data-testid="time-reset-now-btn"
               onPress={onResetToNow}
-              className="h-6 min-w-0 rounded-[8px] px-2 bg-[#FFF8E7]/[0.08] hover:bg-[#FFF8E7]/[0.14] text-[10px] font-mono text-[#F5F2EB] gap-1"
+              className="h-6 min-w-0 rounded-[8px] px-2 bg-[#FFF8E7]/[0.08] hover:bg-[#FFF8E7]/[0.14] text-[10px] font-mono text-[#F5F2EB] gap-1 shrink-0"
             >
               <RotateCcw className="w-2.5 h-2.5 shrink-0" />
               <span>{copy.resetToNow}</span>
@@ -111,7 +111,7 @@ export default function TimeControlPanel({
         </div>
 
         {/* Bottom Line: Play/Pause + Speed Presets + Solar Eclipse Quick-Jump */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 min-w-0">
           <Button
             isIconOnly
             size="sm"
@@ -124,23 +124,24 @@ export default function TimeControlPanel({
             {isPlaying ? <Pause className="w-3 h-3 shrink-0 block" /> : <Play className="w-3 h-3 shrink-0 block" />}
           </Button>
 
-          <div className="flex items-center gap-0.5 flex-1 min-w-0">
+          <div className="grid grid-cols-5 gap-0.5 flex-1 min-w-0">
             {TIME_SPEED_PRESETS.map((preset) => {
               const active = Math.abs(speedSecondsPerSec - preset.secondsPerSecond) < 0.5;
               return (
                 <Button
                   key={preset.id}
                   size="sm"
+                  fullWidth
                   variant={active ? 'outline' : 'ghost'}
                   data-testid={`time-speed-${preset.id}`}
                   onPress={() => onChangeSpeed(preset.secondsPerSecond)}
-                  className={`flex-1 h-7 min-w-0 rounded-[8px] px-1 @[540px]/obs:px-1.5 text-[10px] font-mono whitespace-nowrap ${
+                  className={`w-full h-7 min-w-0 max-w-full overflow-hidden rounded-[8px] px-0.5 @[540px]/obs:px-1.5 text-[10px] font-mono whitespace-nowrap ${
                     active
                       ? 'bg-[#FA500F]/18 text-[#FFD800] font-semibold border-[#FA500F]/60'
                       : 'text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.07] border-transparent'
                   }`}
                 >
-                  {copy.timeSpeeds[preset.id]}
+                  <span className="truncate">{copy.timeSpeeds[preset.id]}</span>
                 </Button>
               );
             })}

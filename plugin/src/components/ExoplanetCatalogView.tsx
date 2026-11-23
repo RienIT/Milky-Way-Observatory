@@ -242,7 +242,7 @@ export default function ExoplanetCatalogView({
       {/* 3. Main Catalog Workspace */}
       <div className="max-w-[1280px] mx-auto px-4 @[640px]/root:px-6 @[1024px]/root:px-8 py-8 @[640px]/root:py-10 space-y-8">
         {/* Warm Cream Filter Panel (card-cream) */}
-        <Card className="rounded-[12px] bg-[#FFF8E7] border border-[#E9DFC6] shadow-none p-0">
+        <Card className="rounded-[12px] bg-[#FFF8E7] border border-[#E9DFC6] shadow-none p-0 overflow-hidden">
           <Card.Content className="p-4 @[640px]/root:p-6 space-y-4">
             <div className="flex flex-col @[768px]/root:flex-row @[768px]/root:items-center justify-between gap-4">
               <div className="relative w-full @[768px]/root:w-[400px] flex items-center">
@@ -343,8 +343,8 @@ export default function ExoplanetCatalogView({
               const locSpec = getLocalizedPlanetSpec(rawNode, lang);
 
               return (
-                <article key={rawNode.id} className="h-full">
-                  <Card className="h-full rounded-[12px] bg-[#FFFFFF] border border-[#EFECE4] hover:border-[#FA500F]/50 shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-colors p-0">
+                <article key={rawNode.id} className="h-full min-w-0">
+                  <Card className="h-full rounded-[12px] bg-[#FFFFFF] border border-[#EFECE4] hover:border-[#FA500F]/50 shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-colors p-0 overflow-hidden">
                     <Card.Content className="p-6 h-full flex flex-col justify-between gap-5">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2 text-[12px] text-[#737373]">
@@ -396,15 +396,15 @@ export default function ExoplanetCatalogView({
                       </div>
 
                       {/* Card Footer Action (8px editorial dark button) */}
-                      <div className="pt-4 border-t border-[#EFECE4] flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-mono text-[#737373] truncate">
+                      <div className="pt-4 border-t border-[#EFECE4] flex items-center justify-between gap-2.5 min-w-0">
+                        <span className="text-[11px] font-mono text-[#737373] truncate min-w-0">
                           {locSpec.designation}
                         </span>
                         <Button
                           size="sm"
                           variant="primary"
                           onPress={() => onInspectIn3D(rawNode.id)}
-                          className="h-9 rounded-[8px] px-3.5 gap-1.5 bg-[#111111] hover:bg-[#FA500F] text-white text-[13px] font-medium whitespace-nowrap shrink-0 transition-colors"
+                          className="h-9 rounded-[8px] px-3 gap-1.5 bg-[#111111] hover:bg-[#FA500F] text-white text-[12px] @[640px]/root:text-[13px] font-medium whitespace-nowrap shrink-0 transition-colors"
                         >
                           <Compass className="w-3.5 h-3.5 shrink-0" />
                           <span>{t.viewIn3DBtn}</span>

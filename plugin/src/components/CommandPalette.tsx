@@ -364,7 +364,7 @@ export default function CommandPalette({
             </div>
 
             {/* Category Filter Tabs (HeroUI v3 Tabs — 8px editorial tabs) */}
-            <div className="px-4 py-2 border-b border-[#FFF8E7]/08 bg-[#101012]">
+            <div className="px-4 py-2 border-b border-[#FFF8E7]/08 bg-[#101012] shrink-0">
               <Tabs
                 selectedKey={activeTab}
                 onSelectionChange={(key) => {
@@ -372,16 +372,16 @@ export default function CommandPalette({
                   setCursor(0);
                 }}
               >
-                <Tabs.ListContainer>
+                <Tabs.ListContainer className="overflow-x-auto no-scrollbar max-w-full">
                   <Tabs.List
                     aria-label={hud.searchTrigger}
-                    className="flex items-center gap-1 p-0 bg-transparent"
+                    className="flex items-center gap-1 p-0 bg-transparent w-max"
                   >
                     {(['all', 'events', 'catalog', 'galaxies'] as FilterTab[]).map((tab) => (
                       <Tabs.Tab
                         key={tab}
                         id={tab}
-                        className="h-7 px-3 text-[12px] font-medium rounded-[8px] text-[#A19F99] data-[selected=true]:text-white data-[selected=true]:font-semibold"
+                        className="h-7 px-3 text-[12px] font-medium rounded-[8px] whitespace-nowrap shrink-0 text-[#A19F99] data-[selected=true]:text-white data-[selected=true]:font-semibold"
                       >
                         {copy.tabs[tab]}
                         <Tabs.Indicator className="bg-[#FA500F] rounded-[8px] shadow-none" />

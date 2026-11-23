@@ -202,9 +202,9 @@ export default function AddMemoryModal({
                         setPreferredCategory(preset.category);
                         setErrorMsg(null);
                       }}
-                      className="h-8 rounded-[8px] px-3 bg-[#FFFFFF] hover:bg-[#FEF0C7] border-[#E9DFC6] text-[12px] font-medium text-[#111111]"
+                      className="h-8 max-w-full min-w-0 overflow-hidden rounded-[8px] px-3 bg-[#FFFFFF] hover:bg-[#FEF0C7] border-[#E9DFC6] text-[12px] font-medium text-[#111111]"
                     >
-                      {preset.label}
+                      <span className="truncate">{preset.label}</span>
                     </Button>
                   ))}
                 </div>
@@ -308,7 +308,7 @@ export default function AddMemoryModal({
           <div className="w-full flex flex-col @[500px]/modal:flex-row @[500px]/modal:items-center justify-between gap-3">
             <p className="text-[12px] text-[#737373]">{t.modalFooterNote}</p>
 
-            <div className="flex items-center justify-end gap-2.5 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 max-w-full">
               <Button
                 size="sm"
                 variant="outline"
@@ -322,14 +322,14 @@ export default function AddMemoryModal({
                 size="sm"
                 variant="primary"
                 isDisabled={isLoading}
-                className="h-10 rounded-[8px] px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white font-medium text-[13px] inline-flex items-center justify-center leading-none gap-1.5"
+                className="h-10 max-w-full min-w-0 rounded-[8px] px-4 @[520px]/modal:px-5 bg-[#FA500F] hover:bg-[#D93D04] text-white font-medium text-[13px] inline-flex items-center justify-center leading-none gap-1.5 overflow-hidden"
               >
                 {isLoading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 block" />
                 ) : (
                   <Sparkles className="w-3.5 h-3.5 shrink-0 block" />
                 )}
-                <span>{isLoading ? t.modalLoadingBtn : t.modalSubmitBtn}</span>
+                <span className="truncate">{isLoading ? t.modalLoadingBtn : t.modalSubmitBtn}</span>
               </Button>
             </div>
           </div>

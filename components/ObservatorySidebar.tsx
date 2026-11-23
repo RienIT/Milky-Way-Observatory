@@ -178,7 +178,7 @@ export default function ObservatorySidebar({
         <button
           type="button"
           onClick={() => onSelectNode('BLACK_HOLE_CORE')}
-          className={`w-full text-left rounded-[12px] border p-3 flex items-center justify-between gap-2 transition-colors ${
+          className={`w-full text-left rounded-[12px] border p-3 flex items-center justify-between gap-2 overflow-hidden transition-colors ${
             selectedId === 'BLACK_HOLE_CORE'
               ? 'bg-[#FA500F]/14 border-[#FA500F]/50'
               : 'bg-[#12151c] hover:bg-[#191d26] border-white/[0.08]'
@@ -199,7 +199,7 @@ export default function ObservatorySidebar({
         </button>
 
         {/* Local Group & Nearby Clusters Quick-Jump */}
-        <Card className="rounded-[12px] bg-[#12151c] border border-white/[0.07] shadow-none p-0">
+        <Card className="rounded-[12px] bg-[#12151c] border border-white/[0.07] shadow-none p-0 overflow-hidden">
           <Card.Content className="p-2">
             <p className="text-[10px] font-mono uppercase tracking-wider text-[#8A8D96] mb-1.5">
               {UNIVERSE_HUD_COPY[lang].extragalacticSection}

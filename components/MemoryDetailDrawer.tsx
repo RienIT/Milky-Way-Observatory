@@ -277,16 +277,17 @@ export default function MemoryDetailDrawer({
                 <h3 className="text-[10px] font-mono uppercase tracking-[0.06em] text-[#8A8D96]">
                   {t.bhCompareLabel}
                 </h3>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-2 gap-1.5">
                   {t.famousBlackHoles.map((bh) => {
                     const isActive = bh.id === activeBh.id;
                     return (
                       <Button
                         key={bh.id}
                         size="sm"
+                        fullWidth
                         variant="outline"
                         onPress={() => setActiveBhId(bh.id)}
-                        className={`h-7 rounded-[8px] justify-start px-2.5 text-xs font-medium truncate ${
+                        className={`w-full h-7 min-w-0 max-w-full overflow-hidden rounded-[8px] justify-start px-2.5 text-xs font-medium ${
                           isActive
                             ? 'bg-[#FA500F] border-[#FA500F] text-[#FFFFFF] font-semibold'
                             : 'bg-[#101012] hover:bg-white/[0.05] border-white/[0.08] text-[#C8C6C0]'
@@ -735,22 +736,22 @@ export default function MemoryDetailDrawer({
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-3 border-t border-[#FFF8E7]/10 flex items-center justify-between bg-[#101012] shrink-0">
+          <div className="px-4 py-3 border-t border-[#FFF8E7]/10 flex flex-wrap items-center justify-between gap-2 bg-[#101012] shrink-0">
             <Button
               size="sm"
               variant="danger-soft"
               onPress={() => onDeleteNode(memory.id)}
-              className="h-8 rounded-[8px] px-2.5 gap-1.5 bg-transparent hover:bg-rose-500/12 text-[11px] font-mono text-rose-400/90 hover:text-rose-300"
+              className="h-8 min-w-0 rounded-[8px] px-2.5 gap-1.5 bg-transparent hover:bg-rose-500/12 text-[11px] font-mono text-rose-400/90 hover:text-rose-300"
             >
               <Trash2 className="w-3 h-3 shrink-0" />
-              <span>{t.deleteObjectBtn}</span>
+              <span className="truncate">{t.deleteObjectBtn}</span>
             </Button>
 
             <Button
               size="sm"
               variant="outline"
               onPress={onClose}
-              className="h-8 rounded-[8px] px-3 bg-[#FFF8E7]/[0.08] hover:bg-[#FFF8E7]/[0.14] border-[#FFF8E7]/12 text-[12px] font-medium text-[#FFF8E7]"
+              className="h-8 min-w-0 rounded-[8px] px-3 bg-[#FFF8E7]/[0.08] hover:bg-[#FFF8E7]/[0.14] border-[#FFF8E7]/12 text-[12px] font-medium text-[#FFF8E7] shrink-0"
             >
               {t.closeInspector}
             </Button>

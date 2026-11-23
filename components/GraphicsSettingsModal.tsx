@@ -384,26 +384,26 @@ export default function GraphicsSettingsModal({
         {/* 1. Hardware Auto-Detection & Recommendation Banner */}
         <Card
           data-testid="hardware-recommendation-card"
-          className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0"
+          className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden"
         >
           <Card.Content className="p-3.5 @[520px]/modal:p-4 space-y-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Cpu className="w-4 h-4 text-[#FA500F] shrink-0 block" />
-                <h3 className="text-[13px] font-semibold text-[#FFF8E7]">
+                <h3 className="text-[13px] font-semibold text-[#FFF8E7] truncate">
                   {copy.hardwareHeading}
                 </h3>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
                 <Chip
                   size="sm"
                   variant="soft"
                   color="accent"
-                  className="h-7 rounded-full bg-[#FA500F]/15 border border-[#FA500F]/40 px-2.5 text-[11px] font-mono font-semibold text-[#FFD800] inline-flex items-center gap-1"
+                  className="h-7 max-w-full rounded-full bg-[#FA500F]/15 border border-[#FA500F]/40 px-2.5 text-[11px] font-mono font-semibold text-[#FFD800] inline-flex items-center gap-1 overflow-hidden"
                 >
                   <Sparkles className="w-3 h-3 text-[#FFAF00] shrink-0 block" />
-                  <span>
+                  <span className="truncate">
                     {copy.recommendedBadge}: {copy.tierNames[recommendation.recommendedTier]}
                   </span>
                 </Chip>
@@ -412,7 +412,7 @@ export default function GraphicsSettingsModal({
                   variant="primary"
                   data-testid="apply-recommended-graphics-btn"
                   onPress={applyRecommended}
-                  className="h-8 rounded-[8px] px-3.5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[12px] font-medium inline-flex items-center justify-center leading-none"
+                  className="h-8 rounded-[8px] px-3.5 bg-[#FA500F] hover:bg-[#D93D04] text-white text-[12px] font-medium inline-flex items-center justify-center leading-none shrink-0"
                 >
                   {copy.applyRecommended}
                 </Button>
@@ -421,7 +421,7 @@ export default function GraphicsSettingsModal({
 
             {/* Hardware Specs Grid */}
             <div className="grid grid-cols-2 @[480px]/modal:grid-cols-3 @[680px]/modal:grid-cols-5 gap-2 text-xs">
-              <div className="col-span-2 @[480px]/modal:col-span-3 @[680px]/modal:col-span-2 rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+              <div className="col-span-2 @[480px]/modal:col-span-3 @[680px]/modal:col-span-2 min-w-0 overflow-hidden rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
                     <span className="text-[11px] text-[#8F8D87] block">{copy.gpuLabel}</span>
                     <span
                       data-testid="detected-gpu-name"
@@ -431,25 +431,25 @@ export default function GraphicsSettingsModal({
                     </span>
                   </div>
 
-                  <div className="rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
-                    <span className="text-[11px] text-[#8F8D87] block">{copy.cpuLabel}</span>
-                    <span className="font-mono tabular-nums text-[#FFF8E7] font-semibold">
+                  <div className="min-w-0 overflow-hidden rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block truncate">{copy.cpuLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFF8E7] font-semibold block truncate">
                       {hardwareProfile.cpuCores} {extra.threadsUnit}
                     </span>
                   </div>
 
-                  <div className="rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
-                    <span className="text-[11px] text-[#8F8D87] block">{copy.ramLabel}</span>
-                    <span className="font-mono tabular-nums text-[#FFF8E7] font-semibold">
+                  <div className="min-w-0 overflow-hidden rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block truncate">{copy.ramLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFF8E7] font-semibold block truncate">
                       {hardwareProfile.deviceMemoryGb
                         ? `${hardwareProfile.deviceMemoryGb} GB`
                         : extra.autoLabel}
                     </span>
                   </div>
 
-                  <div className="rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
-                    <span className="text-[11px] text-[#8F8D87] block">{copy.displayLabel}</span>
-                    <span className="font-mono tabular-nums text-[#D6D3CB]">
+                  <div className="min-w-0 overflow-hidden rounded-[8px] bg-[#141416] border border-[#FFF8E7]/08 px-3 py-2">
+                    <span className="text-[11px] text-[#8F8D87] block truncate">{copy.displayLabel}</span>
+                    <span className="font-mono tabular-nums text-[#D6D3CB] block truncate">
                       {hardwareProfile.screenWidth}×{hardwareProfile.screenHeight} ·{' '}
                       {hardwareProfile.devicePixelRatio.toFixed(1)}x
                     </span>
@@ -518,7 +518,7 @@ export default function GraphicsSettingsModal({
                       type="button"
                       data-testid={`preset-tier-${tierId}`}
                       onClick={() => applyPreset(tierId)}
-                      className={`text-left rounded-[12px] border p-3 transition-colors ${
+                      className={`w-full min-w-0 overflow-hidden text-left rounded-[12px] border p-3 transition-colors ${
                         isSelected
                           ? 'bg-[#FA500F]/15 border-[#FA500F] text-[#FFF8E7]'
                           : isRtxTier
@@ -526,11 +526,11 @@ export default function GraphicsSettingsModal({
                             : 'bg-[#1B1B1F] hover:bg-[#232328] border-[#FFF8E7]/10 text-[#D6D3CB]'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[13px] font-semibold flex items-center gap-1.5">
-                          <span>{copy.tierNames[tierId]}</span>
+                      <div className="flex items-center justify-between gap-1 min-w-0">
+                        <span className="text-[13px] font-semibold flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{copy.tierNames[tierId]}</span>
                           {isRtxTier && (
-                            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#FA500F]/20 text-[#FFD800] font-mono text-[9px] font-semibold">
+                            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#FA500F]/20 text-[#FFD800] font-mono text-[9px] font-semibold shrink-0">
                               4–8GB
                             </span>
                           )}
@@ -539,7 +539,7 @@ export default function GraphicsSettingsModal({
                           <Check className="w-3.5 h-3.5 shrink-0 text-[#FA500F]" />
                         )}
                       </div>
-                      <p className="text-[11px] font-mono text-[#A19F99] mt-1 leading-snug">
+                      <p className="text-[11px] font-mono text-[#A19F99] mt-1 leading-snug break-words">
                         {copy.tierDescs[tierId]}
                       </p>
                       {isRecommended && (
@@ -554,11 +554,11 @@ export default function GraphicsSettingsModal({
             </section>
 
             {/* 3. Render Resolution Scale */}
-            <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+            <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
               <Card.Content className="p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-[13px] font-semibold text-[#FFF8E7]">
-                    <Monitor className="w-4 h-4 text-[#FA500F]" />
+                    <Monitor className="w-4 h-4 text-[#FA500F] shrink-0" />
                     <span>{copy.resolutionLabel}</span>
                   </div>
                   <span
@@ -576,12 +576,13 @@ export default function GraphicsSettingsModal({
                       <Button
                         key={opt.scale}
                         size="sm"
+                        fullWidth
                         variant={active ? 'primary' : 'outline'}
                         data-testid={`res-scale-${opt.scale}`}
                         onPress={() =>
                           updateField('resolutionScale', opt.scale as ResolutionScaleOption)
                         }
-                        className={`h-8 min-w-0 rounded-[8px] font-mono text-[11px] ${
+                        className={`w-full h-8 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
                           active
                             ? 'bg-[#FA500F] text-white font-semibold'
                             : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#D6D3CB]'
@@ -598,11 +599,11 @@ export default function GraphicsSettingsModal({
             {/* 4. Granular GPU & Scene Complexity Controls */}
             <section className="grid grid-cols-1 @[560px]/modal:grid-cols-2 gap-3">
               {/* Milky Way Star Count */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
                 <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#FFF8E7]">{copy.starCountLabel}</span>
-                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-[#FFF8E7] truncate">{copy.starCountLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {(settings.starfieldCount / 1000).toFixed(0)}k
                     </span>
                   </div>
@@ -613,9 +614,10 @@ export default function GraphicsSettingsModal({
                         <Button
                           key={cnt}
                           size="sm"
+                          fullWidth
                           variant={active ? 'primary' : 'outline'}
                           onPress={() => updateField('starfieldCount', cnt)}
-                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
                             active
                               ? 'bg-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
@@ -630,11 +632,11 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Asteroid & Kuiper Belt Particle Count */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
                 <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#FFF8E7]">{copy.asteroidCountLabel}</span>
-                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-[#FFF8E7] truncate">{copy.asteroidCountLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {settings.asteroidBeltCount === 0
                         ? copy.disabled
                         : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
@@ -647,9 +649,10 @@ export default function GraphicsSettingsModal({
                         <Button
                           key={cnt}
                           size="sm"
+                          fullWidth
                           variant={active ? 'primary' : 'outline'}
                           onPress={() => updateField('asteroidBeltCount', cnt)}
-                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
                             active
                               ? 'bg-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
@@ -664,11 +667,11 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Planet Tessellation */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
                 <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#FFF8E7]">{copy.tessellationLabel}</span>
-                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-[#FFF8E7] truncate">{copy.tessellationLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {settings.planetSegments} {extra.segUnit}
                     </span>
                   </div>
@@ -679,9 +682,10 @@ export default function GraphicsSettingsModal({
                         <Button
                           key={seg}
                           size="sm"
+                          fullWidth
                           variant={active ? 'primary' : 'outline'}
                           onPress={() => updateField('planetSegments', seg)}
-                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
                             active
                               ? 'bg-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
@@ -696,11 +700,11 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Black Hole Raymarch Steps */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
                 <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#FFF8E7]">{copy.rayStepsLabel}</span>
-                    <span className="font-mono tabular-nums text-[#FFAF00]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-[#FFF8E7] truncate">{copy.rayStepsLabel}</span>
+                    <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {settings.blackHoleRaySteps} {extra.stepsUnit}
                     </span>
                   </div>
@@ -711,9 +715,10 @@ export default function GraphicsSettingsModal({
                         <Button
                           key={steps}
                           size="sm"
+                          fullWidth
                           variant={active ? 'primary' : 'outline'}
                           onPress={() => updateField('blackHoleRaySteps', steps)}
-                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
                             active
                               ? 'bg-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
@@ -729,29 +734,36 @@ export default function GraphicsSettingsModal({
             </section>
 
             {/* 5. Toggles & FPS Cap */}
-            <section className="grid grid-cols-1 @[600px]/modal:grid-cols-3 gap-3">
+            <section className="grid grid-cols-1 @[640px]/modal:grid-cols-3 gap-3">
               {/* FPS Cap */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
                 <Card.Content className="p-3.5 space-y-2.5">
                   <span className="text-xs font-medium text-[#FFF8E7] block">
                     {copy.fpsCapLabel}
                   </span>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-[40px_40px_minmax(0,1fr)] gap-1.5 w-full">
                     {FPS_CAP_OPTIONS.map((fps) => {
                       const active = settings.fpsCap === fps;
+                      const isUncapped = fps === 0;
                       return (
                         <Button
                           key={fps}
                           size="sm"
+                          fullWidth
                           variant={active ? 'primary' : 'outline'}
+                          data-testid={`fps-cap-${fps}`}
                           onPress={() => updateField('fpsCap', fps)}
-                          className={`h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          className={`w-full h-8 min-w-0 max-w-full rounded-[8px] px-1.5 overflow-hidden text-[11px] ${
+                            isUncapped ? 'font-sans' : 'font-mono tabular-nums'
+                          } ${
                             active
                               ? 'bg-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          {fps === 0 ? copy.fpsUncapped : `${fps}`}
+                          <span className="truncate">
+                            {isUncapped ? copy.fpsUncapped : `${fps}`}
+                          </span>
                         </Button>
                       );
                     })}
@@ -760,8 +772,8 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Antialiasing Switch */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
-                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2.5">
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-[#FFF8E7]">{copy.antialiasLabel}</p>
                     <p className="text-[11px] text-[#8F8D87] leading-snug mt-0.5">
@@ -772,6 +784,7 @@ export default function GraphicsSettingsModal({
                     aria-label={copy.antialiasLabel}
                     isSelected={settings.antialias}
                     onChange={(v) => updateField('antialias', v)}
+                    className="shrink-0"
                   >
                     <Switch.Control className="bg-[#141416] border border-[#FFF8E7]/16 data-[selected=true]:bg-[#FA500F]">
                       <Switch.Thumb />
@@ -781,8 +794,8 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Atmosphere & Nebulae Switch */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0">
-                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2">
+              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2.5">
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-[#FFF8E7]">{copy.atmosphereLabel}</p>
                     <p className="text-[11px] text-[#8F8D87] leading-snug mt-0.5">
@@ -793,6 +806,7 @@ export default function GraphicsSettingsModal({
                     aria-label={copy.atmosphereLabel}
                     isSelected={settings.showAtmosphereAndNebulae}
                     onChange={(v) => updateField('showAtmosphereAndNebulae', v)}
+                    className="shrink-0"
                   >
                     <Switch.Control className="bg-[#141416] border border-[#FFF8E7]/16 data-[selected=true]:bg-[#FA500F]">
                       <Switch.Thumb />
