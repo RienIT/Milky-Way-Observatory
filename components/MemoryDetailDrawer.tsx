@@ -27,6 +27,8 @@ import {
   OBSERVATORY_EXTRA_COPY,
 } from '@/lib/localized-telemetry';
 import { getScientificAstrometry } from '@/lib/scientific-catalog';
+import { getMilkyWayLandmarkById } from '@/lib/milky-way-landmarks';
+import { EXTRAGALACTIC_CATALOG } from '@/lib/extragalactic-catalog';
 
 interface MemoryDetailDrawerProps {
   selectedId: string | null;
@@ -111,6 +113,83 @@ const ASTRO_LABELS: Record<
     period: '공전 / 자전 주기',
     spectral: '분광형 / 천체 분류',
     source: '공식 출처',
+  },
+};
+
+const LANDMARK_UI_COPY: Record<
+  LanguageCode,
+  {
+    galCenterDist: string;
+    diameter: string;
+    region: string;
+    population: string;
+    coordinates: string;
+    equatorialCoords: string;
+    morphology: string;
+    mass: string;
+    backToMilkyWay: string;
+    extragalacticBadge: string;
+  }
+> = {
+  en: {
+    galCenterDist: 'Distance from Sgr A*',
+    diameter: 'Physical Span',
+    region: 'Galactic Region',
+    population: 'Stellar Population / Mass',
+    coordinates: 'Galactic Coords (l, b)',
+    equatorialCoords: 'Equatorial J2000 (RA, Dec)',
+    morphology: 'Morphology',
+    mass: 'Estimated Mass',
+    backToMilkyWay: 'Close inspector',
+    extragalacticBadge: 'Extragalactic Catalog · Measured Astrometry',
+  },
+  vi: {
+    galCenterDist: 'Khoảng cách tới Sgr A*',
+    diameter: 'Đường kính vật lý',
+    region: 'Vùng trong Ngân Hà',
+    population: 'Quần thể sao / Khối lượng',
+    coordinates: 'Tọa độ Thiên hà (l, b)',
+    equatorialCoords: 'Tọa độ Xích đạo J2000 (RA, Dec)',
+    morphology: 'Hình thái thiên hà',
+    mass: 'Khối lượng ước tính',
+    backToMilkyWay: 'Đóng bảng thông tin',
+    extragalacticBadge: 'Danh mục Ngoài Ngân Hà · Đo đạc thực',
+  },
+  ja: {
+    galCenterDist: '銀心 (Sgr A*) からの距離',
+    diameter: '物理直径',
+    region: '銀河領域',
+    population: '恒星数・質量',
+    coordinates: '銀経・銀緯 (l, b)',
+    equatorialCoords: '赤道座標 J2000 (RA, Dec)',
+    morphology: '銀河形態',
+    mass: '推定質量',
+    backToMilkyWay: 'インスペクターを閉じる',
+    extragalacticBadge: '銀河外カタログ・実測位置',
+  },
+  zh: {
+    galCenterDist: '距银心 (Sgr A*) 距离',
+    diameter: '物理尺度',
+    region: '银河区域',
+    population: '恒星数量 / 质量',
+    coordinates: '银道坐标 (l, b)',
+    equatorialCoords: '赤道坐标 J2000 (RA, Dec)',
+    morphology: '星系形态',
+    mass: '估算质量',
+    backToMilkyWay: '关闭详情面板',
+    extragalacticBadge: '河外星系目录 · 实测天体测量',
+  },
+  ko: {
+    galCenterDist: '은하 중심(Sgr A*) 거리',
+    diameter: '물리적 크기',
+    region: '은하 영역',
+    population: '항성 수 / 질량',
+    coordinates: '은하 좌표 (l, b)',
+    equatorialCoords: '적도 좌표 J2000 (RA, Dec)',
+    morphology: '은하 형태',
+    mass: '추정 질량',
+    backToMilkyWay: '패널 닫기',
+    extragalacticBadge: '외부은하 목록 · 실측 위치천문학',
   },
 };
 
@@ -400,6 +479,261 @@ export default function MemoryDetailDrawer({
                   })}
                 </div>
               </section>
+            </div>
+          </Card.Content>
+        </Card>
+      </aside>
+    );
+  }
+
+  // ===========================================================================
+  // MODE 1B: REAL MILKY WAY STAR CLUSTER / H-II COMPLEX / SPIRAL ARM INSPECTOR
+  // ===========================================================================
+  const mwLandmark = getMilkyWayLandmarkById(selectedId);
+  if (mwLandmark) {
+    const lCopy = LANDMARK_UI_COPY[lang];
+    const astroCopy = ASTRO_LABELS[lang];
+    const distFromCoreKpc = Math.hypot(
+      mwLandmark.posKpc[0],
+      mwLandmark.posKpc[1],
+      mwLandmark.posKpc[2]
+    );
+    return (
+      <aside
+        aria-label={mwLandmark.name[lang]}
+        data-testid="memory-detail-drawer"
+        className="absolute inset-x-3 top-[60px] bottom-[152px] @[680px]/obs:left-auto @[680px]/obs:right-3 @[680px]/obs:top-[146px] @[680px]/obs:bottom-[124px] @[680px]/obs:w-[min(396px,calc(100%-24px))] @[1220px]/obs:top-[96px] @[1220px]/obs:w-[396px] z-35 flex flex-col overflow-hidden"
+      >
+        <Card className="h-full rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/14 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] p-0 flex flex-col overflow-hidden">
+          <SunsetStripeBand variant="hairline" />
+          <Card.Content className="p-0 flex flex-col h-full overflow-hidden">
+            <div className="px-4 pt-4 pb-3.5 border-b border-[#FFF8E7]/10 flex items-start justify-between gap-3 shrink-0">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.05em] text-[#A19F99]">
+                  <span className="text-[#FFAF00] truncate">{mwLandmark.classLabel[lang]}</span>
+                  <span aria-hidden="true">/</span>
+                  <span className="shrink-0 truncate max-w-[160px]">{mwLandmark.designation}</span>
+                </div>
+                <h2 className="font-display text-[20px] font-normal tracking-[-0.015em] text-[#FFF8E7] leading-snug">
+                  {mwLandmark.name[lang]}
+                </h2>
+              </div>
+
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                onPress={onClose}
+                aria-label={t.closeInspector}
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              <p className="text-[13px] leading-relaxed text-[#D6D3CB]">
+                {mwLandmark.description[lang]}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {astroCopy.distSun}
+                  </p>
+                  <p className="text-[13px] font-mono font-semibold text-[#FFF8E7] tabular-nums">
+                    {mwLandmark.distanceFromSunKpc.toFixed(2)} kpc
+                  </p>
+                  <p className="text-[10px] font-mono text-[#A19F99] tabular-nums">
+                    ~{Math.round(mwLandmark.distanceFromSunKpc * 3261.56).toLocaleString()} ly
+                  </p>
+                </div>
+
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {lCopy.galCenterDist}
+                  </p>
+                  <p className="text-[13px] font-mono font-semibold text-[#FFAF00] tabular-nums">
+                    {distFromCoreKpc.toFixed(2)} kpc
+                  </p>
+                  <p className="text-[10px] font-mono text-[#A19F99] tabular-nums">
+                    ~{Math.round(distFromCoreKpc * 3261.56).toLocaleString()} ly
+                  </p>
+                </div>
+
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {lCopy.region}
+                  </p>
+                  <p className="text-[12px] font-medium text-[#FFF8E7]">
+                    {mwLandmark.regionLabel[lang]}
+                  </p>
+                </div>
+
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {lCopy.diameter}
+                  </p>
+                  <p className="text-[12px] font-mono font-semibold text-[#FFF8E7] tabular-nums">
+                    ~{mwLandmark.diameterLy.toLocaleString()} ly
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-3 space-y-2 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[#8A867C]">{lCopy.coordinates}</span>
+                  <span className="font-mono text-[#FFF8E7] tabular-nums">
+                    l {mwLandmark.galacticLonDeg.toFixed(2)}° · b {mwLandmark.galacticLatDeg >= 0 ? '+' : ''}
+                    {mwLandmark.galacticLatDeg.toFixed(2)}°
+                  </span>
+                </div>
+                <Separator className="bg-[#FFF8E7]/10" />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[#8A867C]">{lCopy.population}</span>
+                  <span className="font-mono text-[#FFF8E7]">{mwLandmark.populationLabel}</span>
+                </div>
+                <Separator className="bg-[#FFF8E7]/10" />
+                <div className="space-y-0.5">
+                  <span className="font-mono text-[#8A867C]">{astroCopy.source}</span>
+                  <p className="text-[#D6D3CB]">{mwLandmark.source}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 py-3 border-t border-[#FFF8E7]/10 flex items-center justify-end shrink-0">
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={onClose}
+                className="h-8 rounded-[8px] px-3 text-xs font-medium bg-white/[0.06] text-[#FFF8E7] hover:bg-white/[0.12]"
+              >
+                {lCopy.backToMilkyWay}
+              </Button>
+            </div>
+          </Card.Content>
+        </Card>
+      </aside>
+    );
+  }
+
+  // ===========================================================================
+  // MODE 1C: REAL EXTRAGALACTIC GALAXY / DWARF SATELLITE / CLUSTER INSPECTOR
+  // ===========================================================================
+  const extraGal = selectedId
+    ? EXTRAGALACTIC_CATALOG.find((g) => g.id === selectedId)
+    : undefined;
+  if (extraGal) {
+    const lCopy = LANDMARK_UI_COPY[lang];
+    const astroCopy = ASTRO_LABELS[lang];
+    const distDisplay =
+      extraGal.distanceMpc < 1
+        ? `${Math.round(extraGal.distanceMpc * 1000).toLocaleString()} kpc`
+        : `${extraGal.distanceMpc.toFixed(2)} Mpc`;
+    const distLyDisplay =
+      extraGal.distanceMpc < 1
+        ? `${Math.round(extraGal.distanceMpc * 3_261_560).toLocaleString()} ly`
+        : `${(extraGal.distanceMpc * 3.26156).toFixed(2)} Mly`;
+
+    return (
+      <aside
+        aria-label={extraGal.name}
+        data-testid="memory-detail-drawer"
+        className="absolute inset-x-3 top-[60px] bottom-[152px] @[680px]/obs:left-auto @[680px]/obs:right-3 @[680px]/obs:top-[146px] @[680px]/obs:bottom-[124px] @[680px]/obs:w-[min(396px,calc(100%-24px))] @[1220px]/obs:top-[96px] @[1220px]/obs:w-[396px] z-35 flex flex-col overflow-hidden"
+      >
+        <Card className="h-full rounded-[12px] bg-[#141416]/95 border border-[#FFF8E7]/14 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.5)] p-0 flex flex-col overflow-hidden">
+          <SunsetStripeBand variant="hairline" />
+          <Card.Content className="p-0 flex flex-col h-full overflow-hidden">
+            <div className="px-4 pt-4 pb-3.5 border-b border-[#FFF8E7]/10 flex items-start justify-between gap-3 shrink-0">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.05em] text-[#FFAF00]">
+                  <span className="truncate">{lCopy.extragalacticBadge}</span>
+                </div>
+                <h2 className="font-display text-[20px] font-normal tracking-[-0.015em] text-[#FFF8E7] leading-snug">
+                  {extraGal.name}
+                </h2>
+                <p className="text-[11px] font-mono text-[#A19F99]">{extraGal.designation}</p>
+              </div>
+
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                onPress={onClose}
+                aria-label={t.closeInspector}
+                className="w-7 h-7 min-w-7 rounded-[8px] p-0 text-[#A19F99] hover:text-[#FFF8E7] hover:bg-[#FFF8E7]/[0.08] shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {astroCopy.distSun}
+                  </p>
+                  <p className="text-[13px] font-mono font-semibold text-[#FFF8E7] tabular-nums">
+                    {distDisplay}
+                  </p>
+                  <p className="text-[10px] font-mono text-[#A19F99] tabular-nums">
+                    ~{distLyDisplay}
+                  </p>
+                </div>
+
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {lCopy.diameter}
+                  </p>
+                  <p className="text-[13px] font-mono font-semibold text-[#FFAF00] tabular-nums">
+                    {extraGal.diameterKpc >= 100
+                      ? `${(extraGal.diameterKpc / 1000).toFixed(2)} Mpc`
+                      : `${extraGal.diameterKpc.toFixed(1)} kpc`}
+                  </p>
+                </div>
+
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {lCopy.morphology}
+                  </p>
+                  <p className="text-[12px] font-mono text-[#FFF8E7] uppercase">
+                    {extraGal.morphology}
+                  </p>
+                </div>
+
+                <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-2.5 space-y-0.5">
+                  <p className="text-[10px] font-mono uppercase text-[#8A867C]">
+                    {lCopy.mass}
+                  </p>
+                  <p className="text-[12px] font-mono text-[#FFF8E7]">{extraGal.massLabel}</p>
+                </div>
+              </div>
+
+              <div className="rounded-[10px] bg-white/[0.03] border border-[#FFF8E7]/10 p-3 space-y-2 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[#8A867C]">{lCopy.equatorialCoords}</span>
+                  <span className="font-mono text-[#FFF8E7] tabular-nums">
+                    RA {extraGal.raDeg.toFixed(2)}° · Dec {extraGal.decDeg >= 0 ? '+' : ''}
+                    {extraGal.decDeg.toFixed(2)}°
+                  </span>
+                </div>
+                <Separator className="bg-[#FFF8E7]/10" />
+                <div className="space-y-0.5">
+                  <span className="font-mono text-[#8A867C]">{astroCopy.source}</span>
+                  <p className="text-[#D6D3CB]">{extraGal.source}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 py-3 border-t border-[#FFF8E7]/10 flex items-center justify-end shrink-0">
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={onClose}
+                className="h-8 rounded-[8px] px-3 text-xs font-medium bg-white/[0.06] text-[#FFF8E7] hover:bg-white/[0.12]"
+              >
+                {lCopy.backToMilkyWay}
+              </Button>
             </div>
           </Card.Content>
         </Card>

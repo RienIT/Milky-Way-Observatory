@@ -27,7 +27,6 @@ import {
 } from '../lib/extragalactic-catalog';
 import {
   createBackgroundStarfieldMaterial,
-  createClusterHaloMaterial,
   createCometTailMaterial,
   createDeepSpaceDomeMaterial,
   createEarthAtmosphereMaterial,
@@ -35,7 +34,6 @@ import {
   createEarthHighResMaterial,
   createFermiBubblesMaterial,
   createGalaxySpriteMaterial,
-  createMemoryClusterNodeMaterial,
   createMilkyWayParametricDiskMaterial,
   createMilkyWayStarfieldMaterial,
   createPhotonPulseMaterial,
@@ -70,22 +68,23 @@ import {
   SOLAR_PLANET_TEXTURE_FILES,
   TexturedSolarBodyId,
 } from '../lib/planet-textures';
-import { LanguageCode, UI_STRINGS } from '../lib/i18n';
+import { LanguageCode } from '../lib/i18n';
 import {
-  MEMORY_TRAIL_SEGMENTS,
-  MemoryClusterSimulation,
-  packMemoryTrailsToLineSegments,
   SOLAR_TRAIL_SEGMENTS,
   SolarOrbitalWakeTracker,
 } from '../lib/memory-dynamics';
 import { BLACK_HOLE_DISK_ROLL } from '../lib/memory-logic';
 import {
-  ALL_CATEGORIES,
   ConstellationLink,
   getPlanetSpecForNode,
   MemoryNode,
 } from '../lib/memory-types';
 import { generateNasaMilkyWayKpcStarfield } from '../lib/milky-way';
+import {
+  getMilkyWayLandmarkById,
+  MILKY_WAY_SPIRAL_ARM_LANDMARKS,
+  MILKY_WAY_STAR_CLUSTERS,
+} from '../lib/milky-way-landmarks';
 import {
   AnchorFrameId,
   AnchorOriginsM,
@@ -1390,66 +1389,122 @@ export default function UniverseCanvas({
     galacticRoot.add(sgrACoreBillboard);
 
     // -------------------------------------------------------------------------
-    // Dynamic Moving Memory Nodes: Fading Orbital Trajectory Trails &
-    // Category-Based Gravitational Star Clusters (1 unit = 1 kpc)
+    // Real Milky Way Star Clusters & Giant H-II Star-Forming Complexes (1 unit = 1 kpc)
+    // Placed at exact published Gaia DR3 / Harris (2010) / Reid et al. (2019) Galactocentric
+    // coordinates — soft spherical micro-star clusters & delicate nebular glows (zero fake blobs).
     // -------------------------------------------------------------------------
-    const MAX_MEMORY_DYN_NODES = 128;
-    const memorySim = new MemoryClusterSimulation(memoriesRef.current);
-    memorySim.prewarm(110, clusterModeRef.current, 0.05);
-    let lastDynMemoriesRef: MemoryNode[] | null = memoriesRef.current;
-    let clusterHaloBlend = clusterModeRef.current ? 1.0 : 0.0;
-    let latestClusterMetrics = memorySim.computeClusterMetrics();
+    let clusterBlend = clusterModeRef.current ? 1.0 : 0.0;
+    const STARS_PER_REAL_CLUSTER = 42;
+    const totalRealClusterPts = MILKY_WAY_STAR_CLUSTERS.length * (1 + STARS_PER_REAL_CLUSTER);
+    const rcPosArr = new Float32Array(totalRealClusterPts * 3);
+    const rcColArr = new Float32Array(totalRealClusterPts * 3);
+    const rcSizeArr = new Float32Array(totalRealClusterPts);
+    const rcIsCoreArr = new Float32Array(totalRealClusterPts);
+    let rcSeed = 4091827;
+    const nextRc = () => {
+      rcSeed = (rcSeed * 1664525 + 1013904223) >>> 0;
+      return rcSeed / 4294967296;
+    };
+    let rcIdx = 0;
+    for (const cl of MILKY_WAY_STAR_CLUSTERS) {
+      // 1 subtle soft circular halo core at the exact cluster center
+      rcPosArr[rcIdx * 3 + 0] = cl.posKpc[0];
+      rcPosArr[rcIdx * 3 + 1] = cl.posKpc[1];
+      rcPosArr[rcIdx * 3 + 2] = cl.posKpc[2];
+      rcColArr[rcIdx * 3 + 0] = cl.accentRgb[0];
+      rcColArr[rcIdx * 3 + 1] = cl.accentRgb[1];
+      rcColArr[rcIdx * 3 + 2] = cl.accentRgb[2];
+      rcSizeArr[rcIdx] = cl.kind === 'hii-complex' ? 16.0 : 12.5;
+      rcIsCoreArr[rcIdx] = 1.0;
+      rcIdx += 1;
 
-    // 1. Soft volumetric category star-cluster halos (up to 12 categories)
-    const maxClusters = Math.max(12, ALL_CATEGORIES.length);
-    const clusterHaloPosArr = new Float32Array(maxClusters * 3);
-    const clusterHaloColArr = new Float32Array(maxClusters * 3);
-    const clusterHaloRadArr = new Float32Array(maxClusters);
-    const clusterHaloGeo = track(new THREE.BufferGeometry());
-    clusterHaloGeo.setAttribute('position', new THREE.BufferAttribute(clusterHaloPosArr, 3));
-    clusterHaloGeo.setAttribute('aColor', new THREE.BufferAttribute(clusterHaloColArr, 3));
-    clusterHaloGeo.setAttribute('aRadiusKpc', new THREE.BufferAttribute(clusterHaloRadArr, 1));
-    clusterHaloGeo.setDrawRange(0, 0);
-    const clusterHaloMat = track(createClusterHaloMaterial());
-    const clusterHaloPoints = new THREE.Points(clusterHaloGeo, clusterHaloMat);
-    clusterHaloPoints.renderOrder = 3;
-    clusterHaloPoints.frustumCulled = false;
-    galacticRoot.add(clusterHaloPoints);
-
-    // 2. Smooth fading orbital & clustering trajectory trails (1 single batched draw call!)
-    const maxTrailVertices = MAX_MEMORY_DYN_NODES * MEMORY_TRAIL_SEGMENTS * 2;
-    const memTrailPosArr = new Float32Array(maxTrailVertices * 3);
-    const memTrailColArr = new Float32Array(maxTrailVertices * 3);
-    const memTrailProgArr = new Float32Array(maxTrailVertices);
-    const memTrailGeo = track(new THREE.BufferGeometry());
-    memTrailGeo.setAttribute('position', new THREE.BufferAttribute(memTrailPosArr, 3));
-    memTrailGeo.setAttribute('aColor', new THREE.BufferAttribute(memTrailColArr, 3));
-    memTrailGeo.setAttribute('aProgress', new THREE.BufferAttribute(memTrailProgArr, 1));
-    memTrailGeo.setDrawRange(0, 0);
-    const memTrailMat = track(createTrajectoryTrailMaterial());
-    const memTrailLines = new THREE.LineSegments(memTrailGeo, memTrailMat);
-    memTrailLines.renderOrder = 4;
-    memTrailLines.frustumCulled = false;
-    galacticRoot.add(memTrailLines);
-
-    // 3. Glowing navigable moving memory star-nodes at each trail's leading head
-    const memNodePosArr = new Float32Array(MAX_MEMORY_DYN_NODES * 3);
-    const memNodeColArr = new Float32Array(MAX_MEMORY_DYN_NODES * 3);
-    const memNodeSizeArr = new Float32Array(MAX_MEMORY_DYN_NODES);
-    const memNodeHighlightArr = new Float32Array(MAX_MEMORY_DYN_NODES);
-    const memNodeAlphaArr = new Float32Array(MAX_MEMORY_DYN_NODES);
-    const memNodeGeo = track(new THREE.BufferGeometry());
-    memNodeGeo.setAttribute('position', new THREE.BufferAttribute(memNodePosArr, 3));
-    memNodeGeo.setAttribute('aColor', new THREE.BufferAttribute(memNodeColArr, 3));
-    memNodeGeo.setAttribute('aSize', new THREE.BufferAttribute(memNodeSizeArr, 1));
-    memNodeGeo.setAttribute('aHighlight', new THREE.BufferAttribute(memNodeHighlightArr, 1));
-    memNodeGeo.setAttribute('aAlpha', new THREE.BufferAttribute(memNodeAlphaArr, 1));
-    memNodeGeo.setDrawRange(0, 0);
-    const memNodeMat = track(createMemoryClusterNodeMaterial());
-    const memNodePoints = new THREE.Points(memNodeGeo, memNodeMat);
-    memNodePoints.renderOrder = 5;
-    memNodePoints.frustumCulled = false;
-    galacticRoot.add(memNodePoints);
+      // 42 delicate resolved member stars forming a realistic 3D spherical star cluster up close
+      const spreadKpc = cl.kind === 'hii-complex' ? 0.24 : 0.14;
+      for (let s = 0; s < STARS_PER_REAL_CLUSTER; s += 1) {
+        const u = nextRc() * 2 - 1;
+        const phi = nextRc() * Math.PI * 2;
+        const sinT = Math.sqrt(Math.max(0, 1 - u * u));
+        // Plummer-like dense core falloff
+        const r = Math.pow(nextRc(), 1.9) * spreadKpc;
+        rcPosArr[rcIdx * 3 + 0] = cl.posKpc[0] + r * sinT * Math.cos(phi);
+        rcPosArr[rcIdx * 3 + 1] = cl.posKpc[1] + r * u * (cl.kind === 'hii-complex' ? 0.55 : 0.92);
+        rcPosArr[rcIdx * 3 + 2] = cl.posKpc[2] + r * sinT * Math.sin(phi);
+        const warmMix = 0.72 + nextRc() * 0.28;
+        rcColArr[rcIdx * 3 + 0] = Math.min(1, cl.accentRgb[0] * 0.65 + 0.35 * warmMix);
+        rcColArr[rcIdx * 3 + 1] = Math.min(1, cl.accentRgb[1] * 0.65 + 0.35 * warmMix);
+        rcColArr[rcIdx * 3 + 2] = Math.min(1, cl.accentRgb[2] * 0.65 + 0.35 * warmMix);
+        rcSizeArr[rcIdx] = 1.3 + Math.pow(nextRc(), 2.4) * 3.0;
+        rcIsCoreArr[rcIdx] = 0.0;
+        rcIdx += 1;
+      }
+    }
+    const realClusterGeo = track(new THREE.BufferGeometry());
+    realClusterGeo.setAttribute('position', new THREE.BufferAttribute(rcPosArr, 3));
+    realClusterGeo.setAttribute('aColor', new THREE.BufferAttribute(rcColArr, 3));
+    realClusterGeo.setAttribute('aSize', new THREE.BufferAttribute(rcSizeArr, 1));
+    realClusterGeo.setAttribute('aIsCore', new THREE.BufferAttribute(rcIsCoreArr, 1));
+    const realClusterMat = track(
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+          uOpacity: { value: 1.0 },
+        },
+        vertexShader: `
+          #include <common>
+          #include <logdepthbuf_pars_vertex>
+          attribute vec3 aColor;
+          attribute float aSize;
+          attribute float aIsCore;
+          uniform float uPixelRatio;
+          varying vec3 vColor;
+          varying float vIsCore;
+          void main() {
+            vColor = aColor;
+            vIsCore = aIsCore;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            float dist = max(0.25, -mvPosition.z);
+            float scale = aIsCore > 0.5
+              ? clamp(aSize * (18.0 / dist), 8.0, 26.0)
+              : clamp(aSize * (22.0 / dist), 1.4, 8.5);
+            gl_PointSize = scale * uPixelRatio;
+            gl_Position = projectionMatrix * mvPosition;
+            #include <logdepthbuf_vertex>
+          }
+        `,
+        fragmentShader: `
+          #include <common>
+          #include <logdepthbuf_pars_fragment>
+          uniform float uOpacity;
+          varying vec3 vColor;
+          varying float vIsCore;
+          void main() {
+            #include <logdepthbuf_fragment>
+            vec2 p = gl_PointCoord - vec2(0.5);
+            float r = length(p);
+            if (r > 0.5) discard;
+            if (vIsCore > 0.5) {
+              float halo = exp(-r * r * 14.0) * 0.42;
+              float ring = smoothstep(0.36, 0.31, r) * smoothstep(0.22, 0.28, r) * 0.30;
+              float core = exp(-r * r * 68.0) * 0.62;
+              vec3 col = mix(vColor, vec3(1.0, 0.98, 0.94), core * 0.75);
+              float alpha = (halo + ring + core) * uOpacity;
+              gl_FragColor = vec4(col * alpha, alpha);
+            } else {
+              float star = exp(-r * r * 38.0);
+              float alpha = star * uOpacity * 0.85;
+              gl_FragColor = vec4(vColor * alpha, alpha);
+            }
+          }
+        `,
+      })
+    );
+    const realClusterPoints = new THREE.Points(realClusterGeo, realClusterMat);
+    realClusterPoints.renderOrder = 4;
+    realClusterPoints.frustumCulled = false;
+    galacticRoot.add(realClusterPoints);
 
     // =========================================================================
     // PASS 2B: Galactic Center Nuclear Star Cluster (NSC + S-Stars, 1 unit = 1 pc)
@@ -3434,122 +3489,25 @@ export default function UniverseCanvas({
         sgrACoreMat.uniforms.uCloseFactor.value = 0.0;
         sgrACoreMat.uniforms.uTime.value = elapsedSec;
 
-        // Update moving memory nodes, fading orbital trails, & gravitational category clusters
-        if (lastDynMemoriesRef !== memoriesRef.current) {
-          memorySim.syncMemories(memoriesRef.current);
-          lastDynMemoriesRef = memoriesRef.current;
-        }
-        const isGalacticClusterVisible =
-          !nearSgrACloseup &&
-          distToSgrAKpc > 0.45 &&
-          (weights.galactic > 0.04 || weights.extragalactic > 0.05);
-
-        // Advance N-body gravitational clustering & orbital trajectories smoothly every frame
-        if (isGalacticClusterVisible || weights.galactic > 0.01) {
-          memorySim.step({
-            dtSec: Math.min(0.05, Math.max(0.008, rawDt)),
-            clusteringEnabled: clusterModeRef.current,
-            orbitalSpeedScale: Math.max(0.4, orbitSpeedRef.current || 1.0),
-            reducedMotion: reducedMotionRef.current,
-          });
-          latestClusterMetrics = memorySim.computeClusterMetrics();
-        }
-
-        clusterHaloBlend = THREE.MathUtils.damp(
-          clusterHaloBlend,
+        // Real Milky Way star clusters & giant H-II complexes visibility blend
+        clusterBlend = THREE.MathUtils.damp(
+          clusterBlend,
           clusterModeRef.current ? 1.0 : 0.0,
-          4.5,
+          5.0,
           Math.min(0.05, Math.max(0.008, rawDt))
         );
-
-        const memOverlayAlpha = isGalacticClusterVisible
-          ? Math.max(weights.galactic, weights.extragalactic * 0.65) *
-            Math.max(0, Math.min(1, (distToSgrAKpc - 0.5) / 2.2))
-          : 0;
-
-        if (memOverlayAlpha > 0.01) {
-          const activeNodes = memorySim.nodes;
-          const nodeCount = Math.min(MAX_MEMORY_DYN_NODES, activeNodes.length);
-          const filterActive = isFilterActiveRef.current;
-          const matchedSet = matchedIdsRef.current;
-          const curSelId = selectedIdRef.current;
-
-          // Update moving memory star-nodes buffer in-place
-          for (let i = 0; i < nodeCount; i += 1) {
-            const nd = activeNodes[i];
-            const i3 = i * 3;
-            memNodePosArr[i3 + 0] = nd.posKpc[0];
-            memNodePosArr[i3 + 1] = nd.posKpc[1];
-            memNodePosArr[i3 + 2] = nd.posKpc[2];
-            memNodeColArr[i3 + 0] = nd.colorRgb[0];
-            memNodeColArr[i3 + 1] = nd.colorRgb[1];
-            memNodeColArr[i3 + 2] = nd.colorRgb[2];
-            memNodeSizeArr[i] = nd.starSize;
-            memNodeHighlightArr[i] = curSelId === nd.id ? 1.0 : 0.0;
-            memNodeAlphaArr[i] =
-              !filterActive || matchedSet.has(nd.id) || curSelId === nd.id ? 1.0 : 0.16;
-          }
-          (memNodeGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
-          (memNodeGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
-          (memNodeGeo.getAttribute('aSize') as THREE.BufferAttribute).needsUpdate = true;
-          (memNodeGeo.getAttribute('aHighlight') as THREE.BufferAttribute).needsUpdate = true;
-          (memNodeGeo.getAttribute('aAlpha') as THREE.BufferAttribute).needsUpdate = true;
-          memNodeGeo.setDrawRange(0, nodeCount);
-          memNodePoints.visible = true;
-          memNodeMat.uniforms.uTime.value = elapsedSec;
-          memNodeMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
-          memNodeMat.uniforms.uOpacity.value = Math.min(1.0, memOverlayAlpha * 1.15);
-
-          // Update smooth fading orbital trajectory trails buffer in-place
-          if (showTrailsRef.current) {
-            const packedVerts = packMemoryTrailsToLineSegments(
-              activeNodes,
-              memTrailPosArr,
-              memTrailColArr,
-              memTrailProgArr,
-              filterActive ? matchedSet : undefined,
-              curSelId
-            );
-            (memTrailGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
-            (memTrailGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
-            (memTrailGeo.getAttribute('aProgress') as THREE.BufferAttribute).needsUpdate = true;
-            memTrailGeo.setDrawRange(0, packedVerts);
-            memTrailLines.visible = packedVerts > 0;
-            memTrailMat.uniforms.uTime.value = elapsedSec;
-            memTrailMat.uniforms.uOpacity.value = Math.min(0.95, memOverlayAlpha * 0.92);
-          } else {
-            memTrailLines.visible = false;
-          }
-
-          // Update soft volumetric category cluster halos
-          if (clusterHaloBlend > 0.02 && latestClusterMetrics.clusters.length > 0) {
-            const clusters = latestClusterMetrics.clusters;
-            const cCount = Math.min(maxClusters, clusters.length);
-            for (let c = 0; c < cCount; c += 1) {
-              const cl = clusters[c];
-              const c3 = c * 3;
-              clusterHaloPosArr[c3 + 0] = cl.centroidKpc[0];
-              clusterHaloPosArr[c3 + 1] = cl.centroidKpc[1];
-              clusterHaloPosArr[c3 + 2] = cl.centroidKpc[2];
-              clusterHaloColArr[c3 + 0] = cl.colorRgb[0];
-              clusterHaloColArr[c3 + 1] = cl.colorRgb[1];
-              clusterHaloColArr[c3 + 2] = cl.colorRgb[2];
-              clusterHaloRadArr[c] = Math.max(1.35, Math.min(3.4, cl.rmsRadiusKpc * 1.75 + 0.85));
-            }
-            (clusterHaloGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
-            (clusterHaloGeo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
-            (clusterHaloGeo.getAttribute('aRadiusKpc') as THREE.BufferAttribute).needsUpdate = true;
-            clusterHaloGeo.setDrawRange(0, cCount);
-            clusterHaloPoints.visible = true;
-            clusterHaloMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
-            clusterHaloMat.uniforms.uOpacity.value = memOverlayAlpha * clusterHaloBlend * 0.92;
-          } else {
-            clusterHaloPoints.visible = false;
-          }
+        const realClusterAlpha =
+          !nearSgrACloseup && distToSgrAKpc > 0.35
+            ? Math.max(weights.galactic, weights.extragalactic * 0.45) *
+              Math.max(0, Math.min(1, (distToSgrAKpc - 0.35) / 1.4)) *
+              clusterBlend
+            : 0;
+        if (realClusterAlpha > 0.01) {
+          realClusterPoints.visible = true;
+          realClusterMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+          realClusterMat.uniforms.uOpacity.value = Math.min(0.95, realClusterAlpha * 0.92);
         } else {
-          memNodePoints.visible = false;
-          memTrailLines.visible = false;
-          clusterHaloPoints.visible = false;
+          realClusterPoints.visible = false;
         }
 
         renderer.render(galacticScene, camera);
@@ -4231,8 +4189,10 @@ export default function UniverseCanvas({
           stageRef.current.dataset.catalogRendered = renderedCatalogId;
           stageRef.current.dataset.trailsActive = showTrailsRef.current ? 'true' : 'false';
           stageRef.current.dataset.clusteringActive = clusterModeRef.current ? 'true' : 'false';
-          stageRef.current.dataset.clusterCount = String(latestClusterMetrics.clusters.length);
-          stageRef.current.dataset.clusterCohesion = latestClusterMetrics.cohesionRatio.toFixed(2);
+          stageRef.current.dataset.clusterCount = String(
+            clusterModeRef.current ? MILKY_WAY_STAR_CLUSTERS.length : 0
+          );
+          stageRef.current.dataset.clusterCohesion = '1.00';
           stageRef.current.dataset.wavelengthBand = wavelengthBandRef.current;
           stageRef.current.dataset.eclipseActive = eclipseActiveRef.current ? 'true' : 'false';
           stageRef.current.dataset.photonPulseActive = photonPulseActiveRef.current ? 'true' : 'false';
@@ -4391,48 +4351,80 @@ export default function UniverseCanvas({
             }
           }
 
-          // 3. Sagittarius A* & Sun Galactic landmark
+          // 3. Sagittarius A*, Solar System, Real Milky Way Star Clusters & Spiral Arms
           if (
             (weights.galactic > 0.2 || weights.extragalactic > 0.2 || showGcCluster) &&
             distToSgrAM > 75 * AU_IN_METERS
           ) {
+            const activeLang = langRef.current;
+            const sgrACoreLabel: Record<LanguageCode, string> = {
+              en: 'Sagittarius A* (Milky Way Core)',
+              vi: 'Sagittarius A* (Tâm Ngân Hà)',
+              ja: 'いて座 A*（銀河中心）',
+              zh: '人马座 A*（银心）',
+              ko: '궁수자리 A* (은하 중심)',
+            };
+            const solarSysLabel: Record<LanguageCode, string> = {
+              en: 'Solar System',
+              vi: 'Hệ Mặt Trời',
+              ja: '太陽系',
+              zh: '太阳系',
+              ko: '태양계',
+            };
             candidates.push({
               id: 'BLACK_HOLE_CORE',
-              text: 'Sagittarius A* (Milky Way Core)',
+              text: sgrACoreLabel[activeLang] || sgrACoreLabel.en,
               relM: [-camGalacticM[0], -camGalacticM[1], -camGalacticM[2]],
-              priority: 95,
+              priority: 96,
               accent: '#f59e0b',
             });
             if (weights.galactic > 0.25) {
               candidates.push({
                 id: 'sun',
-                text: 'Solar System (8.18 kpc)',
+                text: solarSysLabel[activeLang] || solarSysLabel.en,
+                subtext: '8.18 kpc',
                 relM: [
                   origins.sunInGalacticM[0] - camGalacticM[0],
                   origins.sunInGalacticM[1] - camGalacticM[1],
                   origins.sunInGalacticM[2] - camGalacticM[2],
                 ],
-                priority: 92,
+                priority: 94,
                 accent: '#54a8ff',
               });
 
-              // 3B. Distinct Category Star Clusters (when Gravitational Clustering is ON)
-              if (clusterModeRef.current && latestClusterMetrics.clusters.length > 0) {
-                const catStrings = UI_STRINGS[langRef.current].categories;
-                for (const cl of latestClusterMetrics.clusters) {
-                  const catLabel = catStrings[cl.category]?.shortLabel || cl.category;
+              // 3B. Real Milky Way Star Clusters & Giant H-II Star-Forming Complexes (Gaia DR3 / Harris 2010)
+              if (clusterModeRef.current) {
+                for (const cl of MILKY_WAY_STAR_CLUSTERS) {
                   const relM: Vec3d = [
-                    cl.centroidKpc[0] * KILOPARSEC_METERS - camGalacticM[0],
-                    cl.centroidKpc[1] * KILOPARSEC_METERS - camGalacticM[1],
-                    cl.centroidKpc[2] * KILOPARSEC_METERS - camGalacticM[2],
+                    cl.posKpc[0] * KILOPARSEC_METERS - camGalacticM[0],
+                    cl.posKpc[1] * KILOPARSEC_METERS - camGalacticM[1],
+                    cl.posKpc[2] * KILOPARSEC_METERS - camGalacticM[2],
                   ];
                   candidates.push({
-                    id: `cluster:${cl.categoryIndex}`,
-                    text: catLabel,
-                    subtext: `${cl.memberCount}`,
+                    id: cl.id,
+                    text: cl.shortName[activeLang] || cl.shortName.en,
+                    subtext: `${cl.distanceFromSunKpc.toFixed(1)} kpc`,
                     relM,
-                    priority: 76,
-                    accent: cl.colorHex,
+                    priority: 78,
+                    accent: cl.accentHex,
+                  });
+                }
+              }
+
+              // 3C. Real NASA/JPL Milky Way Spiral Arms aligned on exact parametric ridges
+              if (weights.galactic > 0.42) {
+                for (const arm of MILKY_WAY_SPIRAL_ARM_LANDMARKS) {
+                  const relM: Vec3d = [
+                    arm.posKpc[0] * KILOPARSEC_METERS - camGalacticM[0],
+                    arm.posKpc[1] * KILOPARSEC_METERS - camGalacticM[1],
+                    arm.posKpc[2] * KILOPARSEC_METERS - camGalacticM[2],
+                  ];
+                  candidates.push({
+                    id: arm.id,
+                    text: arm.shortName[activeLang] || arm.shortName.en,
+                    relM,
+                    priority: 66,
+                    accent: arm.accentHex,
                   });
                 }
               }
@@ -4600,24 +4592,20 @@ export default function UniverseCanvas({
   const handleClickLabel = useCallback(
     (labelId: string) => {
       if (labelId.startsWith('star:')) return;
-      if (labelId.startsWith('cluster:')) {
-        const idx = Number(labelId.slice('cluster:'.length));
-        const cat = ALL_CATEGORIES[idx];
-        const leadNode = cat
-          ? memoriesRef.current.find((m) => m.category === cat)
-          : undefined;
-        if (leadNode) {
-          const resolved = resolveUniverseTarget(
-            leadNode.id,
-            camCtrlRef.current.ephemeris,
-            memoriesRef.current,
-            langRef.current
-          );
-          startFlyTo(resolved);
-          onSelectNodeRef.current(leadNode.id);
-        }
+
+      // Clicking "Solar System (8.18 kpc)" from galactic view frames the full Solar System cleanly
+      if (labelId === 'sun' && camCtrlRef.current.distM > 5e14) {
+        const solarPreset = resolveScalePreset(
+          'solar-system',
+          camCtrlRef.current.ephemeris,
+          memoriesRef.current
+        );
+        startFlyTo(solarPreset);
+        selectedIdRef.current = 'star-sol';
+        onSelectNodeRef.current('star-sol');
         return;
       }
+
       const resolved = resolveUniverseTarget(
         labelId,
         camCtrlRef.current.ephemeris,
@@ -4625,12 +4613,20 @@ export default function UniverseCanvas({
         langRef.current
       );
       startFlyTo(resolved);
+
       const mappedMem = EPHEMERIS_ID_TO_MEMORY_ID[labelId];
       if (mappedMem) {
+        selectedIdRef.current = mappedMem;
         onSelectNodeRef.current(mappedMem);
       } else if (labelId === 'BLACK_HOLE_CORE') {
+        selectedIdRef.current = 'BLACK_HOLE_CORE';
         onSelectNodeRef.current('BLACK_HOLE_CORE');
-      } else if (memoriesRef.current.some((m) => m.id === labelId)) {
+      } else if (
+        getMilkyWayLandmarkById(labelId) ||
+        EXTRAGALACTIC_CATALOG.some((g) => g.id === labelId) ||
+        memoriesRef.current.some((m) => m.id === labelId)
+      ) {
+        selectedIdRef.current = labelId;
         onSelectNodeRef.current(labelId);
       }
     },

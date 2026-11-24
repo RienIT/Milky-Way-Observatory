@@ -554,42 +554,40 @@ export default function GraphicsSettingsModal({
             </section>
 
             {/* 3. Render Resolution Scale */}
-            <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-              <Card.Content className="p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[#FFF8E7]">
+            <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+              <Card.Content className="min-w-0 p-4 space-y-3 overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[#FFF8E7] min-w-0">
                     <Monitor className="w-4 h-4 text-[#FA500F] shrink-0" />
-                    <span>{copy.resolutionLabel}</span>
+                    <span className="truncate">{copy.resolutionLabel}</span>
                   </div>
                   <span
                     data-testid="live-render-resolution"
-                    className="font-mono tabular-nums text-xs text-[#FFAF00] font-semibold"
+                    className="font-mono tabular-nums text-xs text-[#FFAF00] font-semibold shrink-0"
                   >
                     {copy.liveRenderSize}: {renderPxW} × {renderPxH} px ({settings.resolutionScale}x)
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 @[480px]/modal:grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-3 @[480px]/modal:grid-cols-6 gap-1.5 min-w-0">
                   {RESOLUTION_OPTIONS.map((opt) => {
                     const active = settings.resolutionScale === opt.scale;
                     return (
-                      <Button
+                      <button
                         key={opt.scale}
-                        size="sm"
-                        fullWidth
-                        variant={active ? 'primary' : 'outline'}
+                        type="button"
                         data-testid={`res-scale-${opt.scale}`}
-                        onPress={() =>
+                        onClick={() =>
                           updateField('resolutionScale', opt.scale as ResolutionScaleOption)
                         }
-                        className={`w-full h-8 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                        className={`w-full h-8 min-w-0 rounded-[8px] border px-1.5 font-mono tabular-nums text-[11px] leading-none inline-flex items-center justify-center transition-colors ${
                           active
-                            ? 'bg-[#FA500F] text-white font-semibold'
+                            ? 'bg-[#FA500F] border-[#FA500F] text-white font-semibold'
                             : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#D6D3CB]'
                         }`}
                       >
-                        {opt.badge}
-                      </Button>
+                        <span className="truncate">{opt.badge}</span>
+                      </button>
                     );
                   })}
                 </div>
@@ -599,32 +597,30 @@ export default function GraphicsSettingsModal({
             {/* 4. Granular GPU & Scene Complexity Controls */}
             <section className="grid grid-cols-1 @[560px]/modal:grid-cols-2 gap-3">
               {/* Milky Way Star Count */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 space-y-2.5 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 text-xs min-w-0">
                     <span className="font-medium text-[#FFF8E7] truncate">{copy.starCountLabel}</span>
                     <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {(settings.starfieldCount / 1000).toFixed(0)}k
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 @[420px]/modal:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-3 @[680px]/modal:grid-cols-6 gap-1 min-w-0">
                     {STAR_COUNT_OPTIONS.map((cnt) => {
                       const active = settings.starfieldCount === cnt;
                       return (
-                        <Button
+                        <button
                           key={cnt}
-                          size="sm"
-                          fullWidth
-                          variant={active ? 'primary' : 'outline'}
-                          onPress={() => updateField('starfieldCount', cnt)}
-                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          type="button"
+                          onClick={() => updateField('starfieldCount', cnt)}
+                          className={`w-full h-7 min-w-0 rounded-[8px] border px-1 font-mono tabular-nums text-[11px] leading-none inline-flex items-center justify-center transition-colors ${
                             active
-                              ? 'bg-[#FA500F] text-white font-semibold'
+                              ? 'bg-[#FA500F] border-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          {cnt / 1000}k
-                        </Button>
+                          <span className="truncate">{cnt / 1000}k</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -632,9 +628,9 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Asteroid & Kuiper Belt Particle Count */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 space-y-2.5 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 text-xs min-w-0">
                     <span className="font-medium text-[#FFF8E7] truncate">{copy.asteroidCountLabel}</span>
                     <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {settings.asteroidBeltCount === 0
@@ -642,24 +638,22 @@ export default function GraphicsSettingsModal({
                         : `${(settings.asteroidBeltCount / 1000).toFixed(1)}k`}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 @[420px]/modal:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-3 @[680px]/modal:grid-cols-6 gap-1 min-w-0">
                     {ASTEROID_COUNT_OPTIONS.map((cnt) => {
                       const active = settings.asteroidBeltCount === cnt;
                       return (
-                        <Button
+                        <button
                           key={cnt}
-                          size="sm"
-                          fullWidth
-                          variant={active ? 'primary' : 'outline'}
-                          onPress={() => updateField('asteroidBeltCount', cnt)}
-                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          type="button"
+                          onClick={() => updateField('asteroidBeltCount', cnt)}
+                          className={`w-full h-7 min-w-0 rounded-[8px] border px-1 font-mono tabular-nums text-[11px] leading-none inline-flex items-center justify-center transition-colors ${
                             active
-                              ? 'bg-[#FA500F] text-white font-semibold'
+                              ? 'bg-[#FA500F] border-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          {cnt === 0 ? '0' : `${cnt / 1000}k`}
-                        </Button>
+                          <span className="truncate">{cnt === 0 ? '0' : `${cnt / 1000}k`}</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -667,32 +661,30 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Planet Tessellation */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 space-y-2.5 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 text-xs min-w-0">
                     <span className="font-medium text-[#FFF8E7] truncate">{copy.tessellationLabel}</span>
                     <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {settings.planetSegments} {extra.segUnit}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 @[420px]/modal:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-3 @[680px]/modal:grid-cols-6 gap-1 min-w-0">
                     {TESSELLATION_OPTIONS.map((seg) => {
                       const active = settings.planetSegments === seg;
                       return (
-                        <Button
+                        <button
                           key={seg}
-                          size="sm"
-                          fullWidth
-                          variant={active ? 'primary' : 'outline'}
-                          onPress={() => updateField('planetSegments', seg)}
-                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          type="button"
+                          onClick={() => updateField('planetSegments', seg)}
+                          className={`w-full h-7 min-w-0 rounded-[8px] border px-1 font-mono tabular-nums text-[11px] leading-none inline-flex items-center justify-center transition-colors ${
                             active
-                              ? 'bg-[#FA500F] text-white font-semibold'
+                              ? 'bg-[#FA500F] border-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          {seg}
-                        </Button>
+                          <span className="truncate">{seg}</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -700,32 +692,30 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Black Hole Raymarch Steps */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 space-y-2.5 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 text-xs min-w-0">
                     <span className="font-medium text-[#FFF8E7] truncate">{copy.rayStepsLabel}</span>
                     <span className="font-mono tabular-nums text-[#FFAF00] shrink-0">
                       {settings.blackHoleRaySteps} {extra.stepsUnit}
                     </span>
                   </div>
-                  <div className="grid grid-cols-5 gap-1">
+                  <div className="grid grid-cols-5 gap-1 min-w-0">
                     {RAYMARCH_STEP_OPTIONS.map((steps) => {
                       const active = settings.blackHoleRaySteps === steps;
                       return (
-                        <Button
+                        <button
                           key={steps}
-                          size="sm"
-                          fullWidth
-                          variant={active ? 'primary' : 'outline'}
-                          onPress={() => updateField('blackHoleRaySteps', steps)}
-                          className={`w-full h-7 min-w-0 rounded-[8px] px-1 font-mono text-[11px] ${
+                          type="button"
+                          onClick={() => updateField('blackHoleRaySteps', steps)}
+                          className={`w-full h-7 min-w-0 rounded-[8px] border px-1 font-mono tabular-nums text-[11px] leading-none inline-flex items-center justify-center transition-colors ${
                             active
-                              ? 'bg-[#FA500F] text-white font-semibold'
+                              ? 'bg-[#FA500F] border-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          {steps}
-                        </Button>
+                          <span className="truncate">{steps}</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -736,36 +726,35 @@ export default function GraphicsSettingsModal({
             {/* 5. Toggles & FPS Cap */}
             <section className="grid grid-cols-1 @[640px]/modal:grid-cols-3 gap-3">
               {/* FPS Cap */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 space-y-2.5">
-                  <span className="text-xs font-medium text-[#FFF8E7] block">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 space-y-2.5 overflow-hidden">
+                  <span className="text-xs font-medium text-[#FFF8E7] block leading-snug">
                     {copy.fpsCapLabel}
                   </span>
-                  <div className="flex flex-wrap items-center gap-1.5 w-full min-w-0">
+                  <div className="grid grid-cols-2 gap-1.5 w-full min-w-0">
                     {FPS_CAP_OPTIONS.map((fps) => {
                       const active = settings.fpsCap === fps;
                       const isUncapped = fps === 0;
                       return (
-                        <Button
+                        <button
                           key={fps}
-                          size="sm"
-                          variant={active ? 'primary' : 'outline'}
+                          type="button"
                           data-testid={`fps-cap-${fps}`}
-                          onPress={() => updateField('fpsCap', fps)}
-                          className={`h-8 !min-w-0 max-w-full rounded-[8px] px-2.5 overflow-hidden text-[11px] leading-none ${
+                          onClick={() => updateField('fpsCap', fps)}
+                          className={`w-full min-w-0 h-7 rounded-[8px] border px-2 text-[11px] leading-none inline-flex items-center justify-center transition-colors overflow-hidden ${
                             isUncapped
-                              ? 'flex-1 basis-[96px] font-sans'
-                              : 'w-[42px] shrink-0 font-mono tabular-nums px-0'
+                              ? 'col-span-2 font-sans'
+                              : 'font-mono tabular-nums'
                           } ${
                             active
-                              ? 'bg-[#FA500F] text-white font-semibold'
+                              ? 'bg-[#FA500F] border-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          <span className="truncate block">
-                            {isUncapped ? copy.fpsUncapped : `${fps}`}
+                          <span className="truncate">
+                            {isUncapped ? copy.fpsUncapped : `${fps} FPS`}
                           </span>
-                        </Button>
+                        </button>
                       );
                     })}
                   </div>
@@ -773,8 +762,8 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Antialiasing Switch */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2.5">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 flex flex-row items-center justify-between gap-2.5 overflow-hidden">
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-[#FFF8E7]">{copy.antialiasLabel}</p>
                     <p className="text-[11px] text-[#8F8D87] leading-snug mt-0.5">
@@ -795,8 +784,8 @@ export default function GraphicsSettingsModal({
               </Card>
 
               {/* Atmosphere & Nebulae Switch */}
-              <Card className="rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
-                <Card.Content className="p-3.5 flex flex-row items-center justify-between gap-2.5">
+              <Card className="min-w-0 rounded-[12px] bg-[#1B1B1F] border border-[#FFF8E7]/10 shadow-none p-0 overflow-hidden">
+                <Card.Content className="min-w-0 p-3.5 flex flex-row items-center justify-between gap-2.5 overflow-hidden">
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-[#FFF8E7]">{copy.atmosphereLabel}</p>
                     <p className="text-[11px] text-[#8F8D87] leading-snug mt-0.5">

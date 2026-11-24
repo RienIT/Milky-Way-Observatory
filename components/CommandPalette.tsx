@@ -24,6 +24,7 @@ import {
 } from '@/lib/astrophysics-science';
 import { getLocalizedNode } from '@/lib/celestial-translations';
 import { EXTRAGALACTIC_CATALOG } from '@/lib/extragalactic-catalog';
+import { ALL_MILKY_WAY_LANDMARKS } from '@/lib/milky-way-landmarks';
 import { GUIDED_TOURS, GuidedTourId } from '@/lib/guided-tours';
 import { LanguageCode, UI_STRINGS } from '@/lib/i18n';
 import { OBSERVATORY_EXTRA_COPY } from '@/lib/localized-telemetry';
@@ -258,15 +259,30 @@ export default function CommandPalette({
       });
     }
 
+    for (const lm of ALL_MILKY_WAY_LANDMARKS) {
+      entries.push({
+        id: `mw-${lm.id}`,
+        title: lm.name[lang],
+        subtitle: `${lm.classLabel[lang]} · ${lm.regionLabel[lang]}`,
+        meta: `${lm.distanceFromSunKpc.toFixed(1)} kpc`,
+        group: 'galaxies',
+        kind: 'object',
+        objectId: lm.id,
+      });
+    }
+
     for (const gal of EXTRAGALACTIC_CATALOG) {
       entries.push({
         id: `gal-${gal.id}`,
         title: gal.name,
         subtitle: `${gal.designation} · ${gal.morphology}`,
-        meta: `${(gal.distanceMpc * 3.26156).toFixed(2)} Mly`,
+        meta:
+          gal.distanceMpc < 1
+            ? `${Math.round(gal.distanceMpc * 1000)} kpc`
+            : `${(gal.distanceMpc * 3.26156).toFixed(2)} Mly`,
         group: 'galaxies',
-        kind: 'preset',
-        preset: 'local-group',
+        kind: 'object',
+        objectId: gal.id,
       });
     }
 

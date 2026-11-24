@@ -36,6 +36,10 @@ import {
 import { getLocalizedNode } from './celestial-translations';
 import { LanguageCode } from './i18n';
 import { getScientificAstrometry } from './scientific-catalog';
+import {
+  getMilkyWayLandmarkById,
+  getMilkyWayLandmarkPosM,
+} from './milky-way-landmarks';
 import { ScalePresetId } from './universe-i18n';
 
 /**
@@ -334,6 +338,23 @@ export function resolveUniverseTarget(
       idealYaw: 0.4,
       idealPitch: extra.id === 'mw-galaxy' ? 0.92 : 0.42,
       provenance: 'mixed',
+      showSurfaceAltitude: false,
+    };
+  }
+
+  // 3B. Real Milky Way Star Clusters, H-II Complexes & Spiral Arm Landmarks
+  const mwLandmark = getMilkyWayLandmarkById(rawId);
+  if (mwLandmark) {
+    const posM = getMilkyWayLandmarkPosM(mwLandmark);
+    return {
+      id: mwLandmark.id,
+      label: mwLandmark.name[lang] || mwLandmark.name.en,
+      position: { anchor: 'galactic', offsetM: posM },
+      radiusM: Math.max(15 * LIGHT_YEAR_METERS, mwLandmark.diameterLy * 0.5 * LIGHT_YEAR_METERS),
+      idealDistM: mwLandmark.idealInspectDistKpc * KILOPARSEC_METERS,
+      idealYaw: 0.42,
+      idealPitch: mwLandmark.kind === 'spiral-arm' ? 0.78 : 0.48,
+      provenance: mwLandmark.kind === 'spiral-arm' ? 'mixed' : 'measured',
       showSurfaceAltitude: false,
     };
   }
