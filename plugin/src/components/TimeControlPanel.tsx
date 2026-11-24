@@ -30,10 +30,12 @@ export interface TimeControlPanelProps {
   speedSecondsPerSec: number;
   moonPhaseFraction: number;
   eclipseActive?: boolean;
+  eclipseStudioOpen?: boolean;
   onTogglePlay: () => void;
   onChangeSpeed: (secondsPerSec: number) => void;
   onResetToNow: () => void;
   onJumpToEclipse?: (preset: SolarEclipsePreset) => void;
+  onOpenEclipseStudio?: () => void;
 }
 
 function formatUtcTimestamp(ms: number): string {
@@ -53,10 +55,12 @@ export default function TimeControlPanel({
   speedSecondsPerSec,
   moonPhaseFraction,
   eclipseActive = false,
+  eclipseStudioOpen = false,
   onTogglePlay,
   onChangeSpeed,
   onResetToNow,
   onJumpToEclipse,
+  onOpenEclipseStudio,
 }: TimeControlPanelProps) {
   const copy = UNIVERSE_HUD_COPY[lang];
   const moonPct = Math.round(Math.max(0, Math.min(1, moonPhaseFraction)) * 100);
@@ -80,15 +84,21 @@ export default function TimeControlPanel({
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {eclipseActive ? (
-              <Chip
-                data-testid="eclipse-active-indicator"
-                size="sm"
-                variant="soft"
-                color="accent"
-                className="h-5 rounded-full bg-[#FA500F] px-2 text-[10px] font-mono font-semibold text-white"
+              <button
+                type="button"
+                onClick={onOpenEclipseStudio}
+                className="cursor-pointer"
               >
-                {copy.eclipseActiveBadge}
-              </Chip>
+                <Chip
+                  data-testid="eclipse-active-indicator"
+                  size="sm"
+                  variant="soft"
+                  color="accent"
+                  className="h-5 rounded-full bg-[#FA500F] px-2 text-[10px] font-mono font-semibold text-white"
+                >
+                  {copy.eclipseActiveBadge}
+                </Chip>
+              </button>
             ) : (
               <span
                 className="hidden @[440px]/obs:inline text-[10px] font-mono tabular-nums text-[#A19F99] whitespace-nowrap"
@@ -156,7 +166,7 @@ export default function TimeControlPanel({
                 data-testid="eclipse-presets-trigger"
                 aria-label={copy.eclipseBtn}
                 className={`h-7 min-w-0 rounded-[8px] px-1.5 @[540px]/obs:px-2 text-[10px] font-mono gap-1 whitespace-nowrap shrink-0 ${
-                  eclipseActive
+                  eclipseActive || eclipseStudioOpen
                     ? 'bg-[#FA500F]/20 text-[#FFD800] border-[#FA500F]/60'
                     : 'bg-[#FFF8E7]/[0.06] text-[#F5F2EB] hover:bg-[#FFF8E7]/[0.12] border-[#FFF8E7]/12'
                 }`}
@@ -169,7 +179,7 @@ export default function TimeControlPanel({
                 placement="bottom end"
                 data-theme="dark"
                 data-mw-observatory="true"
-                className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[260px] max-w-[calc(100vw-24px)]"
+                className="dark z-[99999] bg-[#141416] border border-[#FFF8E7]/14 rounded-[12px] p-1.5 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.45)] min-w-[272px] max-w-[calc(100vw-24px)]"
               >
                 <Dropdown.Menu
                   aria-label={copy.eclipseBtn}

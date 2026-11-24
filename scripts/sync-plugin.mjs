@@ -104,9 +104,9 @@ for (const file of libFiles) {
   fs.writeFileSync(path.join(PLUGIN_LIB_DIR, file), rewritten, 'utf8');
 }
 
-// 3. Sync static star tiles, Web Worker, and brand logo assets
+// 3. Sync static star tiles, Web Worker, planetary textures, and brand logo assets
 ensureCleanDir(PLUGIN_PUBLIC_DIR);
-for (const sub of ['data', 'workers']) {
+for (const sub of ['data', 'workers', 'textures']) {
   const srcSub = path.join(ROOT_DIR, 'public', sub);
   if (fs.existsSync(srcSub)) {
     copyDirectoryRecursive(srcSub, path.join(PLUGIN_PUBLIC_DIR, sub));

@@ -1,4 +1,23 @@
 import * as THREE from 'three';
+import type { EarthTextureBundle } from './earth-textures';
+
+let fallbackWhiteTex: THREE.DataTexture | null = null;
+let fallbackBlackTex: THREE.DataTexture | null = null;
+
+function getFallbackEarthTexture(white: boolean): THREE.DataTexture {
+  if (white) {
+    if (!fallbackWhiteTex) {
+      fallbackWhiteTex = new THREE.DataTexture(new Uint8Array([32, 92, 165, 255]), 1, 1);
+      fallbackWhiteTex.needsUpdate = true;
+    }
+    return fallbackWhiteTex;
+  }
+  if (!fallbackBlackTex) {
+    fallbackBlackTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    fallbackBlackTex.needsUpdate = true;
+  }
+  return fallbackBlackTex;
+}
 
 /**
  * Generates a subtle circular astronomical targeting reticle for selected/hovered planets
@@ -507,8 +526,10 @@ export function createVolumetricBlackHoleMaterial(): THREE.ShaderMaterial {
 export function createRealisticPlanetMaterial(
   archetypeId: number,
   seed: number,
-  atmosphereColor: THREE.Color
+  atmosphereColor: THREE.Color,
+  surfaceMap?: THREE.Texture
 ): THREE.ShaderMaterial {
+  const fallbackTex = getFallbackEarthTexture(false);
   return new THREE.ShaderMaterial({
     transparent: false,
     depthWrite: true,
@@ -522,6 +543,13 @@ export function createRealisticPlanetMaterial(
       uHighlight: { value: 0.0 },
       uLightPos: { value: new THREE.Vector3(0, 0, 0) },
       uDetailBoost: { value: 0.0 },
+      uQualityLevel: { value: 0.54 },
+      uReliefStrength: { value: 0.95 },
+      uAtmoStrength: { value: 0.88 },
+      uSpecularStrength: { value: 0.85 },
+      uMicroDetailStrength: { value: 0.35 },
+      uSurfaceMap: { value: surfaceMap ?? fallbackTex },
+      uHasSurfaceMap: { value: surfaceMap ? 1.0 : 0.0 },
     },
     vertexShader: `
       #include <common>
@@ -529,11 +557,26 @@ export function createRealisticPlanetMaterial(
       varying vec3 vLocalPos;
       varying vec3 vWorldPos;
       varying vec3 vWorldNormal;
+      varying vec3 vWorldTangent;
+      varying vec3 vWorldBitangent;
+      varying vec2 vUv;
       void main() {
+        vUv = uv;
         vLocalPos = normalize(position);
         vec4 wp = modelMatrix * vec4(position, 1.0);
         vWorldPos = wp.xyz;
-        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        mat3 nMat = mat3(modelMatrix);
+        vec3 nObj = normalize(normal);
+        vec3 tObj = vec3(-nObj.z, 0.0, nObj.x);
+        if (length(tObj) < 0.001) {
+          tObj = vec3(1.0, 0.0, 0.0);
+        } else {
+          tObj = normalize(tObj);
+        }
+        vec3 bObj = normalize(cross(nObj, tObj));
+        vWorldNormal = normalize(nMat * nObj);
+        vWorldTangent = normalize(nMat * tObj);
+        vWorldBitangent = normalize(nMat * bObj);
         gl_Position = projectionMatrix * viewMatrix * wp;
         #include <logdepthbuf_vertex>
       }
@@ -549,10 +592,20 @@ export function createRealisticPlanetMaterial(
       uniform float uHighlight;
       uniform vec3 uLightPos;
       uniform float uDetailBoost;
+      uniform float uQualityLevel;
+      uniform float uReliefStrength;
+      uniform float uAtmoStrength;
+      uniform float uSpecularStrength;
+      uniform float uMicroDetailStrength;
+      uniform sampler2D uSurfaceMap;
+      uniform float uHasSurfaceMap;
 
       varying vec3 vLocalPos;
       varying vec3 vWorldPos;
       varying vec3 vWorldNormal;
+      varying vec3 vWorldTangent;
+      varying vec3 vWorldBitangent;
+      varying vec2 vUv;
 
       float hash3(vec3 p) {
         p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3) + uSeed * 0.07);
@@ -610,12 +663,111 @@ export function createRealisticPlanetMaterial(
         return bowl - 0.22 + rim;
       }
 
+      float mapLuma(vec3 c) {
+        return dot(c, vec3(0.2126, 0.7152, 0.0722));
+      }
+
       void main() {
         vec3 N = normalize(vWorldNormal);
+        vec3 T = normalize(vWorldTangent);
+        vec3 B = normalize(vWorldBitangent);
         vec3 V = normalize(cameraPosition - vWorldPos);
         // Primary illumination from host star (Sun for Solar System in 1:1 mode) or Galactic Core
         vec3 lightVec = uLightPos - vWorldPos;
         vec3 L = length(lightVec) > 0.0001 ? normalize(lightVec) : vec3(0.0, 1.0, 0.0);
+
+        vec3 p = normalize(vLocalPos);
+        float lat = p.y;
+
+        // =========================================================================
+        // PHOTOREALISTIC NASA EQUIRECTANGULAR PLANETARY MAP PATH (All Solar Planets)
+        // =========================================================================
+        if (uHasSurfaceMap > 0.5 && (uArchetype < 8.5 || uArchetype > 9.5)) {
+          vec3 mapAlbedo = texture2D(uSurfaceMap, vUv).rgb;
+          float lum = mapLuma(mapAlbedo);
+
+          // Classify physical world type for tailored relief, terminator, & scattering
+          bool isAirlessRocky = (uArchetype > 6.5 && uArchetype < 7.5) || (uArchetype > 9.5 && uArchetype < 10.5);
+          bool isMars = (uArchetype > 5.5 && uArchetype < 6.5);
+          bool isGasOrIceGiant = (uArchetype > 0.5 && uArchetype < 1.5) || (uArchetype > 3.5 && uArchetype < 5.5);
+          bool isCloudShrouded = (uArchetype > 7.5 && uArchetype < 8.5);
+
+          // Tangent-space 3D relief normal perturbation extracted from high-res surface map
+          vec3 shadedN = N;
+          if (uReliefStrength > 0.02) {
+            vec2 stepUv = vec2(0.0012, 0.0024);
+            float hR = mapLuma(texture2D(uSurfaceMap, vec2(fract(vUv.x + stepUv.x), vUv.y)).rgb);
+            float hL = mapLuma(texture2D(uSurfaceMap, vec2(fract(vUv.x - stepUv.x), vUv.y)).rgb);
+            float hU = mapLuma(texture2D(uSurfaceMap, vec2(vUv.x, clamp(vUv.y + stepUv.y, 0.002, 0.998))).rgb);
+            float hD = mapLuma(texture2D(uSurfaceMap, vec2(vUv.x, clamp(vUv.y - stepUv.y, 0.002, 0.998))).rgb);
+            float bodyRelief = isAirlessRocky ? 1.55 : isMars ? 1.12 : isCloudShrouded ? 0.38 : 0.32;
+            float rScale = bodyRelief * min(1.35, uReliefStrength);
+            shadedN = normalize(N + T * ((hL - hR) * rScale) + B * ((hD - hU) * rScale));
+          }
+
+          // Subtle fine procedural micro-grain / storm wisps unlocked on Medium -> Ultra
+          if (uMicroDetailStrength > 0.01) {
+            float fineA = noise3(p * 34.0 + vec3(uSeed * 0.17));
+            float fineB = noise3(p * 78.0 - vec3(uSeed * 0.31));
+            float micro = (fineA * 0.6 + fineB * 0.4) - 0.5;
+            float microAmp = isGasOrIceGiant ? 0.045 : 0.105;
+            mapAlbedo *= (1.0 + micro * microAmp * uMicroDetailStrength);
+          }
+
+          float ndlMacro = dot(N, L);
+          float ndlBumped = dot(shadedN, L);
+          // Airless worlds (Moon/Mercury/Pluto) have razor-sharp high-contrast terminators
+          float termSoft = isAirlessRocky ? 0.045 : isMars ? 0.12 : 0.18;
+          float dayFactor = smoothstep(-termSoft, 0.24, ndlMacro);
+          // Lommel-Seeliger / Oren-Nayar lunar flattening blend for dusty airless regolith
+          float lambert = max(0.0, ndlBumped);
+          float diffuse = isAirlessRocky
+            ? mix(lambert, pow(max(0.0, ndlBumped), 0.78), 0.38)
+            : lambert;
+
+          // Subtle warm twilight / Mie scattering only for worlds with real atmospheres
+          float twilight = exp(-pow((ndlMacro + 0.015) * (isMars ? 9.0 : 6.8), 2.0));
+          float atmoFactor = isAirlessRocky ? 0.0 : min(1.15, uAtmoStrength);
+
+          // Physical specular response (gas clouds stay velvety matte so pale Saturn/Venus bands never clip white)
+          vec3 H = normalize(L + V);
+          float specPow = isGasOrIceGiant || isCloudShrouded ? 16.0 : 42.0;
+          float specBase = pow(max(dot(shadedN, H), 0.0), specPow) * dayFactor;
+          float iceHighlight = smoothstep(0.68, 0.88, lum);
+          float specMask = isAirlessRocky
+            ? iceHighlight * 0.12
+            : isMars
+              ? (0.03 + iceHighlight * 0.22)
+              : isCloudShrouded
+                ? 0.06
+                : 0.04;
+
+          float ndv = max(0.0, dot(N, V));
+          float fresnel = pow(1.0 - ndv, isMars ? 3.5 : 3.2);
+
+          vec3 sunTint = vec3(1.0, 0.98, 0.94);
+          vec3 nightFloor = isAirlessRocky ? vec3(0.022, 0.024, 0.030) : vec3(0.030, 0.034, 0.048);
+          float diffuseGain = isGasOrIceGiant ? 0.98 : isCloudShrouded ? 0.96 : 1.16;
+
+          vec3 lit = mapAlbedo * (nightFloor + sunTint * diffuse * diffuseGain);
+          // Delicate dusty amber terminator on Mars, soft scatter on Venus/giants (never a harsh painted band)
+          vec3 termCol = isMars
+            ? vec3(0.86, 0.40, 0.18)
+            : isCloudShrouded
+              ? vec3(0.92, 0.74, 0.44)
+              : mix(vec3(0.82, 0.56, 0.34), uAtmoColor, 0.60);
+          lit += termCol * twilight * (isMars ? 0.09 : 0.07) * atmoFactor;
+          lit += vec3(1.0, 0.96, 0.88) * specBase * specMask * uSpecularStrength;
+
+          // Atmospheric limb glow strictly modulated by uAtmoStrength (0 on Potato & Airless worlds)
+          float limbAmt = fresnel * (0.12 + 0.68 * dayFactor + uHighlight * 0.32) * atmoFactor;
+          float limbWeight = isMars ? 0.34 : isCloudShrouded ? 0.32 : 0.24;
+          vec3 finalCol = lit + uAtmoColor * limbAmt * limbWeight;
+
+          gl_FragColor = vec4(finalCol * mix(0.22, 1.0, uOpacity), 1.0);
+          #include <logdepthbuf_fragment>
+          return;
+        }
 
         float NdotL = dot(N, L);
         float dayFactor = smoothstep(-0.22, 0.65, NdotL);
@@ -624,9 +776,6 @@ export function createRealisticPlanetMaterial(
 
         vec3 H = normalize(L + V);
         float specBase = pow(max(dot(N, H), 0.0), 32.0) * smoothstep(-0.05, 0.35, NdotL);
-
-        vec3 p = normalize(vLocalPos);
-        float lat = p.y;
 
         float cloudSpin = uTime * 0.06;
         vec3 cloudPos = vec3(
@@ -871,31 +1020,32 @@ export function createRealisticPlanetMaterial(
         vec3 cloudColor = vec3(0.98, 0.96, 0.93);
         vec3 compositeAlbedo = mix(surfaceAlbedo, cloudColor, cloudAlpha);
 
-        // High-frequency micro-relief & atmospheric eddy detail unlocked on RTX 3050-4050 / Ultra
+        // High-frequency micro-relief & atmospheric eddy detail scaled dynamically with Graphics Settings
         float microShade = 1.0;
-        if (uDetailBoost > 0.01) {
+        float effectiveMicro = max(uDetailBoost, uMicroDetailStrength);
+        if (effectiveMicro > 0.01) {
           float fineA = noise3(p * 26.0 + vec3(uSeed * 0.13));
           float fineB = noise3(p * 62.0 - vec3(uSeed * 0.27));
           float micro = (fineA * 0.62 + fineB * 0.38) - 0.5;
-          compositeAlbedo *= (1.0 + micro * 0.24 * uDetailBoost);
+          compositeAlbedo *= (1.0 + micro * 0.26 * effectiveMicro);
           // Subtle micro-bump relief along terminator for solid & storm surfaces (non-stars)
           if (uArchetype < 8.5 || uArchetype > 9.5) {
             float fineShift = noise3((p + L * 0.018) * 26.0 + vec3(uSeed * 0.13));
-            microShade = clamp(1.0 + (fineShift - fineA) * 1.45 * uDetailBoost, 0.78, 1.24);
+            microShade = clamp(1.0 + (fineShift - fineA) * 1.55 * uReliefStrength, 0.72, 1.30);
           }
         }
 
         vec3 coreLightCol = vec3(1.0, 0.95, 0.86);
-        vec3 ambientSpaceCol = vec3(0.21, 0.23, 0.29);
+        vec3 ambientSpaceCol = vec3(0.16, 0.18, 0.23);
         vec3 twilightScatterCol = mix(vec3(0.95, 0.52, 0.22), uAtmoColor, 0.45);
 
-        vec3 litSurface = compositeAlbedo * (ambientSpaceCol + coreLightCol * dayFactor * 1.14 * microShade);
-        litSurface += twilightScatterCol * twilight * 0.20;
-        litSurface += vec3(1.0, 0.92, 0.76) * specBase * specularMask * 0.90;
+        vec3 litSurface = compositeAlbedo * (ambientSpaceCol + coreLightCol * dayFactor * 1.18 * microShade);
+        litSurface += twilightScatterCol * twilight * 0.22 * uAtmoStrength;
+        litSurface += vec3(1.0, 0.92, 0.76) * specBase * specularMask * 0.92 * uSpecularStrength;
         litSurface += nightEmission;
 
-        float limbStrength = fresnel * (0.32 + 0.60 * dayFactor + uHighlight * 0.45);
-        vec3 finalCol = mix(litSurface, uAtmoColor * 1.22, limbStrength * 0.58);
+        float limbStrength = fresnel * (0.28 + 0.64 * dayFactor + uHighlight * 0.45) * uAtmoStrength;
+        vec3 finalCol = mix(litSurface, uAtmoColor * 1.22, clamp(limbStrength * 0.58, 0.0, 0.85));
 
         gl_FragColor = vec4(finalCol * mix(0.22, 1.0, uOpacity), 1.0);
         #include <logdepthbuf_fragment>
@@ -919,6 +1069,7 @@ export function createPlanetAtmosphereMaterial(
     uniforms: {
       uAtmoColor: { value: atmosphereColor.clone() },
       uOpacity: { value: 0.85 },
+      uAtmoStrength: { value: 0.9 },
       uLightPos: { value: new THREE.Vector3(0, 0, 0) },
     },
     vertexShader: `
@@ -939,6 +1090,7 @@ export function createPlanetAtmosphereMaterial(
       #include <logdepthbuf_pars_fragment>
       uniform vec3 uAtmoColor;
       uniform float uOpacity;
+      uniform float uAtmoStrength;
       uniform vec3 uLightPos;
       varying vec3 vWorldNormal;
       varying vec3 vWorldPos;
@@ -953,7 +1105,7 @@ export function createPlanetAtmosphereMaterial(
         float dayWeight = 0.28 + 0.72 * smoothstep(-0.3, 0.55, dot(-N, L));
         // Soft bell-curve fade at the outer edge (ndotv -> 0) so there is no hard rim outline
         float softHalo = pow(ndotv, 1.65) * pow(1.0 - ndotv * 0.65, 2.2);
-        float alpha = softHalo * dayWeight * uOpacity * 0.65;
+        float alpha = softHalo * dayWeight * uOpacity * clamp(uAtmoStrength, 0.0, 1.4) * 0.65;
 
         gl_FragColor = vec4(uAtmoColor * 1.2, alpha);
         #include <logdepthbuf_fragment>
@@ -1338,18 +1490,465 @@ export function createRockyBeltMaterial(): THREE.ShaderMaterial {
 }
 
 /**
- * High-Fidelity Earth Surface Material (Phase 2):
- * - Multi-octave continental elevation, bathymetry, deserts, mountains, polar ice caps
- * - Live solar direction (uSunDir) driving crisp twilight terminator & ocean specular glint
- * - Glowing urban city lights strictly on night-side coastal/temperate landmasses
- * - Integrated Rayleigh blue atmospheric scattering toward the limb
+ * Photorealistic NASA Blue Marble Earth Surface Material:
+ * - Real equirectangular geographic continents, bathymetry, deserts, rainforests, polar ice & real city-light corridors
+ * - Analytical elevation-gradient normal mapping for mountain ranges (Himalayas, Andes, Rockies, Alps)
+ * - Real-time cloud drop-shadows projected onto oceans and continents
+ * - Fresnel + Phong solar specular reflection strictly on ice-free liquid oceans
+ * - Analytical Lunar Umbra & Penumbra with 360-degree bronze-crimson twilight ring + emerging totality city lights
+ * - Integrated Rayleigh blue limb scattering and golden-orange twilight terminator
  */
-export function createEarthHighResMaterial(): THREE.ShaderMaterial {
+export function createEarthHighResMaterial(
+  textures?: EarthTextureBundle
+): THREE.ShaderMaterial {
+  const dayMap = textures?.dayMap ?? getFallbackEarthTexture(true);
+  const dataMap = textures?.dataMap ?? getFallbackEarthTexture(false);
+  const nightMap = textures?.nightMap ?? getFallbackEarthTexture(false);
+  const cloudMap = textures?.cloudMap ?? getFallbackEarthTexture(false);
+
   return new THREE.ShaderMaterial({
     uniforms: {
       uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
       uTime: { value: 0 },
       uDetailBoost: { value: 0 },
+      uQualityLevel: { value: 0.54 },
+      uReliefStrength: { value: 0.95 },
+      uCloudShadowStrength: { value: 0.32 },
+      uNightLightsStrength: { value: 1.05 },
+      uAtmoStrength: { value: 0.92 },
+      uSpecularStrength: { value: 0.88 },
+      uMicroDetailStrength: { value: 0.35 },
+      uHasPhotoDayMap: { value: 0.0 },
+      uEclipseActive: { value: 0 },
+      uMoonRelEarth: { value: new THREE.Vector3(60, 0, 0) },
+      uSunDistEarth: { value: 23455.0 },
+      uDayMap: { value: dayMap },
+      uDataMap: { value: dataMap },
+      uNightMap: { value: nightMap },
+      uCloudMap: { value: cloudMap },
+      uCloudOffset: { value: 0 },
+      uCloudOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldTangent;
+      varying vec3 vWorldBitangent;
+      varying vec3 vViewDir;
+      varying vec2 vUv;
+
+      void main() {
+        vUv = uv;
+        vObjPos = normalize(position);
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        mat3 nMat = mat3(modelMatrix);
+        vec3 nObj = normalize(normal);
+        // Eastward tangent around Y axis in object space
+        vec3 tObj = vec3(-nObj.z, 0.0, nObj.x);
+        if (length(tObj) < 0.001) {
+          tObj = vec3(1.0, 0.0, 0.0);
+        } else {
+          tObj = normalize(tObj);
+        }
+        vec3 bObj = normalize(cross(nObj, tObj));
+
+        vWorldNormal = normalize(nMat * nObj);
+        vWorldTangent = normalize(nMat * tObj);
+        vWorldBitangent = normalize(nMat * bObj);
+        vViewDir = normalize(cameraPosition - wp.xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform vec3 uSunDir;
+      uniform float uTime;
+      uniform float uDetailBoost;
+      uniform float uQualityLevel;
+      uniform float uReliefStrength;
+      uniform float uCloudShadowStrength;
+      uniform float uNightLightsStrength;
+      uniform float uAtmoStrength;
+      uniform float uSpecularStrength;
+      uniform float uMicroDetailStrength;
+      uniform float uHasPhotoDayMap;
+      uniform float uEclipseActive;
+      uniform vec3 uMoonRelEarth;
+      uniform float uSunDistEarth;
+      uniform sampler2D uDayMap;
+      uniform sampler2D uDataMap;
+      uniform sampler2D uNightMap;
+      uniform sampler2D uCloudMap;
+      uniform float uCloudOffset;
+      uniform float uCloudOpacity;
+
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldTangent;
+      varying vec3 vWorldBitangent;
+      varying vec3 vViewDir;
+      varying vec2 vUv;
+
+      float hash31(vec3 p) {
+        p = fract(p * 0.1031);
+        p += dot(p, p.yzx + 33.33);
+        return fract((p.x + p.y) * p.z);
+      }
+
+      float noise3(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
+              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+
+      float earthLuma(vec3 c) {
+        return dot(c, vec3(0.2126, 0.7152, 0.0722));
+      }
+
+      void main() {
+        vec3 p = normalize(vObjPos);
+        vec3 N = normalize(vWorldNormal);
+        vec3 T = normalize(vWorldTangent);
+        vec3 B = normalize(vWorldBitangent);
+        vec3 V = normalize(vViewDir);
+        vec3 L = normalize(uSunDir);
+
+        vec3 daySample = texture2D(uDayMap, vUv).rgb;
+        vec3 nightSample = texture2D(uNightMap, vUv).rgb;
+
+        float landMask;
+        float iceMask;
+        float waterMask;
+
+        if (uHasPhotoDayMap > 0.5) {
+          // Derive razor-accurate water / snow / land masks directly from NASA Blue Marble photography
+          float maxC = max(daySample.r, max(daySample.g, daySample.b));
+          float minC = min(daySample.r, min(daySample.g, daySample.b));
+          float sat = (maxC - minC) / max(0.001, maxC);
+          float lum = earthLuma(daySample);
+
+          iceMask = smoothstep(0.66, 0.84, lum) * smoothstep(0.26, 0.10, sat);
+          float deepOcean =
+            smoothstep(0.015, 0.12, daySample.b - max(daySample.r, daySample.g * 0.90)) *
+            smoothstep(0.58, 0.25, lum);
+          float coastalShelf =
+            smoothstep(0.02, 0.13, daySample.b - daySample.r) *
+            smoothstep(0.015, 0.11, daySample.g - daySample.r) *
+            smoothstep(0.52, 0.24, daySample.r);
+          waterMask = clamp(max(deepOcean, coastalShelf * 0.92), 0.0, 1.0) * (1.0 - iceMask);
+          landMask = 1.0 - waterMask;
+        } else {
+          vec3 dataSample = texture2D(uDataMap, vUv).rgb;
+          landMask = dataSample.g;
+          iceMask = dataSample.b;
+          waterMask = (1.0 - landMask) * (1.0 - iceMask);
+        }
+
+        // Subtle high-frequency terrain micro-detail unlocked progressively from Medium -> Ultra
+        float microAmp = max(uDetailBoost * 0.5, uMicroDetailStrength);
+        float microGrain = (noise3(p * 62.0) - 0.5) * 0.075 * microAmp;
+        vec3 surfaceAlbedo = daySample * (1.0 + microGrain * landMask);
+
+        // Analytical tangent-space mountain relief normal perturbation (0 on Potato -> sculpted on RTX/Ultra)
+        vec3 bumpedN = N;
+        if (uReliefStrength > 0.02) {
+          vec2 texStep = vec2(0.0011, 0.0022);
+          float hR;
+          float hL;
+          float hU;
+          float hD;
+          if (uHasPhotoDayMap > 0.5) {
+            hR = earthLuma(texture2D(uDayMap, vec2(fract(vUv.x + texStep.x), vUv.y)).rgb);
+            hL = earthLuma(texture2D(uDayMap, vec2(fract(vUv.x - texStep.x), vUv.y)).rgb);
+            hU = earthLuma(texture2D(uDayMap, vec2(vUv.x, clamp(vUv.y + texStep.y, 0.002, 0.998))).rgb);
+            hD = earthLuma(texture2D(uDayMap, vec2(vUv.x, clamp(vUv.y - texStep.y, 0.002, 0.998))).rgb);
+          } else {
+            hR = texture2D(uDataMap, vec2(fract(vUv.x + texStep.x), vUv.y)).r;
+            hL = texture2D(uDataMap, vec2(fract(vUv.x - texStep.x), vUv.y)).r;
+            hU = texture2D(uDataMap, vec2(vUv.x, clamp(vUv.y + texStep.y, 0.002, 0.998))).r;
+            hD = texture2D(uDataMap, vec2(vUv.x, clamp(vUv.y - texStep.y, 0.002, 0.998))).r;
+          }
+          float reliefScale = 2.05 * uReliefStrength * landMask * (1.0 - iceMask * 0.50);
+          bumpedN = normalize(N + T * ((hL - hR) * reliefScale) + B * ((hD - hU) * reliefScale));
+        }
+
+        // Macroscopic solar angle vs bumped mountain normal
+        float ndlMacro = dot(N, L);
+        float ndl = dot(bumpedN, L);
+        float dayFactor = smoothstep(-0.075, 0.16, ndlMacro);
+        float diffuse = max(0.0, ndl);
+
+        // Analytical Solar Eclipse Lunar Umbra & Penumbra from live astronomy-engine Moon/Sun positions
+        float eclipseFactor = 1.0;
+        float eclipseUmbraGlow = 0.0;
+        if (uEclipseActive > 0.001 && ndlMacro > -0.05) {
+          vec3 toMoon = uMoonRelEarth - N;
+          float projMoon = dot(toMoon, L);
+          if (projMoon > 0.0) {
+            float dMoon = length(toMoon);
+            vec3 dirMoon = toMoon / max(0.001, dMoon);
+            float sep = acos(clamp(dot(dirMoon, L), -1.0, 1.0));
+            float angMoon = atan(0.2727, dMoon);
+            float angSun = atan(109.1, max(1000.0, uSunDistEarth));
+            float penumbraEdge = angMoon + angSun;
+            float umbraEdge = max(0.00024, abs(angMoon - angSun));
+            float penumbra = smoothstep(umbraEdge * 0.95, penumbraEdge * 1.12, sep);
+            float umbraCore = smoothstep(umbraEdge * 0.35, penumbraEdge * 0.24, sep);
+            float rawShadow = mix(0.012, 1.0, penumbra * (0.14 + 0.86 * umbraCore));
+            eclipseFactor = mix(1.0, rawShadow, uEclipseActive);
+            // Warm bronze-crimson 360-degree sunset glow ringing the dark umbral core
+            eclipseUmbraGlow =
+              exp(-pow((sep - penumbraEdge * 0.19) / (penumbraEdge * 0.12), 2.0)) *
+              uEclipseActive *
+              dayFactor;
+          }
+        }
+
+        // Real-time cloud drop shadows cast slightly away from the Sun onto continents & oceans
+        float cloudShadow = 1.0;
+        if (uCloudOpacity > 0.01 && uCloudShadowStrength > 0.01 && dayFactor > 0.02) {
+          vec2 shadowShift = vec2(dot(L, T), dot(L, B)) * 0.0036;
+          vec2 cloudUv = vec2(fract(vUv.x - uCloudOffset + shadowShift.x), clamp(vUv.y + shadowShift.y, 0.002, 0.998));
+          float cloudDensity = texture2D(uCloudMap, cloudUv).r;
+          cloudShadow = 1.0 - cloudDensity * uCloudShadowStrength * uCloudOpacity * dayFactor;
+        }
+
+        // Delicate photographic golden-amber twilight along the day/night terminator + eclipse umbra edge
+        float terminatorBand = exp(-pow((ndlMacro + 0.014) * 13.5, 2.0));
+        float atmoClamped = min(1.12, uAtmoStrength);
+        vec3 twilightTint = vec3(0.76, 0.32, 0.11) * terminatorBand * 0.11 * atmoClamped * eclipseFactor;
+        twilightTint += vec3(0.72, 0.24, 0.06) * eclipseUmbraGlow * 0.34;
+
+        // Crisp physical ocean sun-glint (Schlick Fresnel strictly on ice-free liquid ocean)
+        vec3 H = normalize(L + V);
+        float ndh = max(0.0, dot(N, H));
+        float specSharp = pow(ndh, mix(26.0, 108.0, uQualityLevel));
+        float specBroad = pow(ndh, 18.0) * 0.14;
+        float grazing = pow(1.0 - max(0.0, dot(N, V)), 3.0);
+        vec3 specular =
+          vec3(1.0, 0.97, 0.90) *
+          (specSharp * 0.68 + specBroad) *
+          (0.62 + 0.52 * grazing) *
+          waterMask *
+          dayFactor *
+          eclipseFactor *
+          cloudShadow *
+          min(1.18, uSpecularStrength);
+
+        // Real NASA Black Marble VIIRS city lights on the night hemisphere + emerging inside deep totality
+        float nightMask = smoothstep(0.05, -0.14, ndlMacro);
+        float eclipseTotalityNight = smoothstep(0.18, 0.04, eclipseFactor) * dayFactor * 0.78;
+        vec3 cityLights =
+          nightSample *
+          vec3(1.22, 0.88, 0.46) *
+          max(nightMask, eclipseTotalityNight) *
+          uNightLightsStrength;
+
+        // Inner Rayleigh atmospheric perspective across the sunlit limb (0 on Potato / Atmosphere Off)
+        float ndv = max(0.0, dot(N, V));
+        float fresnel = pow(1.0 - ndv, 3.5);
+        vec3 rayleighDay =
+          mix(vec3(0.14, 0.48, 1.0), vec3(0.46, 0.78, 1.0), fresnel) *
+          fresnel *
+          (0.14 + 0.86 * dayFactor) *
+          0.62 *
+          atmoClamped *
+          (0.28 + 0.72 * eclipseFactor);
+        vec3 rayleighSunset = vec3(0.88, 0.38, 0.13) * fresnel * terminatorBand * 0.18 * atmoClamped * eclipseFactor;
+        vec3 rayleighNight = vec3(0.04, 0.12, 0.28) * fresnel * nightMask * 0.20 * atmoClamped;
+
+        // Subtle earthshine ambient floor so dark hemisphere silhouette stays readable against stars
+        vec3 nightAmbient = surfaceAlbedo * vec3(0.022, 0.028, 0.044);
+        vec3 litColor =
+          surfaceAlbedo * (diffuse * 1.24 * eclipseFactor * cloudShadow) +
+          twilightTint +
+          specular +
+          nightAmbient * (1.0 - dayFactor * eclipseFactor);
+
+        vec3 finalColor = litColor + cityLights + rayleighDay + rayleighSunset + rayleighNight;
+        gl_FragColor = vec4(finalColor, 1.0);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Photorealistic Earth Meteorological Cloud Deck Material:
+ * Uses NASA MODIS global cloud imagery with eastward zonal drift, volumetric cloud-top
+ * self-shadowing on High/RTX/Ultra, golden sunset terminator tint, and live lunar eclipse darkening.
+ */
+export function createEarthCloudsMaterial(
+  cloudMap?: THREE.Texture
+): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
+      uTime: { value: 0 },
+      uDetailBoost: { value: 0 },
+      uQualityLevel: { value: 0.54 },
+      uEclipseActive: { value: 0 },
+      uMoonRelEarth: { value: new THREE.Vector3(60, 0, 0) },
+      uSunDistEarth: { value: 23455.0 },
+      uCloudMap: { value: cloudMap ?? getFallbackEarthTexture(false) },
+      uCloudOffset: { value: 0 },
+      uCloudOpacity: { value: 1.0 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldTangent;
+      varying vec3 vWorldBitangent;
+      varying vec2 vUv;
+
+      void main() {
+        vUv = uv;
+        vObjPos = normalize(position);
+        mat3 nMat = mat3(modelMatrix);
+        vec3 nObj = normalize(normal);
+        vec3 tObj = vec3(-nObj.z, 0.0, nObj.x);
+        if (length(tObj) < 0.001) {
+          tObj = vec3(1.0, 0.0, 0.0);
+        } else {
+          tObj = normalize(tObj);
+        }
+        vec3 bObj = normalize(cross(nObj, tObj));
+        vWorldNormal = normalize(nMat * nObj);
+        vWorldTangent = normalize(nMat * tObj);
+        vWorldBitangent = normalize(nMat * bObj);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
+
+      uniform vec3 uSunDir;
+      uniform float uTime;
+      uniform float uDetailBoost;
+      uniform float uQualityLevel;
+      uniform float uEclipseActive;
+      uniform vec3 uMoonRelEarth;
+      uniform float uSunDistEarth;
+      uniform sampler2D uCloudMap;
+      uniform float uCloudOffset;
+      uniform float uCloudOpacity;
+
+      varying vec3 vObjPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldTangent;
+      varying vec3 vWorldBitangent;
+      varying vec2 vUv;
+
+      float hash31(vec3 p) {
+        p = fract(p * 0.1031);
+        p += dot(p, p.yzx + 33.33);
+        return fract((p.x + p.y) * p.z);
+      }
+
+      float noise3(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
+              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+
+      void main() {
+        if (uCloudOpacity <= 0.005) discard;
+        vec2 shiftedUv = vec2(fract(vUv.x - uCloudOffset), vUv.y);
+        float texCloud = texture2D(uCloudMap, shiftedUv).r;
+        // Subtle fine cirrus breakup scaled with quality tier
+        float fineWisps = (noise3(vObjPos * 28.0 + vec3(uTime * 0.02, 0.0, 0.0)) - 0.5) * 0.14 * (0.4 + 0.6 * uQualityLevel);
+        float alpha = clamp((texCloud + fineWisps * texCloud) * 0.86 * uCloudOpacity, 0.0, 0.92);
+        if (alpha < 0.02) discard;
+
+        vec3 N = normalize(vWorldNormal);
+        vec3 T = normalize(vWorldTangent);
+        vec3 B = normalize(vWorldBitangent);
+        vec3 L = normalize(uSunDir);
+        float ndl = dot(N, L);
+
+        // Volumetric cumulus cloud-top self-shadowing on Medium -> Ultra
+        float selfShade = 1.0;
+        if (uQualityLevel > 0.45 && ndl > -0.05) {
+          vec2 sunStep = vec2(dot(L, T), dot(L, B)) * 0.0022;
+          float towardSun = texture2D(uCloudMap, vec2(fract(shiftedUv.x + sunStep.x), clamp(shiftedUv.y + sunStep.y, 0.002, 0.998))).r;
+          selfShade = clamp(1.0 - max(0.0, towardSun - texCloud) * 0.85 * uQualityLevel, 0.68, 1.08);
+        }
+
+        float eclipseFactor = 1.0;
+        if (uEclipseActive > 0.001 && ndl > -0.05) {
+          vec3 toMoon = uMoonRelEarth - N * 1.008;
+          float projMoon = dot(toMoon, L);
+          if (projMoon > 0.0) {
+            float dMoon = length(toMoon);
+            vec3 dirMoon = toMoon / max(0.001, dMoon);
+            float sep = acos(clamp(dot(dirMoon, L), -1.0, 1.0));
+            float angMoon = atan(0.2727, dMoon);
+            float angSun = atan(109.1, max(1000.0, uSunDistEarth));
+            float penumbraEdge = angMoon + angSun;
+            float umbraEdge = max(0.00024, abs(angMoon - angSun));
+            float penumbra = smoothstep(umbraEdge * 0.95, penumbraEdge * 1.12, sep);
+            float umbraCore = smoothstep(umbraEdge * 0.35, penumbraEdge * 0.24, sep);
+            float rawShadow = mix(0.018, 1.0, penumbra * (0.14 + 0.86 * umbraCore));
+            eclipseFactor = mix(1.0, rawShadow, uEclipseActive);
+          }
+        }
+
+        float dayLit = smoothstep(-0.11, 0.20, ndl) * eclipseFactor * selfShade;
+        float twilight = exp(-pow((ndl + 0.018) * 12.0, 2.0)) * eclipseFactor;
+        vec3 col = mix(vec3(0.032, 0.042, 0.072), vec3(0.98, 0.99, 1.0), dayLit);
+        col += vec3(0.76, 0.34, 0.13) * twilight * 0.16;
+
+        gl_FragColor = vec4(col, alpha);
+        #include <logdepthbuf_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Physical Rayleigh + Mie Outer Earth Atmosphere Halo:
+ * Back-side additive limb scattering shell with luminous sapphire-cyan day rim,
+ * warm sunset scattering along the terminator, lunar eclipse dimming, and quality-scaled polar auroras.
+ */
+export function createEarthAtmosphereMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
+      uTime: { value: 0 },
+      uOpacity: { value: 1.0 },
+      uAtmoStrength: { value: 0.92 },
+      uAuroraStrength: { value: 0.45 },
       uEclipseActive: { value: 0 },
       uMoonRelEarth: { value: new THREE.Vector3(60, 0, 0) },
       uSunDistEarth: { value: 23455.0 },
@@ -1377,7 +1976,9 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
 
       uniform vec3 uSunDir;
       uniform float uTime;
-      uniform float uDetailBoost;
+      uniform float uOpacity;
+      uniform float uAtmoStrength;
+      uniform float uAuroraStrength;
       uniform float uEclipseActive;
       uniform vec3 uMoonRelEarth;
       uniform float uSunDistEarth;
@@ -1386,287 +1987,66 @@ export function createEarthHighResMaterial(): THREE.ShaderMaterial {
       varying vec3 vWorldNormal;
       varying vec3 vViewDir;
 
-      float hash31(vec3 p) {
-        p = fract(p * 0.1031);
-        p += dot(p, p.yzx + 33.33);
-        return fract((p.x + p.y) * p.z);
-      }
-
-      float noise3(vec3 x) {
-        vec3 i = floor(x);
-        vec3 f = fract(x);
-        f = f * f * (3.0 - 2.0 * f);
-        return mix(
-          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
-              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
-          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
-              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
-          f.z
-        );
-      }
-
-      float fbm(vec3 p) {
-        float v = 0.0;
-        float a = 0.5;
-        for (int i = 0; i < 4; i++) {
-          v += a * noise3(p);
-          p = p * 2.07 + vec3(11.3, -7.1, 5.7);
-          a *= 0.5;
-        }
-        return v;
-      }
-
       void main() {
-        vec3 p = normalize(vObjPos);
+        if (uAtmoStrength <= 0.005) discard;
         vec3 N = normalize(vWorldNormal);
         vec3 V = normalize(vViewDir);
         vec3 L = normalize(uSunDir);
 
-        float lat = abs(p.y);
-        // Warp domain for organic continental coastlines (Eurasia/Americas/Africa-like distribution)
-        vec3 warp = vec3(
-          fbm(p * 2.2 + vec3(1.7, 0.3, -2.1)),
-          fbm(p * 2.2 + vec3(-3.2, 4.1, 1.4)),
-          fbm(p * 2.2 + vec3(2.9, -1.8, 3.6))
-        );
-        float continentField = fbm(p * 2.45 + (warp - 0.5) * 0.92);
-        float ridgeDetail = fbm(p * 11.0 + warp * 1.4);
-        float microTopo = 0.0;
-        if (uDetailBoost > 0.01) {
-          microTopo =
-            ((noise3(p * 28.0 + warp * 2.1) - 0.5) * 0.055 +
-              (noise3(p * 64.0 - warp * 1.7) - 0.5) * 0.028) *
-            uDetailBoost;
-        }
-        float elevation = continentField + (ridgeDetail - 0.5) * 0.16 + microTopo;
+        // On BackSide sphere, dot(N, V) approaches 0 right at the outer silhouette; feather smoothly to 0 at edge
+        float viewDot = abs(dot(N, V));
+        float outerFade = smoothstep(0.0, 0.48, viewDot);
+        float limb = pow(clamp(1.0 - viewDot, 0.0, 1.0), 4.4) * outerFade;
+        float innerHalo = pow(clamp(1.0 - viewDot, 0.0, 1.0), 6.8) * outerFade;
 
-        float seaLevel = 0.505;
-        float landMask = smoothstep(seaLevel - 0.008, seaLevel + 0.014, elevation);
-        float coastalShelf = smoothstep(seaLevel - 0.08, seaLevel, elevation) * (1.0 - landMask);
-
-        // Ocean colors (deep abyssal indigo -> turquoise continental shelf)
-        vec3 oceanDeep = vec3(0.018, 0.068, 0.165);
-        vec3 oceanMid = vec3(0.032, 0.145, 0.295);
-        vec3 oceanShelf = vec3(0.065, 0.265, 0.385);
-        float oceanDepth = clamp((seaLevel - elevation) * 6.5, 0.0, 1.0);
-        vec3 oceanCol = mix(oceanMid, oceanDeep, oceanDepth);
-        oceanCol = mix(oceanCol, oceanShelf, coastalShelf * 0.65);
-
-        // Land biomes: tropical forest, temperate green, arid subtropical desert, alpine rock, polar ice
-        float moisture = fbm(p * 4.1 + vec3(5.2, -2.4, 8.1));
-        float aridity = smoothstep(0.12, 0.36, lat) * (1.0 - smoothstep(0.45, 0.68, lat)) * smoothstep(0.42, 0.66, 1.0 - moisture);
-        float mountain = smoothstep(0.64, 0.78, elevation);
-        float iceCap = smoothstep(0.76, 0.89, lat + (ridgeDetail - 0.5) * 0.09);
-
-        vec3 forestCol = vec3(0.085, 0.235, 0.098);
-        vec3 plainsCol = vec3(0.195, 0.305, 0.135);
-        vec3 desertCol = vec3(0.585, 0.475, 0.325);
-        vec3 mountainCol = vec3(0.365, 0.335, 0.305);
-        vec3 snowCol = vec3(0.92, 0.95, 0.98);
-
-        vec3 landCol = mix(forestCol, plainsCol, smoothstep(0.35, 0.68, moisture));
-        landCol = mix(landCol, desertCol, aridity * 0.85);
-        landCol = mix(landCol, mountainCol, mountain * 0.78);
-        landCol = mix(landCol, snowCol, smoothstep(0.74, 0.84, elevation) * 0.85);
-
-        vec3 surfaceAlbedo = mix(oceanCol, landCol, landMask);
-        surfaceAlbedo = mix(surfaceAlbedo, snowCol, iceCap * 0.94);
-
-        // Solar illumination + twilight terminator scattering
         float ndl = dot(N, L);
-        float dayFactor = smoothstep(-0.08, 0.18, ndl);
-        float diffuse = max(0.0, ndl);
-        // Analytical Solar Eclipse Lunar Umbra & Penumbra from live astronomy-engine Moon/Sun positions
+        float daySide = smoothstep(-0.18, 0.38, ndl);
+        float terminator = exp(-pow((ndl + 0.03) * 6.5, 2.0));
+
         float eclipseFactor = 1.0;
-        float eclipseUmbraGlow = 0.0;
-        if (uEclipseActive > 0.001 && ndl > -0.05) {
-          vec3 toMoon = uMoonRelEarth - N;
+        if (uEclipseActive > 0.001 && ndl > -0.1) {
+          vec3 toMoon = uMoonRelEarth - N * 1.03;
           float projMoon = dot(toMoon, L);
           if (projMoon > 0.0) {
             float dMoon = length(toMoon);
             vec3 dirMoon = toMoon / max(0.001, dMoon);
             float sep = acos(clamp(dot(dirMoon, L), -1.0, 1.0));
-            float angMoon = atan(0.2727, dMoon);
-            float angSun = atan(109.1, max(1000.0, uSunDistEarth));
-            float penumbraEdge = angMoon + angSun;
-            float umbraEdge = max(0.00022, abs(angMoon - angSun));
-            float penumbra = smoothstep(umbraEdge * 1.15, penumbraEdge * 1.15, sep);
-            float umbraCore = smoothstep(umbraEdge * 0.45, penumbraEdge * 0.28, sep);
-            float rawShadow = mix(0.02, 1.0, penumbra * (0.18 + 0.82 * umbraCore));
-            eclipseFactor = mix(1.0, rawShadow, uEclipseActive);
-            // Warm bronze-amber 360-degree twilight rim right around the umbral core
-            eclipseUmbraGlow = exp(-pow((sep - penumbraEdge * 0.22) / (penumbraEdge * 0.14), 2.0)) * uEclipseActive * dayFactor;
+            float penumbraEdge = atan(0.2727, dMoon) + atan(109.1, max(1000.0, uSunDistEarth));
+            float dim = smoothstep(penumbraEdge * 0.12, penumbraEdge * 1.05, sep);
+            eclipseFactor = mix(1.0, mix(0.22, 1.0, dim), uEclipseActive);
           }
         }
 
-        // Solar illumination + twilight terminator scattering (attenuated by lunar shadow)
-        float terminatorBand = exp(-pow((ndl + 0.015) * 11.0, 2.0));
-        vec3 twilightTint = vec3(0.62, 0.25, 0.09) * terminatorBand * 0.24 * eclipseFactor;
-        twilightTint += vec3(0.45, 0.19, 0.07) * eclipseUmbraGlow * 0.22;
+        // Emerald-cyan polar aurora oval shimmer on the night side (unlocked on High / RTX / Ultra)
+        float absY = abs(vObjPos.y);
+        float auroraBand = exp(-pow((absY - 0.915) / 0.032, 2.0));
+        float lon = atan(vObjPos.z, vObjPos.x);
+        float auroraCurtain =
+          (0.5 + 0.5 * sin(lon * 9.0 + uTime * 0.65)) *
+          (0.5 + 0.5 * cos(lon * 17.0 - uTime * 0.42));
+        float nightMask = smoothstep(0.05, -0.25, ndl);
+        vec3 auroraCol =
+          vec3(0.14, 0.94, 0.60) *
+          auroraBand *
+          auroraCurtain *
+          nightMask *
+          limb *
+          0.56 *
+          uAuroraStrength;
 
-        // Crisp solar specular glint on liquid ocean (extinguished inside totality)
-        vec3 H = normalize(L + V);
-        float specPow = pow(max(0.0, dot(N, H)), 46.0);
-        float waterMask = (1.0 - landMask) * (1.0 - iceCap);
-        vec3 specular = vec3(0.95, 0.92, 0.84) * specPow * waterMask * 0.55 * dayFactor * eclipseFactor;
+        vec3 rayleighCol = mix(vec3(0.14, 0.52, 1.0), vec3(0.52, 0.84, 1.0), innerHalo);
+        vec3 sunsetCol = vec3(0.90, 0.38, 0.13);
+        float atmoClamped = min(1.12, uAtmoStrength);
 
-        // City night lights on night-side continents + faint glimmer inside deep solar eclipse totality!
-        float nightMask = smoothstep(0.04, -0.14, ndl);
-        float eclipseTotalityNight = smoothstep(0.22, 0.06, eclipseFactor) * dayFactor * 0.65;
-        float habitableLat = (1.0 - smoothstep(0.52, 0.74, lat)) * (1.0 - iceCap) * (1.0 - mountain * 0.7);
-        float coastBias = smoothstep(0.0, 0.18, elevation - seaLevel) * (1.0 - smoothstep(0.14, 0.32, elevation - seaLevel));
-        float cityClusters = noise3(p * 34.0) * noise3(p * 78.0 + vec3(4.2, -1.7, 9.3));
-        float fineMetropolis =
-          uDetailBoost > 0.01
-            ? smoothstep(0.62, 0.86, noise3(p * 145.0 + vec3(1.8, 5.4, -3.1))) * 0.22 * uDetailBoost
-            : 0.0;
-        float citySparks = smoothstep(0.36, 0.62, cityClusters + coastBias * 0.28 + fineMetropolis) * landMask * habitableLat;
-        vec3 cityLights = vec3(1.0, 0.74, 0.34) * citySparks * max(nightMask, eclipseTotalityNight) * (1.45 + 0.25 * uDetailBoost);
+        vec3 col = rayleighCol * limb * (0.04 + 0.96 * daySide) * 1.02 * atmoClamped * eclipseFactor;
+        col += sunsetCol * terminator * limb * 0.22 * atmoClamped * eclipseFactor;
+        col += auroraCol;
 
-        // Analytical alpine relief shading on RTX 3050-4050 / Ultra
-        float landRelief = 1.0;
-        if (uDetailBoost > 0.01 && landMask > 0.05) {
-          float hHere = noise3(p * 32.0 + warp * 1.6);
-          float hSun = noise3((p + L * 0.012) * 32.0 + warp * 1.6);
-          landRelief = clamp(1.0 + (hSun - hHere) * 1.5 * landMask * uDetailBoost, 0.78, 1.24);
-        }
-
-        // Rayleigh blue atmospheric scattering along limb
-        float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.2);
-        vec3 rayleighDay = vec3(0.24, 0.56, 1.0) * fresnel * (0.25 + 0.75 * dayFactor) * 0.72 * (0.35 + 0.65 * eclipseFactor);
-        vec3 rayleighNight = vec3(0.06, 0.14, 0.30) * fresnel * nightMask * 0.22;
-
-        // Earthshine ambient floor on dark side so silhouette stays readable against stars
-        vec3 nightAmbient = surfaceAlbedo * 0.032;
-        vec3 litColor = surfaceAlbedo * (diffuse * 1.18 * landRelief * eclipseFactor) + twilightTint + specular + nightAmbient * (1.0 - dayFactor * eclipseFactor);
-        vec3 finalColor = litColor + cityLights + rayleighDay + rayleighNight;
-
-        gl_FragColor = vec4(finalColor, 1.0);
-        #include <logdepthbuf_fragment>
-      }
-    `,
-  });
-}
-
-/**
- * Animated Earth Cloud Layer Material (Phase 2):
- * Semi-transparent trade-wind & cyclone cloud cover with live terminator shading.
- */
-export function createEarthCloudsMaterial(): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    uniforms: {
-      uSunDir: { value: new THREE.Vector3(1, 0.2, 0.3).normalize() },
-      uTime: { value: 0 },
-      uDetailBoost: { value: 0 },
-      uEclipseActive: { value: 0 },
-      uMoonRelEarth: { value: new THREE.Vector3(60, 0, 0) },
-      uSunDistEarth: { value: 23455.0 },
-    },
-    vertexShader: `
-      #include <common>
-      #include <logdepthbuf_pars_vertex>
-      varying vec3 vObjPos;
-      varying vec3 vWorldNormal;
-
-      void main() {
-        vObjPos = normalize(position);
-        vWorldNormal = normalize(mat3(modelMatrix) * normal);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        #include <logdepthbuf_vertex>
-      }
-    `,
-    fragmentShader: `
-      precision highp float;
-      #include <common>
-      #include <logdepthbuf_pars_fragment>
-
-      uniform vec3 uSunDir;
-      uniform float uTime;
-      uniform float uDetailBoost;
-      uniform float uEclipseActive;
-      uniform vec3 uMoonRelEarth;
-      uniform float uSunDistEarth;
-      varying vec3 vObjPos;
-      varying vec3 vWorldNormal;
-
-      float hash31(vec3 p) {
-        p = fract(p * 0.1031);
-        p += dot(p, p.yzx + 33.33);
-        return fract((p.x + p.y) * p.z);
-      }
-
-      float noise3(vec3 x) {
-        vec3 i = floor(x);
-        vec3 f = fract(x);
-        f = f * f * (3.0 - 2.0 * f);
-        return mix(
-          mix(mix(hash31(i + vec3(0,0,0)), hash31(i + vec3(1,0,0)), f.x),
-              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
-          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
-              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y),
-          f.z
+        float alpha = clamp(
+          (limb * (0.08 + 0.92 * daySide) * atmoClamped + auroraBand * nightMask * 0.22 * uAuroraStrength) * uOpacity,
+          0.0,
+          0.90
         );
-      }
-
-      float fbm(vec3 p) {
-        float v = 0.0;
-        float a = 0.55;
-        for (int i = 0; i < 5; i++) {
-          v += a * noise3(p);
-          p = p * 2.12 + vec3(4.1, -6.3, 2.9);
-          a *= 0.48;
-        }
-        return v;
-      }
-
-      void main() {
-        float drift = uTime * 0.008;
-        float c = cos(drift);
-        float s = sin(drift);
-        vec3 p = vec3(
-          vObjPos.x * c - vObjPos.z * s,
-          vObjPos.y,
-          vObjPos.x * s + vObjPos.z * c
-        );
-        // Stretch slightly along latitude bands for trade-wind streaks
-        vec3 windCoord = vec3(p.x * 3.4, p.y * 5.2, p.z * 3.4);
-        float swirl = fbm(windCoord + vec3(0.0, 1.2, 0.0));
-        float clouds = fbm(windCoord * 1.45 + vec3(swirl * 1.15));
-        if (uDetailBoost > 0.01) {
-          float cirrus = noise3(windCoord * 5.8 + vec3(swirl * 2.4)) - 0.5;
-          clouds += cirrus * 0.14 * uDetailBoost;
-        }
-        float alpha = smoothstep(0.51, 0.77, clouds) * 0.78;
-        if (alpha < 0.01) discard;
-
-        vec3 N = normalize(vWorldNormal);
-        vec3 L = normalize(uSunDir);
-        float ndl = dot(N, L);
-        float eclipseFactor = 1.0;
-        if (uEclipseActive > 0.001 && ndl > -0.05) {
-          vec3 toMoon = uMoonRelEarth - N * 1.011;
-          float projMoon = dot(toMoon, L);
-          if (projMoon > 0.0) {
-            float dMoon = length(toMoon);
-            vec3 dirMoon = toMoon / max(0.001, dMoon);
-            float sep = acos(clamp(dot(dirMoon, L), -1.0, 1.0));
-            float angMoon = atan(0.2727, dMoon);
-            float angSun = atan(109.1, max(1000.0, uSunDistEarth));
-            float penumbraEdge = angMoon + angSun;
-            float umbraEdge = max(0.00022, abs(angMoon - angSun));
-            float penumbra = smoothstep(umbraEdge * 1.15, penumbraEdge * 1.15, sep);
-            float umbraCore = smoothstep(umbraEdge * 0.45, penumbraEdge * 0.28, sep);
-            float rawShadow = mix(0.025, 1.0, penumbra * (0.18 + 0.82 * umbraCore));
-            eclipseFactor = mix(1.0, rawShadow, uEclipseActive);
-          }
-        }
-        float dayLit = smoothstep(-0.12, 0.22, ndl) * eclipseFactor;
-        float twilight = exp(-pow((ndl + 0.02) * 10.0, 2.0)) * eclipseFactor;
-        vec3 col = mix(vec3(0.05, 0.06, 0.09), vec3(0.95, 0.97, 1.0), dayLit);
-        col += vec3(0.65, 0.28, 0.12) * twilight * 0.35;
-
         gl_FragColor = vec4(col, alpha);
         #include <logdepthbuf_fragment>
       }

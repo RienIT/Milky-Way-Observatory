@@ -340,3 +340,74 @@ export function detectClientHardwareProfile(): HardwareProfile {
 }
 
 export const GRAPHICS_SETTINGS_STORAGE_KEY = 'milkyway_graphics_settings_v1';
+
+export interface PlanetQualityProfile {
+  /** Normalized planetary rendering quality 0.0 (potato) -> 1.0 (ultra) */
+  qualityLevel: number;
+  /** Sphere tessellation segments honoring user selection */
+  sphereSegments: number;
+  /** Tangent-space mountain/crater/cloud-top normal relief multiplier */
+  reliefStrength: number;
+  /** Real-time Earth cloud drop shadow opacity multiplier */
+  cloudShadowStrength: number;
+  /** Earth Black Marble VIIRS city-lights emission multiplier */
+  nightLightsStrength: number;
+  /** Planetary Rayleigh/Mie atmospheric scattering & outer halo strength */
+  atmosphereStrength: number;
+  /** Ocean sun-glint & polar ice specular intensity multiplier */
+  specularStrength: number;
+  /** Procedural high-frequency surface micro-grain / storm detail boost */
+  microDetailStrength: number;
+  /** Earth polar aurora curtain visibility multiplier */
+  auroraStrength: number;
+  /** Whether Earth's separate meteorological cloud deck should render */
+  showClouds: boolean;
+  /** Use NearestFilter pixelation on Potato tier for clear retro low-spec visual separation */
+  textureFilterNearest: boolean;
+}
+
+const TIER_BASE_QUALITY: Record<Exclude<QualityTierId, 'custom'>, number> = {
+  potato: 0.0,
+  low: 0.28,
+  medium: 0.54,
+  high: 0.78,
+  rtx: 0.92,
+  ultra: 1.0,
+};
+
+/**
+ * Computes the complete GPU shader & geometry quality profile for Earth and all
+ * Solar System / exoplanet meshes from the user's active GraphicsSettings.
+ * Pure & deterministic so switching presets visibly transforms every planet.
+ */
+export function computePlanetQualityProfile(
+  settings: GraphicsSettings
+): PlanetQualityProfile {
+  let q: number;
+  if (settings.tier !== 'custom') {
+    q = TIER_BASE_QUALITY[settings.tier];
+  } else {
+    const segNorm = Math.max(0, Math.min(1, (settings.planetSegments - 20) / (112 - 20)));
+    const resNorm = Math.max(0, Math.min(1, (settings.resolutionScale - 0.5) / (2.0 - 0.5)));
+    q = Math.max(0, Math.min(1, segNorm * 0.65 + resNorm * 0.35));
+  }
+
+  const isPotato = settings.tier === 'potato' || (settings.tier === 'custom' && q < 0.08);
+  const atmoEnabled = Boolean(settings.showAtmosphereAndNebulae) && !isPotato;
+  const sphereSegments = Math.max(16, Math.min(128, Math.round(settings.planetSegments || 32)));
+
+  return {
+    qualityLevel: Number(q.toFixed(3)),
+    sphereSegments,
+    reliefStrength: isPotato ? 0.0 : Number((0.28 + q * 1.32).toFixed(3)),
+    cloudShadowStrength: atmoEnabled && q >= 0.35 ? Number((0.18 + (q - 0.35) * 0.68).toFixed(3)) : 0.0,
+    nightLightsStrength: isPotato ? 0.0 : Number((0.45 + q * 1.25).toFixed(3)),
+    atmosphereStrength: atmoEnabled ? Number((0.42 + q * 0.92).toFixed(3)) : 0.0,
+    specularStrength: isPotato ? 0.06 : Number((0.32 + q * 1.08).toFixed(3)),
+    microDetailStrength: q < 0.35 ? 0.0 : Number(((q - 0.35) / 0.65).toFixed(3)),
+    auroraStrength: atmoEnabled && q >= 0.65 ? Number(((q - 0.65) / 0.35 * 1.15).toFixed(3)) : 0.0,
+    showClouds: atmoEnabled,
+    textureFilterNearest: isPotato,
+  };
+}
+

@@ -741,7 +741,7 @@ export default function GraphicsSettingsModal({
                   <span className="text-xs font-medium text-[#FFF8E7] block">
                     {copy.fpsCapLabel}
                   </span>
-                  <div className="grid grid-cols-[40px_40px_minmax(0,1fr)] gap-1.5 w-full">
+                  <div className="flex flex-wrap items-center gap-1.5 w-full min-w-0">
                     {FPS_CAP_OPTIONS.map((fps) => {
                       const active = settings.fpsCap === fps;
                       const isUncapped = fps === 0;
@@ -749,19 +749,20 @@ export default function GraphicsSettingsModal({
                         <Button
                           key={fps}
                           size="sm"
-                          fullWidth
                           variant={active ? 'primary' : 'outline'}
                           data-testid={`fps-cap-${fps}`}
                           onPress={() => updateField('fpsCap', fps)}
-                          className={`w-full h-8 min-w-0 max-w-full rounded-[8px] px-1.5 overflow-hidden text-[11px] ${
-                            isUncapped ? 'font-sans' : 'font-mono tabular-nums'
+                          className={`h-8 !min-w-0 max-w-full rounded-[8px] px-2.5 overflow-hidden text-[11px] leading-none ${
+                            isUncapped
+                              ? 'flex-1 basis-[96px] font-sans'
+                              : 'w-[42px] shrink-0 font-mono tabular-nums px-0'
                           } ${
                             active
                               ? 'bg-[#FA500F] text-white font-semibold'
                               : 'bg-[#141416] hover:bg-[#FFF8E7]/[0.07] border-[#FFF8E7]/10 text-[#A19F99]'
                           }`}
                         >
-                          <span className="truncate">
+                          <span className="truncate block">
                             {isUncapped ? copy.fpsUncapped : `${fps}`}
                           </span>
                         </Button>

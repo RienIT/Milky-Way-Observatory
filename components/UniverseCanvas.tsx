@@ -30,6 +30,7 @@ import {
   createClusterHaloMaterial,
   createCometTailMaterial,
   createDeepSpaceDomeMaterial,
+  createEarthAtmosphereMaterial,
   createEarthCloudsMaterial,
   createEarthHighResMaterial,
   createFermiBubblesMaterial,
@@ -46,6 +47,11 @@ import {
   createTrajectoryTrailMaterial,
   createVolumetricBlackHoleMaterial,
 } from '@/lib/cosmic-shaders';
+import { getEarthTextureBundle } from '@/lib/earth-textures';
+import {
+  EclipseCameraMode,
+  sampleEclipsePathBodyFixedDirs,
+} from '@/lib/eclipse-studio';
 import {
   computeLunarShadowOnEarth,
   computePhotonPulseRadiusM,
@@ -54,7 +60,16 @@ import {
   WavelengthBandId,
 } from '@/lib/astrophysics-science';
 import { getLocalizedNode } from '@/lib/celestial-translations';
-import { GraphicsSettings } from '@/lib/graphics-settings';
+import {
+  computePlanetQualityProfile,
+  GraphicsSettings,
+  PlanetQualityProfile,
+} from '@/lib/graphics-settings';
+import {
+  createSolarPlanetTextureManager,
+  SOLAR_PLANET_TEXTURE_FILES,
+  TexturedSolarBodyId,
+} from '@/lib/planet-textures';
 import { LanguageCode, UI_STRINGS } from '@/lib/i18n';
 import {
   MEMORY_TRAIL_SEGMENTS,
@@ -114,6 +129,7 @@ import {
 } from '@/lib/boot-sequence';
 import ObservatoryBootOverlay from './ObservatoryBootOverlay';
 import ScaleHudBar, { ProvenanceMode } from './ScaleHudBar';
+import SolarEclipseStudio from './SolarEclipseStudio';
 import TimeControlPanel from './TimeControlPanel';
 
 export interface UniverseCanvasProps {
@@ -525,6 +541,14 @@ export default function UniverseCanvas({
   );
 
   const [eclipseActive, setEclipseActive] = useState(false);
+  const [eclipseStudioOpen, setEclipseStudioOpen] = useState(false);
+  const [activeEclipsePreset, setActiveEclipsePreset] = useState<SolarEclipsePreset>(
+    SOLAR_ECLIPSE_PRESETS[0]
+  );
+  const [eclipseCameraMode, setEclipseCameraMode] = useState<EclipseCameraMode>('orbital');
+  const [showTotalityPath, setShowTotalityPath] = useState(true);
+  const [showShadowCone, setShowShadowCone] = useState(false);
+  const [showEarthClouds, setShowEarthClouds] = useState(true);
   const [photonPulseActive, setPhotonPulseActive] = useState(false);
   const [photonElapsedSec, setPhotonElapsedSec] = useState(0);
   const [photonRadiusM, setPhotonRadiusM] = useState(0);
@@ -597,6 +621,11 @@ export default function UniverseCanvas({
   const photonPulseActiveRef = useRef(photonPulseActive);
   const photonElapsedSecRef = useRef(0);
   const eclipseActiveRef = useRef(false);
+  const eclipseStudioOpenRef = useRef(eclipseStudioOpen);
+  const activeEclipsePresetRef = useRef<SolarEclipsePreset>(activeEclipsePreset);
+  const showTotalityPathRef = useRef(showTotalityPath);
+  const showShadowConeRef = useRef(showShadowCone);
+  const showEarthCloudsRef = useRef(showEarthClouds);
 
   useEffect(() => {
     memoriesRef.current = memories;
@@ -670,6 +699,21 @@ export default function UniverseCanvas({
   useEffect(() => {
     photonPulseActiveRef.current = photonPulseActive;
   }, [photonPulseActive]);
+  useEffect(() => {
+    eclipseStudioOpenRef.current = eclipseStudioOpen;
+  }, [eclipseStudioOpen]);
+  useEffect(() => {
+    activeEclipsePresetRef.current = activeEclipsePreset;
+  }, [activeEclipsePreset]);
+  useEffect(() => {
+    showTotalityPathRef.current = showTotalityPath;
+  }, [showTotalityPath]);
+  useEffect(() => {
+    showShadowConeRef.current = showShadowCone;
+  }, [showShadowCone]);
+  useEffect(() => {
+    showEarthCloudsRef.current = showEarthClouds;
+  }, [showEarthClouds]);
 
   // Mutable camera controller ref (pure float64 meters!)
   const camCtrlRef = useRef<{
@@ -839,17 +883,14 @@ export default function UniverseCanvas({
     const now = Date.now();
     simDateMsRef.current = now;
     setSimDateMs(now);
-    setTimeSpeedSecPerSec(1);
+    setEclipseStudioOpen(false);
+    setEclipseCameraMode('orbital');
+    setTimeSpeedSecPerSec(3_600);
   }, []);
 
-  const handleJumpToEclipse = useCallback(
-    (preset: SolarEclipsePreset, instant = false) => {
-      simDateMsRef.current = preset.dateMs;
-      setSimDateMs(preset.dateMs);
-      setIsTimePlaying(true);
-      setTimeSpeedSecPerSec(1);
-
-      const ephemNow = computeSolarSystemEphemeris(new Date(preset.dateMs));
+  const frameEclipseCamera = useCallback(
+    (mode: EclipseCameraMode, targetDateMs: number, instant = false) => {
+      const ephemNow = computeSolarSystemEphemeris(new Date(targetDateMs));
       camCtrlRef.current.ephemeris = ephemNow;
       const earthPos = ephemNow.bodies.earth?.helioPosM;
       const moonPos = ephemNow.bodies.moon?.helioPosM;
@@ -857,9 +898,24 @@ export default function UniverseCanvas({
         ? computeSunDirectionFromBody(earthPos)
         : ([1, 0.2, 0.3] as Vec3d);
 
-      // Compute exact lunar umbral strike vector on Earth's surface so the shadow sits prominently in view
       let aimDir: Vec3d = sunDir;
-      if (earthPos && moonPos) {
+      let distM = EARTH_MEAN_RADIUS_M * 3.15;
+
+      if (mode === 'syzygy' && earthPos && moonPos) {
+        // Position camera just past the Moon looking back along the shadow axis toward sunlit Earth
+        const shadow = computeLunarShadowOnEarth(earthPos, moonPos);
+        const mRel = shadow.moonRelEarthRadii;
+        const mLen = Math.hypot(mRel[0], mRel[1], mRel[2]) || 60;
+        const mUnit: Vec3d = [mRel[0] / mLen, mRel[1] / mLen, mRel[2] / mLen];
+        // Slight lateral elevation offset so the Moon sits dramatically in foreground against Earth
+        const sideX = mUnit[0] * 0.96 - mUnit[2] * 0.17;
+        const sideY = mUnit[1] + 0.14;
+        const sideZ = mUnit[2] * 0.96 + mUnit[0] * 0.17;
+        const sLen = Math.hypot(sideX, sideY, sideZ) || 1;
+        aimDir = [sideX / sLen, sideY / sLen, sideZ / sLen];
+        distM = EARTH_MEAN_RADIUS_M * Math.max(48, Math.min(82, mLen * 1.18));
+      } else if (earthPos && moonPos) {
+        // Compute exact lunar umbral strike vector on Earth's surface so the shadow sits prominently in view
         const shadow = computeLunarShadowOnEarth(earthPos, moonPos);
         const mRel = shadow.moonRelEarthRadii;
         const proj = mRel[0] * sunDir[0] + mRel[1] * sunDir[1] + mRel[2] * sunDir[2];
@@ -888,11 +944,50 @@ export default function UniverseCanvas({
       const resolved = resolveScalePreset('earth', ephemNow, memoriesRef.current);
       resolved.idealYaw = idealYaw;
       resolved.idealPitch = idealPitch;
-      resolved.idealDistM = EARTH_MEAN_RADIUS_M * 3.15;
+      resolved.idealDistM = distM;
       setActivePreset('earth');
       startFlyTo(resolved, resolved.idealDistM, instant);
     },
     [startFlyTo]
+  );
+
+  const handleJumpToEclipse = useCallback(
+    (preset: SolarEclipsePreset, instant = false) => {
+      activeEclipsePresetRef.current = preset;
+      setActiveEclipsePreset(preset);
+      eclipseStudioOpenRef.current = true;
+      setEclipseStudioOpen(true);
+      simDateMsRef.current = preset.dateMs;
+      setSimDateMs(preset.dateMs);
+      setIsTimePlaying(true);
+      setTimeSpeedSecPerSec(instant ? 1 : 15);
+      const nextMode: EclipseCameraMode =
+        eclipseCameraMode === 'syzygy' ? 'syzygy' : 'orbital';
+      setEclipseCameraMode(nextMode);
+      frameEclipseCamera(nextMode, preset.dateMs, instant);
+    },
+    [eclipseCameraMode, frameEclipseCamera]
+  );
+
+  const handleScrubEclipseOffsetSec = useCallback((offsetSec: number) => {
+    const nextMs = activeEclipsePresetRef.current.dateMs + offsetSec * 1000;
+    simDateMsRef.current = nextMs;
+    setSimDateMs(nextMs);
+  }, []);
+
+  const handleChangeEclipseCameraMode = useCallback(
+    (nextMode: EclipseCameraMode) => {
+      setEclipseCameraMode(nextMode);
+      if (nextMode === 'syzygy') {
+        setShowShadowCone(true);
+      } else if (nextMode === 'orbital') {
+        setShowShadowCone(false);
+      }
+      if (nextMode !== 'totality') {
+        frameEclipseCamera(nextMode, simDateMsRef.current, false);
+      }
+    },
+    [frameEclipseCamera]
   );
 
   const handleTogglePhotonPulse = useCallback(
@@ -1634,14 +1729,41 @@ export default function UniverseCanvas({
     // PASS 4A: Planetary / Solar System Scene (1 unit = 1,000 km = 1e6 m)
     // =========================================================================
     const planetaryScene = new THREE.Scene();
-    let activePlanetSegs = isSoftwareGl
-      ? 32
-      : Math.max(20, graphicsRef.current.planetSegments);
+    const initPlanetQuality = computePlanetQualityProfile(graphicsRef.current);
+    let activePlanetSegs = initPlanetQuality.sphereSegments;
     let unitSphereGeo = new THREE.SphereGeometry(
       1,
       activePlanetSegs,
-      Math.round(activePlanetSegs * 0.75)
+      Math.max(12, Math.round(activePlanetSegs * 0.72))
     );
+
+    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy?.() ?? 4;
+    const planetTexManager = createSolarPlanetTextureManager(
+      normalizedAssetBase,
+      maxAnisotropy
+    );
+    planetTexManager.setQualityNearest(initPlanetQuality.textureFilterNearest);
+    cleanups.push(() => planetTexManager.dispose());
+
+    const applyQualityProfileToMaterial = (
+      mat: THREE.ShaderMaterial,
+      q: PlanetQualityProfile
+    ) => {
+      if (mat.uniforms.uQualityLevel) mat.uniforms.uQualityLevel.value = q.qualityLevel;
+      if (mat.uniforms.uDetailBoost) mat.uniforms.uDetailBoost.value = q.microDetailStrength;
+      if (mat.uniforms.uReliefStrength) mat.uniforms.uReliefStrength.value = q.reliefStrength;
+      if (mat.uniforms.uCloudShadowStrength) {
+        mat.uniforms.uCloudShadowStrength.value = q.cloudShadowStrength;
+      }
+      if (mat.uniforms.uNightLightsStrength) {
+        mat.uniforms.uNightLightsStrength.value = q.nightLightsStrength;
+      }
+      if (mat.uniforms.uAtmoStrength) mat.uniforms.uAtmoStrength.value = q.atmosphereStrength;
+      if (mat.uniforms.uSpecularStrength) mat.uniforms.uSpecularStrength.value = q.specularStrength;
+      if (mat.uniforms.uMicroDetailStrength) {
+        mat.uniforms.uMicroDetailStrength.value = q.microDetailStrength;
+      }
+    };
 
     interface PlanetMeshEntry {
       id: string;
@@ -1674,11 +1796,28 @@ export default function UniverseCanvas({
       let cloudMat: THREE.ShaderMaterial | undefined;
 
       if (id === 'earth') {
-        mat = track(createEarthHighResMaterial());
-        cloudMat = track(createEarthCloudsMaterial());
+        // Lightweight instant procedural bundle prevents any blank frame while NASA Blue Marble maps stream in (~30ms local)
+        const earthFallbackTextures = getEarthTextureBundle(false);
+        mat = track(createEarthHighResMaterial(earthFallbackTextures));
+        cloudMat = track(createEarthCloudsMaterial(earthFallbackTextures.cloudMap));
         cloudMesh = new THREE.Mesh(unitSphereGeo, cloudMat);
-        cloudMesh.scale.setScalar(1.011);
+        cloudMesh.scale.setScalar(1.012);
+        cloudMesh.visible = showEarthCloudsRef.current && initPlanetQuality.showClouds;
         axialGroup.add(cloudMesh);
+
+        planetTexManager.loadEarthTextures({
+          onDayMap: (tex) => {
+            mat.uniforms.uDayMap.value = tex;
+            mat.uniforms.uHasPhotoDayMap.value = 1.0;
+          },
+          onCloudMap: (tex) => {
+            mat.uniforms.uCloudMap.value = tex;
+            if (cloudMat) cloudMat.uniforms.uCloudMap.value = tex;
+          },
+          onNightMap: (tex) => {
+            mat.uniforms.uNightMap.value = tex;
+          },
+        });
       } else {
         mat = track(
           createRealisticPlanetMaterial(
@@ -1687,6 +1826,25 @@ export default function UniverseCanvas({
             new THREE.Color(vis.atmoColor)
           )
         );
+        if (id in SOLAR_PLANET_TEXTURE_FILES) {
+          planetTexManager.loadPlanetSurface(
+            id as Exclude<TexturedSolarBodyId, 'earth'>,
+            (tex) => {
+              mat.uniforms.uSurfaceMap.value = tex;
+              mat.uniforms.uHasSurfaceMap.value = 1.0;
+            }
+          );
+        }
+      }
+
+      applyQualityProfileToMaterial(mat, initPlanetQuality);
+      if (cloudMat) {
+        if (cloudMat.uniforms.uQualityLevel) {
+          cloudMat.uniforms.uQualityLevel.value = initPlanetQuality.qualityLevel;
+        }
+        if (cloudMat.uniforms.uDetailBoost) {
+          cloudMat.uniforms.uDetailBoost.value = initPlanetQuality.microDetailStrength;
+        }
       }
 
       const mesh = new THREE.Mesh(unitSphereGeo, mat);
@@ -1694,17 +1852,34 @@ export default function UniverseCanvas({
 
       let atmoMesh: THREE.Mesh | undefined;
       let atmoMat: THREE.ShaderMaterial | undefined;
-      if (vis.atmoIntensity > 0.12) {
+      if (id === 'earth') {
+        atmoMat = track(createEarthAtmosphereMaterial());
+        if (atmoMat.uniforms.uAtmoStrength) {
+          atmoMat.uniforms.uAtmoStrength.value = initPlanetQuality.atmosphereStrength;
+        }
+        if (atmoMat.uniforms.uAuroraStrength) {
+          atmoMat.uniforms.uAuroraStrength.value = initPlanetQuality.auroraStrength;
+        }
+        atmoMesh = new THREE.Mesh(unitSphereGeo, atmoMat);
+        atmoMesh.scale.setScalar(1.032);
+        atmoMesh.visible = initPlanetQuality.atmosphereStrength > 0.01;
+        axialGroup.add(atmoMesh);
+      } else if (vis.atmoIntensity > 0.12) {
         atmoMat = track(createPlanetAtmosphereMaterial(new THREE.Color(vis.atmoColor)));
+        if (atmoMat.uniforms.uAtmoStrength) {
+          atmoMat.uniforms.uAtmoStrength.value =
+            id === 'sun' ? 1.0 : initPlanetQuality.atmosphereStrength;
+        }
         atmoMesh = new THREE.Mesh(unitSphereGeo, atmoMat);
         atmoMesh.scale.setScalar(id === 'sun' ? 1.28 : 1.048);
+        atmoMesh.visible = id === 'sun' || initPlanetQuality.atmosphereStrength > 0.01;
         axialGroup.add(atmoMesh);
       }
 
       let ringMesh: THREE.Mesh | undefined;
       let ringMat: THREE.ShaderMaterial | undefined;
       if (vis.hasRings && vis.ringInner && vis.ringOuter && vis.ringColor) {
-        const ringSegs = activePlanetSegs >= 80 ? 160 : 96;
+        const ringSegs = activePlanetSegs >= 80 ? 160 : activePlanetSegs <= 24 ? 48 : 96;
         const ringGeo = new THREE.RingGeometry(vis.ringInner, vis.ringOuter, ringSegs);
         ringGeo.rotateX(-Math.PI / 2);
         ringMat = track(
@@ -1735,6 +1910,73 @@ export default function UniverseCanvas({
         ringOuter: vis.ringOuter,
       });
     }
+
+    // 3D Path of Totality Ribbon wrapped onto Earth's rotating body-fixed globe
+    const earthEntryForEclipse = planetEntries.get('earth');
+    const eclipsePathGroup = new THREE.Group();
+    eclipsePathGroup.visible = false;
+    const eclipsePathCoreGeo = track(new THREE.BufferGeometry());
+    const eclipsePathCoreMat = track(
+      new THREE.LineBasicMaterial({
+        color: 0xffd800,
+        transparent: true,
+        opacity: 0.92,
+      })
+    );
+    const eclipsePathHaloGeo = track(new THREE.BufferGeometry());
+    const eclipsePathHaloMat = track(
+      new THREE.LineBasicMaterial({
+        color: 0xfa500f,
+        transparent: true,
+        opacity: 0.58,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    const eclipsePathCoreLine = new THREE.Line(eclipsePathCoreGeo, eclipsePathCoreMat);
+    const eclipsePathHaloLine = new THREE.Line(eclipsePathHaloGeo, eclipsePathHaloMat);
+    eclipsePathGroup.add(eclipsePathCoreLine);
+    eclipsePathGroup.add(eclipsePathHaloLine);
+    if (earthEntryForEclipse) {
+      earthEntryForEclipse.mesh.add(eclipsePathGroup);
+    }
+    let lastBuiltEclipsePathId = '';
+
+    // 3D Lunar Umbra & Penumbra Shadow Cone stretching from the Moon toward Earth's umbral strike point
+    const eclipseConeGroup = new THREE.Group();
+    eclipseConeGroup.visible = false;
+    const umbraConeGeo = track(new THREE.CylinderGeometry(0.14, 1.0, 1.0, 28, 1, true));
+    const umbraConeMat = track(
+      new THREE.MeshBasicMaterial({
+        color: 0xffaf00,
+        transparent: true,
+        opacity: 0.14,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    const penumbraConeGeo = track(new THREE.CylinderGeometry(1.42, 1.0, 1.0, 28, 1, true));
+    const penumbraConeMat = track(
+      new THREE.MeshBasicMaterial({
+        color: 0xfa500f,
+        transparent: true,
+        opacity: 0.065,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    const umbraConeMesh = new THREE.Mesh(umbraConeGeo, umbraConeMat);
+    const penumbraConeMesh = new THREE.Mesh(penumbraConeGeo, penumbraConeMat);
+    eclipseConeGroup.add(umbraConeMesh);
+    eclipseConeGroup.add(penumbraConeMesh);
+    planetaryScene.add(eclipseConeGroup);
+    const tmpConeUp = new THREE.Vector3(0, 1, 0);
+    const tmpConeDir = new THREE.Vector3();
+    const tmpConeStart = new THREE.Vector3();
+    const tmpConeEnd = new THREE.Vector3();
+    const tmpConeMid = new THREE.Vector3();
 
     // Real Ecliptic Main Asteroid Belt (2.18-3.26 AU) & Kuiper Belt (30.5-48.0 AU)
     const buildSolarBeltGeometry = (totalCount: number): THREE.BufferGeometry => {
@@ -2035,17 +2277,10 @@ export default function UniverseCanvas({
         atmoColor
       );
 
-      // Apply current detail boost immediately so RTX/Ultra detail is live from frame 1
+      // Apply full quality profile immediately so Potato -> Ultra fidelity is live from frame 1
       const initGs = graphicsRef.current;
-      if (mat.uniforms.uDetailBoost) {
-        mat.uniforms.uDetailBoost.value = isSoftwareGl
-          ? 0.25
-          : initGs.tier === 'rtx' || initGs.tier === 'ultra' || initGs.planetSegments >= 80
-            ? 1.0
-            : initGs.tier === 'high'
-              ? 0.55
-              : 0.0;
-      }
+      const initCatalogQ = computePlanetQualityProfile(initGs);
+      applyQualityProfileToMaterial(mat, initCatalogQ);
 
       const mesh = new THREE.Mesh(unitSphereGeo, mat);
       mesh.scale.set(shapeScale[0], shapeScale[1], shapeScale[2]);
@@ -2060,6 +2295,10 @@ export default function UniverseCanvas({
         (spec.archetypeId !== 7 && spec.archetypeId !== 10);
       if (hasAtmosphere) {
         atmoMat = createPlanetAtmosphereMaterial(atmoColor);
+        if (atmoMat.uniforms.uAtmoStrength) {
+          atmoMat.uniforms.uAtmoStrength.value =
+            isStar || hasCometTail ? 1.0 : initCatalogQ.atmosphereStrength;
+        }
         atmoMesh = new THREE.Mesh(unitSphereGeo, atmoMat);
         const haloScale = isStar ? 1.24 : hasCometTail ? 1.09 : 1.055;
         atmoMesh.scale.set(
@@ -2067,7 +2306,7 @@ export default function UniverseCanvas({
           shapeScale[1] * haloScale,
           shapeScale[2] * haloScale
         );
-        atmoMesh.visible = isStar || hasCometTail || initGs.showAtmosphereAndNebulae;
+        atmoMesh.visible = isStar || hasCometTail || initCatalogQ.atmosphereStrength > 0.01;
         axialGroup.add(atmoMesh);
       }
 
@@ -2737,8 +2976,9 @@ export default function UniverseCanvas({
       const avgFps = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
       camCtrlRef.current.fps = Math.round(avgFps);
 
-      // Live graphics preset/settings synchronization (instant SSAA, tessellation, star/belt density, detail boost)
+      // Live graphics preset/settings synchronization (instant SSAA, tessellation, texture filtering, shader relief/atmo/clouds)
       const activeGs = graphicsRef.current;
+      const activeQProfile = computePlanetQualityProfile(activeGs);
       const nextGfxSig = `${activeGs.tier}|${activeGs.resolutionScale}|${activeGs.starfieldCount}|${activeGs.asteroidBeltCount}|${activeGs.planetSegments}|${activeGs.blackHoleRaySteps}|${activeGs.showAtmosphereAndNebulae}`;
       if (nextGfxSig !== lastAppliedGfxSig) {
         lastAppliedGfxSig = nextGfxSig;
@@ -2751,17 +2991,17 @@ export default function UniverseCanvas({
         const ld = computeLensingTargetDims(cw, ch, activeGs);
         lensingTarget.setSize(ld.lw, ld.lh);
 
-        // 2. Live planet sphere & planetary ring tessellation upgrade
-        const nextSegs = isSoftwareGl ? 32 : Math.max(20, activeGs.planetSegments);
+        // 2. Live planet sphere & planetary ring tessellation upgrade (honors user's exact preset on every renderer!)
+        const nextSegs = activeQProfile.sphereSegments;
         if (nextSegs !== activePlanetSegs) {
           const prevSphere = unitSphereGeo;
           activePlanetSegs = nextSegs;
           unitSphereGeo = new THREE.SphereGeometry(
             1,
             activePlanetSegs,
-            Math.round(activePlanetSegs * 0.75)
+            Math.max(12, Math.round(activePlanetSegs * 0.72))
           );
-          const nextRingSegs = activePlanetSegs >= 80 ? 160 : 96;
+          const nextRingSegs = activePlanetSegs >= 80 ? 160 : activePlanetSegs <= 24 ? 48 : 96;
           for (const entry of planetEntries.values()) {
             entry.mesh.geometry = unitSphereGeo;
             if (entry.cloudMesh) entry.cloudMesh.geometry = unitSphereGeo;
@@ -2798,7 +3038,7 @@ export default function UniverseCanvas({
 
         // 3. Live Milky Way & deep-sky starfield density rebuild
         const nextMwStars = isSoftwareGl
-          ? 12000
+          ? Math.min(24000, Math.max(6000, activeGs.starfieldCount))
           : Math.min(140000, Math.max(6000, activeGs.starfieldCount));
         if (nextMwStars !== activeMwStarCount) {
           const prevMw = mwStarsGeo;
@@ -2810,7 +3050,7 @@ export default function UniverseCanvas({
         }
 
         const nextBgStars = isSoftwareGl
-          ? 6000
+          ? Math.min(10000, Math.max(3000, Math.round(activeGs.starfieldCount * 0.25)))
           : Math.min(36000, Math.max(4000, Math.round(activeGs.starfieldCount * 0.3)));
         if (nextBgStars !== activeBgStarCount) {
           const prevBg = bgGeo;
@@ -2822,7 +3062,7 @@ export default function UniverseCanvas({
 
         // 4. Live Solar System Main Asteroid Belt & Kuiper Belt rebuild
         const nextBeltCount = isSoftwareGl
-          ? Math.min(2000, activeGs.asteroidBeltCount)
+          ? Math.min(3000, activeGs.asteroidBeltCount)
           : activeGs.asteroidBeltCount;
         if (nextBeltCount !== activeBeltCount) {
           const prevBelt = solarBeltGeo;
@@ -2832,36 +3072,42 @@ export default function UniverseCanvas({
           prevBelt.dispose();
         }
 
-        // 5. Shader micro-relief boost (Earth alpine relief, crisp clouds, planet eddies/craters)
-        const detailBoost = isSoftwareGl
-          ? 0.25
-          : activeGs.tier === 'rtx' ||
-              activeGs.tier === 'ultra' ||
-              activeGs.planetSegments >= 80
-            ? 1.0
-            : activeGs.tier === 'high'
-              ? 0.55
-              : 0.0;
+        // 5. Full planetary shader & texture quality synchronization across Earth, all Solar planets & catalog exoplanets
+        planetTexManager.setQualityNearest(activeQProfile.textureFilterNearest);
         for (const entry of planetEntries.values()) {
-          if (entry.mat.uniforms.uDetailBoost) {
-            entry.mat.uniforms.uDetailBoost.value = detailBoost;
-          }
-          if (entry.cloudMat?.uniforms.uDetailBoost) {
-            entry.cloudMat.uniforms.uDetailBoost.value = detailBoost;
+          applyQualityProfileToMaterial(entry.mat, activeQProfile);
+          if (entry.cloudMat) {
+            if (entry.cloudMat.uniforms.uQualityLevel) {
+              entry.cloudMat.uniforms.uQualityLevel.value = activeQProfile.qualityLevel;
+            }
+            if (entry.cloudMat.uniforms.uDetailBoost) {
+              entry.cloudMat.uniforms.uDetailBoost.value = activeQProfile.microDetailStrength;
+            }
           }
           if (entry.cloudMesh) {
-            entry.cloudMesh.visible = activeGs.showAtmosphereAndNebulae;
+            entry.cloudMesh.visible = showEarthCloudsRef.current && activeQProfile.showClouds;
+          }
+          if (entry.atmoMat) {
+            if (entry.atmoMat.uniforms.uAtmoStrength) {
+              entry.atmoMat.uniforms.uAtmoStrength.value =
+                entry.id === 'sun' ? 1.0 : activeQProfile.atmosphereStrength;
+            }
+            if (entry.atmoMat.uniforms.uAuroraStrength) {
+              entry.atmoMat.uniforms.uAuroraStrength.value = activeQProfile.auroraStrength;
+            }
           }
           if (entry.atmoMesh && entry.id !== 'sun') {
-            entry.atmoMesh.visible = activeGs.showAtmosphereAndNebulae;
+            entry.atmoMesh.visible = activeQProfile.atmosphereStrength > 0.01;
           }
         }
         for (const entry of catalogEntries.values()) {
-          if (entry.mat.uniforms.uDetailBoost) {
-            entry.mat.uniforms.uDetailBoost.value = detailBoost;
+          applyQualityProfileToMaterial(entry.mat, activeQProfile);
+          if (entry.atmoMat && entry.atmoMat.uniforms.uAtmoStrength) {
+            entry.atmoMat.uniforms.uAtmoStrength.value =
+              entry.isStar || entry.hasCometTail ? 1.0 : activeQProfile.atmosphereStrength;
           }
           if (entry.atmoMesh && !entry.isStar && !entry.hasCometTail) {
-            entry.atmoMesh.visible = activeGs.showAtmosphereAndNebulae;
+            entry.atmoMesh.visible = activeQProfile.atmosphereStrength > 0.01;
           }
         }
       }
@@ -3435,8 +3681,10 @@ export default function UniverseCanvas({
 
           entry.axialGroup.scale.setScalar(radiusUnits);
           entry.mesh.rotation.y = bodyState.spinAngleRad;
+          const allowEarthClouds = showEarthCloudsRef.current && activeQProfile.showClouds;
           if (entry.cloudMesh) {
-            entry.cloudMesh.rotation.y = bodyState.spinAngleRad * 1.015;
+            entry.cloudMesh.rotation.y = bodyState.spinAngleRad;
+            entry.cloudMesh.visible = allowEarthClouds;
           }
 
           if (id === 'sun') {
@@ -3462,18 +3710,99 @@ export default function UniverseCanvas({
             const ecActiveVal = lunarShadow?.isActive ? 1.0 : 0.0;
             const mRel = lunarShadow?.moonRelEarthRadii ?? [60, 0, 0];
             const sDist = (lunarShadow?.sunDistM ?? AU_IN_METERS) / EARTH_MEAN_RADIUS_M;
+            const cloudOffset = (elapsedSec * 0.0014) % 1.0;
+            const cloudOpacity = allowEarthClouds ? 1.0 : 0.0;
 
             entry.mat.uniforms.uSunDir.value.set(sunDir[0], sunDir[1], sunDir[2]);
             entry.mat.uniforms.uTime.value = elapsedSec;
             entry.mat.uniforms.uEclipseActive.value = ecActiveVal;
             entry.mat.uniforms.uMoonRelEarth.value.set(mRel[0], mRel[1], mRel[2]);
             entry.mat.uniforms.uSunDistEarth.value = sDist;
+            entry.mat.uniforms.uCloudOffset.value = cloudOffset;
+            entry.mat.uniforms.uCloudOpacity.value = cloudOpacity;
             if (entry.cloudMat) {
               entry.cloudMat.uniforms.uSunDir.value.set(sunDir[0], sunDir[1], sunDir[2]);
               entry.cloudMat.uniforms.uTime.value = elapsedSec;
               entry.cloudMat.uniforms.uEclipseActive.value = ecActiveVal;
               entry.cloudMat.uniforms.uMoonRelEarth.value.set(mRel[0], mRel[1], mRel[2]);
               entry.cloudMat.uniforms.uSunDistEarth.value = sDist;
+              entry.cloudMat.uniforms.uCloudOffset.value = cloudOffset;
+              entry.cloudMat.uniforms.uCloudOpacity.value = cloudOpacity;
+            }
+
+            // Update 3D Path of Totality Ribbon on Earth's rotating surface
+            const showPath =
+              eclipseStudioOpenRef.current &&
+              showTotalityPathRef.current &&
+              weights.planetary > 0.05;
+            eclipsePathGroup.visible = showPath;
+            if (showPath && activeEclipsePresetRef.current.id !== lastBuiltEclipsePathId) {
+              lastBuiltEclipsePathId = activeEclipsePresetRef.current.id;
+              const pathDirs = sampleEclipsePathBodyFixedDirs(
+                activeEclipsePresetRef.current,
+                56
+              );
+              const coreArr = new Float32Array(pathDirs.length * 3);
+              const haloArr = new Float32Array(pathDirs.length * 3);
+              for (let pi = 0; pi < pathDirs.length; pi += 1) {
+                const [px, py, pz] = pathDirs[pi];
+                coreArr[pi * 3] = px * 1.0055;
+                coreArr[pi * 3 + 1] = py * 1.0055;
+                coreArr[pi * 3 + 2] = pz * 1.0055;
+                haloArr[pi * 3] = px * 1.0072;
+                haloArr[pi * 3 + 1] = py * 1.0072;
+                haloArr[pi * 3 + 2] = pz * 1.0072;
+              }
+              eclipsePathCoreGeo.setAttribute('position', new THREE.BufferAttribute(coreArr, 3));
+              eclipsePathHaloGeo.setAttribute('position', new THREE.BufferAttribute(haloArr, 3));
+              eclipsePathCoreGeo.computeBoundingSphere();
+              eclipsePathHaloGeo.computeBoundingSphere();
+            }
+
+            // Update 3D Lunar Umbra & Penumbra Shadow Cone between Moon and Earth
+            const showCone =
+              eclipseStudioOpenRef.current &&
+              showShadowConeRef.current &&
+              Boolean(lunarShadow?.isActive) &&
+              Boolean(moonBody) &&
+              weights.planetary > 0.05;
+            eclipseConeGroup.visible = showCone;
+            if (showCone && moonBody && lunarShadow) {
+              const moonEntryPosM = computeRelativeMeters(
+                { anchor: 'earth', offsetM: moonBody.localOffsetM },
+                camPos,
+                origins
+              );
+              tmpConeStart.set(
+                moonEntryPosM[0] / mpu,
+                moonEntryPosM[1] / mpu,
+                moonEntryPosM[2] / mpu
+              );
+              // Compute umbral strike point on Earth's surface in planetary scene coordinates
+              const proj = mRel[0] * sunDir[0] + mRel[1] * sunDir[1] + mRel[2] * sunDir[2];
+              const px = mRel[0] - sunDir[0] * proj;
+              const py = mRel[1] - sunDir[1] * proj;
+              const pz = mRel[2] - sunDir[2] * proj;
+              const p2 = px * px + py * py + pz * pz;
+              const alongSun = Math.sqrt(Math.max(0.05, 1.0 - Math.min(0.95, p2)));
+              tmpConeEnd.set(
+                gx + (px + sunDir[0] * alongSun) * radiusUnits,
+                gy + (py + sunDir[1] * alongSun) * radiusUnits,
+                gz + (pz + sunDir[2] * alongSun) * radiusUnits
+              );
+              tmpConeDir.subVectors(tmpConeEnd, tmpConeStart);
+              const coneLen = tmpConeDir.length();
+              if (coneLen > 0.01) {
+                tmpConeMid.addVectors(tmpConeStart, tmpConeEnd).multiplyScalar(0.5);
+                eclipseConeGroup.position.copy(tmpConeMid);
+                tmpConeDir.normalize();
+                eclipseConeGroup.quaternion.setFromUnitVectors(tmpConeUp, tmpConeDir);
+                const moonRadUnits = Math.max(
+                  moonBody.radiusM / mpu,
+                  radiusUnits * 0.2727
+                );
+                eclipseConeGroup.scale.set(moonRadUnits, coneLen, moonRadUnits);
+              }
             }
           } else {
             entry.mat.uniforms.uTime.value = elapsedSec;
@@ -3485,13 +3814,29 @@ export default function UniverseCanvas({
           }
 
           if (entry.atmoMat) {
-            entry.atmoMat.uniforms.uOpacity.value =
-              id === 'sun' ? weights.planetary * 1.25 : weights.planetary * 0.88;
-            entry.atmoMat.uniforms.uLightPos.value.set(
-              id === 'sun' ? 0 : sunGpuX,
-              id === 'sun' ? 0 : sunGpuY,
-              id === 'sun' ? 0 : sunGpuZ
-            );
+            if (id === 'earth') {
+              const moonBody = ephem.bodies.moon;
+              const lunarShadow =
+                moonBody
+                  ? computeLunarShadowOnEarth(bodyState.helioPosM, moonBody.helioPosM)
+                  : null;
+              const mRel = lunarShadow?.moonRelEarthRadii ?? [60, 0, 0];
+              const sDist = (lunarShadow?.sunDistM ?? AU_IN_METERS) / EARTH_MEAN_RADIUS_M;
+              entry.atmoMat.uniforms.uSunDir.value.set(sunDir[0], sunDir[1], sunDir[2]);
+              entry.atmoMat.uniforms.uTime.value = elapsedSec;
+              entry.atmoMat.uniforms.uOpacity.value = weights.planetary * 0.96;
+              entry.atmoMat.uniforms.uEclipseActive.value = lunarShadow?.isActive ? 1.0 : 0.0;
+              entry.atmoMat.uniforms.uMoonRelEarth.value.set(mRel[0], mRel[1], mRel[2]);
+              entry.atmoMat.uniforms.uSunDistEarth.value = sDist;
+            } else {
+              entry.atmoMat.uniforms.uOpacity.value =
+                id === 'sun' ? weights.planetary * 1.25 : weights.planetary * 0.88;
+              entry.atmoMat.uniforms.uLightPos.value.set(
+                id === 'sun' ? 0 : sunGpuX,
+                id === 'sun' ? 0 : sunGpuY,
+                id === 'sun' ? 0 : sunGpuZ
+              );
+            }
           }
           if (entry.ringMat) {
             entry.ringMat.uniforms.uOpacity.value = weights.planetary * 0.92;
@@ -3892,6 +4237,9 @@ export default function UniverseCanvas({
           stageRef.current.dataset.eclipseActive = eclipseActiveRef.current ? 'true' : 'false';
           stageRef.current.dataset.photonPulseActive = photonPulseActiveRef.current ? 'true' : 'false';
           stageRef.current.dataset.cinemaMode = cinemaModeRef.current ? 'true' : 'false';
+          stageRef.current.dataset.graphicsTier = activeGs.tier;
+          stageRef.current.dataset.planetSegments = String(activePlanetSegs);
+          stageRef.current.dataset.planetTexturesLoaded = String(planetTexManager.getLoadedCount());
         }
 
         // Project precision optical Telescope Targeting Reticle onto active target center
@@ -4398,6 +4746,34 @@ export default function UniverseCanvas({
         </div>
       )}
 
+      {/* Total Solar Eclipse Studio (Optical Totality Corona View + Floating Mistral Dock) */}
+      {!cinemaMode && (
+        <SolarEclipseStudio
+          isOpen={eclipseStudioOpen}
+          lang={lang}
+          preset={activeEclipsePreset}
+          simDateMs={simDateMs}
+          cameraMode={eclipseCameraMode}
+          isPlaying={isTimePlaying}
+          speedSecondsPerSec={timeSpeedSecPerSec}
+          showTotalityPath={showTotalityPath}
+          showShadowCone={showShadowCone}
+          showEarthClouds={showEarthClouds}
+          onSelectPreset={(preset) => handleJumpToEclipse(preset, false)}
+          onChangeCameraMode={handleChangeEclipseCameraMode}
+          onScrubOffsetSec={handleScrubEclipseOffsetSec}
+          onTogglePlay={() => setIsTimePlaying((p) => !p)}
+          onChangeSpeed={setTimeSpeedSecPerSec}
+          onToggleTotalityPath={() => setShowTotalityPath((v) => !v)}
+          onToggleShadowCone={() => setShowShadowCone((v) => !v)}
+          onToggleEarthClouds={() => setShowEarthClouds((v) => !v)}
+          onClose={() => {
+            setEclipseStudioOpen(false);
+            setEclipseCameraMode('orbital');
+          }}
+        />
+      )}
+
       {/* Top-Right Ephemeris Time & Solar Eclipse Panel (hidden in Cinema Mode) */}
       <div
         className={`transition-opacity duration-300 ${
@@ -4411,10 +4787,12 @@ export default function UniverseCanvas({
           speedSecondsPerSec={timeSpeedSecPerSec}
           moonPhaseFraction={moonPhaseFraction}
           eclipseActive={eclipseActive}
+          eclipseStudioOpen={eclipseStudioOpen}
           onTogglePlay={() => setIsTimePlaying((p) => !p)}
           onChangeSpeed={setTimeSpeedSecPerSec}
           onResetToNow={handleResetToNow}
           onJumpToEclipse={(preset) => handleJumpToEclipse(preset, false)}
+          onOpenEclipseStudio={() => setEclipseStudioOpen((v) => !v)}
         />
       </div>
 
